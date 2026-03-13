@@ -126,8 +126,8 @@ export async function POST(request) {
       const { PDFParse } = require('pdf-parse')
       const parser = new PDFParse({ data: new Uint8Array(fileBuffer) })
       await parser.load()
-      const pages = await parser.getText()
-      text = Array.isArray(pages) ? pages.map(p => p.text || p).join('\n') : String(pages)
+      const result = await parser.getText()
+      text = result.text || (result.pages || []).map(p => p.text || '').join('\n')
     } catch (err) {
       return NextResponse.json({ error: 'Failed to parse PDF: ' + err.message }, { status: 500 })
     }
@@ -143,19 +143,26 @@ export async function POST(request) {
     }
 
     const topicInstruction = topicId
-      ? `All questions belong to topic "${topicId}". Set topicId to "${topicId}" for every question.`
-      : `Identify the appropriate topicId for each question based on the content.`
+      ? `All questions belong to topicId "${topicId}". Set topicId to "${topicId}" for every question.`
+      : `Determine the appropriate topicId for each question based on its content.`
 
-    const prompt = `You are an AI assistant that extracts exam questions from PDF text for ${examType}.
+    const prompt = `You are an expert ${examType} exam marker and question bank builder.
 
-Extract all questions from the text below. For each question identify the subtopic, options, correct answer index (0-based), explanation, and difficulty (easy/medium/hard). ${topicInstruction}
+Below is the text of an exam paper. Extract every multiple choice question and do the following for each:
+1. Copy the question text exactly
+2. Copy all options (A-E) as an array in order
+3. SOLVE the question and set "correct" to the 0-based index of the correct answer (A=0, B=1, C=2, D=3, E=4)
+4. Write a brief step-by-step explanation of why that answer is correct
+5. Assign a subtopic (e.g. "Algebraic thinking", "Fractions", "Measurement", "Number operations", "Geometry", "Spatial reasoning", "Number patterns", "Problem solving", "Data & graphs")
+6. Set difficulty: easy / medium / hard
+7. ${topicInstruction}
 
-IMPORTANT: You MUST respond with ONLY a valid JSON object. No explanations, no markdown, no prose. If no questions are found, return empty arrays.
+IMPORTANT: Respond with ONLY valid JSON, no markdown, no prose.
 
 Required format:
 {"topics":[{"id":"string","name":"string","subtopics":["string"]}],"extractedQuestions":[{"topicId":"string","subtopic":"string","question":"string","options":["string"],"correct":0,"explanation":"string","difficulty":"easy"}]}
 
-PDF text:
+Exam paper text:
 ${trimmed}`
 
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -167,7 +174,7 @@ ${trimmed}`
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 8000,
+        max_tokens: 16000,
         messages: [{ role: 'user', content: prompt }],
       }),
     })
