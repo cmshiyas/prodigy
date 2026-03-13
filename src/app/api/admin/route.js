@@ -122,9 +122,11 @@ export async function POST(request) {
     const fileBuffer = Buffer.from(await file.arrayBuffer())
     let text
     try {
-      const pdfParseModule = (await import('pdf-parse')).default || (await import('pdf-parse'))
-      const parsed = await pdfParseModule(fileBuffer)
-      text = parsed.text || ''
+      const { PDFParse } = require('pdf-parse')
+      const parser = new PDFParse({ data: new Uint8Array(fileBuffer) })
+      await parser.load()
+      const pages = await parser.getText()
+      text = Array.isArray(pages) ? pages.map(p => p.text || p).join('\n') : String(pages)
     } catch (err) {
       return NextResponse.json({ error: 'Failed to parse PDF: ' + err.message }, { status: 500 })
     }
@@ -139,17 +141,16 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Missing ANTHROPIC_API_KEY' }, { status: 500 })
     }
 
-    const prompt = `You are an AI assistant that converts a sample exam question PDF into a structured bank for ${examType}.
+    const prompt = `You are an AI assistant that extracts exam questions from PDF text for ${examType}.
 
-The input text contains question statements, options, answers, explanations, and related details.
+Extract all questions from the text below. For each question identify the topic, subtopic, options, correct answer index (0-based), explanation, and difficulty (easy/medium/hard).
 
-1) Identify core component topics and subtopics from this content.
-2) Extract as many strong example questions as possible. Each question must include the subtopic it belongs to.
-3) Avoid generating questions not referenced in text; only derive from sample content.
+IMPORTANT: You MUST respond with ONLY a valid JSON object. No explanations, no markdown, no prose. If no questions are found, return empty arrays.
 
-Return ONLY valid JSON with keys { topics:[{id,name,subtopics}], extractedQuestions:[{topicId, subtopic, question, options, correct, explanation, difficulty}] }.
+Required format:
+{"topics":[{"id":"string","name":"string","subtopics":["string"]}],"extractedQuestions":[{"topicId":"string","subtopic":"string","question":"string","options":["string"],"correct":0,"explanation":"string","difficulty":"easy"}]}
 
-Input text:
+PDF text:
 ${trimmed}`
 
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -161,6 +162,7 @@ ${trimmed}`
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
+        max_tokens: 8000,
         messages: [{ role: 'user', content: prompt }],
       }),
     })
@@ -177,6 +179,13 @@ ${trimmed}`
       parsedResponse = JSON.parse(textOutput.replace(/```json|```/g, '').trim())
     } catch (err) {
       return NextResponse.json({ error: 'Failed to parse generate output: ' + err.message, raw: textOutput }, { status: 500 })
+    }
+
+    // Store extracted topics
+    const topics = Array.isArray(parsedResponse.topics) ? parsedResponse.topics : []
+    for (const t of topics) {
+      if (!t.id || !t.name) continue
+      await supabase.from('topics').upsert({ id: t.id, exam_type: examType, name: t.name }, { onConflict: 'id,exam_type' })
     }
 
     const questions = Array.isArray(parsedResponse.extractedQuestions) ? parsedResponse.extractedQuestions : []

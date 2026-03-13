@@ -15,33 +15,36 @@ export async function GET(request) {
     const url = new URL(request.url)
     const examType = url.searchParams.get('examType')
 
-    let query = supabase
-      .from('questions')
-      .select('topic_id, subtopic')
-      .not('subtopic', 'is', null)
+    let qQuery = supabase.from('questions').select('topic_id, subtopic').not('subtopic', 'is', null)
+    let tQuery = supabase.from('topics').select('id, name')
+    if (examType) {
+      qQuery = qQuery.eq('exam_type', examType)
+      tQuery = tQuery.eq('exam_type', examType)
+    }
 
-    if (examType) query = query.eq('exam_type', examType)
+    const [{ data: qData, error: qError }, { data: tData }] = await Promise.all([qQuery, tQuery])
 
-    const { data, error } = await query
-
-    if (error) {
-      console.error('Failed to fetch topics:', error)
+    if (qError) {
+      console.error('Failed to fetch topics:', qError)
       return NextResponse.json({ error: 'Failed to fetch topics' }, { status: 500 })
     }
 
-    // Build { topicId: [subtopic, ...] } with unique values
+    // Build subtopics map { topicId: [subtopic, ...] }
     const subtopicsMap = {}
-    for (const row of data) {
+    for (const row of qData || []) {
       if (!subtopicsMap[row.topic_id]) subtopicsMap[row.topic_id] = new Set()
       subtopicsMap[row.topic_id].add(row.subtopic)
     }
-
-    const result = {}
+    const subtopics = {}
     for (const [topicId, set] of Object.entries(subtopicsMap)) {
-      result[topicId] = [...set]
+      subtopics[topicId] = [...set]
     }
 
-    return NextResponse.json({ subtopics: result })
+    // Build topic names map { topicId: name }
+    const topicNames = {}
+    for (const t of tData || []) topicNames[t.id] = t.name
+
+    return NextResponse.json({ subtopics, topicNames })
   } catch (err) {
     console.error('Topics API error:', err.message)
     return NextResponse.json({ error: err.message }, { status: 500 })
