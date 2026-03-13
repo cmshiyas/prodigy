@@ -791,9 +791,6 @@ function QuestionView({ question, questionNumber, topicStats, examType, onAnswer
         <div className="question-header">
           <span className="question-num">Question {questionNumber}</span>
           <div className="topic-pill" style={{ background: topic.color }}>{topic.name}</div>
-          {question.subtopic && (
-            <div className="subtopic-pill" style={{ background: '#ECFDF5', color: '#065F46', fontWeight: 700, padding: '4px 8px', borderRadius: 999, fontSize: '0.78rem' }}>{question.subtopic}</div>
-          )}
           <div className="exam-pill" style={{ background: '#DBEAFE', color: '#1D4ED8', fontWeight: 700, padding: '4px 8px', borderRadius: 999, fontSize: '0.78rem' }}>{examType} Track</div>
           <div className={`diff-pill diff-${question.difficulty}`}>
             {question.difficulty.charAt(0).toUpperCase() + question.difficulty.slice(1)}
@@ -895,11 +892,13 @@ export default function App() {
   const [totalAnswered, setTotalAnswered] = useState(0)
   const [topicStats, setTopicStats] = useState(initTopicStats)
   const [subtopicStats, setSubtopicStats] = useState({})
+  const [dynamicSubtopics, setDynamicSubtopics] = useState({})
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [quizSessionStartTime, setQuizSessionStartTime] = useState(null)
   const [quizTopicsAttempted, setQuizTopicsAttempted] = useState(new Set())
 
-  const currentTopics = EXAM_TOPICS[examType] || EXAM_TOPICS.OC
+  const baseTopics = EXAM_TOPICS[examType] || EXAM_TOPICS.OC
+  const currentTopics = baseTopics.map(t => ({ ...t, subtopics: dynamicSubtopics[t.id] || [] }))
 
   // Register global Google callback
   useEffect(() => {
@@ -916,6 +915,17 @@ export default function App() {
       }
     }
   }, [])
+
+  // Fetch dynamic subtopics from DB whenever examType or session changes
+  useEffect(() => {
+    if (!session?.idToken) return
+    fetch(`/api/topics?examType=${encodeURIComponent(examType)}`, {
+      headers: { Authorization: 'Bearer ' + session.idToken }
+    })
+      .then(r => r.json())
+      .then(data => { if (data.subtopics) setDynamicSubtopics(data.subtopics) })
+      .catch(() => {})
+  }, [examType, session?.idToken])
 
   // Save session to localStorage whenever it changes
   useEffect(() => {

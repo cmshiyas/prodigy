@@ -144,11 +144,10 @@ export async function POST(request) {
 The input text contains question statements, options, answers, explanations, and related details.
 
 1) Identify core component topics and subtopics from this content.
-2) Extract as many strong example questions as possible into JSON array of objects with:
-   { topicId, question, options, correct, explanation, difficulty }
+2) Extract as many strong example questions as possible. Each question must include the subtopic it belongs to.
 3) Avoid generating questions not referenced in text; only derive from sample content.
 
-Return ONLY valid JSON with keys { topics:[{id,name,subtopics}], extractedQuestions:[...] }.
+Return ONLY valid JSON with keys { topics:[{id,name,subtopics}], extractedQuestions:[{topicId, subtopic, question, options, correct, explanation, difficulty}] }.
 
 Input text:
 ${trimmed}`
@@ -192,6 +191,7 @@ ${trimmed}`
       const insert = {
         topic_id: q.topicId,
         exam_type: examType,
+        subtopic: q.subtopic || null,
         created_by: null,
         question: q.question,
         visual: q.visual || null,
