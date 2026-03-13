@@ -743,7 +743,7 @@ function HomeScreen({ user, examType, onExamTypeChange, tokensUsedToday, score, 
 
 // ── QUESTION VIEW ─────────────────────────────────────────────
 
-function QuestionView({ question, questionNumber, topicStats, examType, onAnswer, onNext, onHome, currentTopics }) {
+function QuestionView({ question, questionNumber, topicStats, examType, onAnswer, onNext, onHome, currentTopics, subtopics, currentSubtopic, onSubtopicChange }) {
   const [answered, setAnswered] = useState(false)
   const [selectedIdx, setSelectedIdx] = useState(null)
   const topic = currentTopics.find(t => t.id === question.topicId) || { name: 'Topic' }
@@ -779,6 +779,24 @@ function QuestionView({ question, questionNumber, topicStats, examType, onAnswer
             {question.difficulty.charAt(0).toUpperCase() + question.difficulty.slice(1)}
           </div>
         </div>
+        {subtopics && subtopics.length > 0 && (
+          <div style={{ padding: '8px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Subtopic:</span>
+            {subtopics.map(sub => (
+              <button
+                key={sub}
+                onClick={() => onSubtopicChange(sub)}
+                style={{
+                  padding: '3px 10px', borderRadius: 999, fontSize: '0.75rem', fontWeight: 600,
+                  border: currentSubtopic === sub ? 'none' : '1px solid #e2e8f0',
+                  background: currentSubtopic === sub ? '#065F46' : '#f8fafc',
+                  color: currentSubtopic === sub ? '#fff' : '#475569',
+                  cursor: 'pointer',
+                }}
+              >{sub}</button>
+            ))}
+          </div>
+        )}
         <div className="question-body">
           <div className="question-text">{question.question}</div>
           {question.visual && (
@@ -1246,8 +1264,11 @@ Rules: exactly 5 options, correct is 0-4 index, difficulty is easy/medium/hard.`
                 topicStats={topicStats}
                 examType={examType}
                 currentTopics={currentTopics}
+                subtopics={currentTopics.find(t => t.id === currentTopic)?.subtopics || []}
+                currentSubtopic={currentSubtopic}
+                onSubtopicChange={(sub) => generateQuestion(currentTopic, sub)}
                 onAnswer={handleAnswer}
-                onNext={() => generateQuestion(currentTopic)}
+                onNext={() => generateQuestion(currentTopic, currentSubtopic)}
                 onHome={() => { saveQuizAttempt(); resetQuizSession(); setShowAdmin(false); setScreen('app') }}
               />
             )}
