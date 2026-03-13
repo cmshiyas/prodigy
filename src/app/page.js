@@ -5,6 +5,10 @@ import { TOPICS, TOPIC_PROMPTS, TOKEN_LIMITS, TIER_LABELS, TIER_CLASSES, ADMIN_E
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
 
+if (!GOOGLE_CLIENT_ID) {
+  console.error('Missing NEXT_PUBLIC_GOOGLE_CLIENT_ID environment variable')
+}
+
 const initTopicStats = () => {
   const s = {}
   TOPICS.forEach(t => { s[t.id] = { correct: 0, total: 0 } })
@@ -21,13 +25,23 @@ function AuthScreen() {
       window.google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
         callback: (r) => window._googleCallback(r),
-        auto_select: true,
+        auto_select: false,
+        use_fedcm_for_prompt: false,
       })
       window.google.accounts.id.renderButton(
         document.getElementById('google-btn'),
         { theme: 'outline', size: 'large', shape: 'rectangular', width: 300 }
       )
-      window.google.accounts.id.prompt()
+      // prompt() can abort with FedCM — ignore that error
+      try {
+        window.google.accounts.id.prompt((notification) => {
+          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            // One Tap not shown — button is still available
+          }
+        })
+      } catch (e) {
+        // FedCM aborted — button still works
+      }
     }
     window.onGoogleLibraryLoad = init
     if (typeof window.google !== 'undefined' && window.google.accounts) init()

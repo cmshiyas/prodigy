@@ -1,3 +1,4 @@
 node_modules
 supabase-schema.sql
 .env.local
+.vercel
