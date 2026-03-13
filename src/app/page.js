@@ -704,21 +704,21 @@ function HomeScreen({ user, examType, onExamTypeChange, tokensUsedToday, score, 
                 {t.subtopics && t.subtopics.length > 0 && (
                   <div style={{ marginTop: 8, fontSize: '0.78rem', color: '#475569' }}>
                     <div style={{ fontWeight: 700, marginBottom: 4 }}>Subtopics</div>
-                    <ul style={{ paddingLeft: 18, margin: 0 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '4px' }}>
                       {t.subtopics.map((sub, idx) => (
-                        <li key={idx} style={{ lineHeight: 1.3 }}>{sub}</li>
+                        <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <span style={{ fontSize: '0.72rem' }}>{sub}</span>
+                          <div style={{ height: 6, width: '100%', borderRadius: 999, background: '#E2E8F0' }}>
+                            <div style={{ width: `${pct}%`, height: '100%', borderRadius: 999, background: pct >= 75 ? '#22C55E' : pct >= 50 ? '#F59E0B' : '#EF4444' }} />
+                          </div>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   </div>
                 )}
                 <div style={{ marginTop: 8, fontSize: '0.8rem', color: '#334155' }}>
                   Strength: {stats.total > 0 ? `${pct}% (${stats.correct}/${stats.total})` : 'No practice yet'}
                 </div>
-                {stats.total > 0 && (
-                  <div style={{ marginTop: 6, height: 8, borderRadius: 999, background: '#E2E8F0' }}>
-                    <div style={{ width: `${pct}%`, height: '100%', borderRadius: 999, background: pct >= 75 ? '#22C55E' : pct >= 50 ? '#F59E0B' : '#EF4444' }} />
-                  </div>
-                )}
               </div>
             </div>
           )
