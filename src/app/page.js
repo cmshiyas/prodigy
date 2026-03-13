@@ -29,7 +29,7 @@ function LandingScreen({ onSignIn }) {
       <section className="landing-hero">
         <div>
           <p className="eyebrow">Practice Smarter for High-Stakes School Exams</p>
-          <h1>Sharpen skills for NAPLAN, OC & Selective with focused practice.</h1>
+          <h1>Consistent Practice with feedback builds mastery</h1>
           <p className="landing-text">Track your progress, identify strengths, and improve weaker topics with clear feedback after every attempt.</p>
           <div className="landing-cta-row">
             <button className="btn btn-primary" onClick={onSignIn}>Get Started</button>
