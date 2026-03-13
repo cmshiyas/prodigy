@@ -102,6 +102,120 @@ export async function POST(request) {
     return NextResponse.json({ ok: true })
   }
 
+  if (action === 'uploadPdf') {
+    const formData = await request.formData()
+    const examType = formData.get('examType')?.toString() || ''
+    const file = formData.get('file')
+    const validTypes = ['NAPLAN', 'OC', 'Selective']
+
+    if (!validTypes.includes(examType)) {
+      return NextResponse.json({ error: 'Invalid exam type' }, { status: 400 })
+    }
+    if (!file || !(file instanceof Blob)) {
+      return NextResponse.json({ error: 'Missing file' }, { status: 400 })
+    }
+
+    if (!file.type.includes('pdf')) {
+      return NextResponse.json({ error: 'Only PDF files are supported' }, { status: 400 })
+    }
+
+    const fileBuffer = Buffer.from(await file.arrayBuffer())
+    let text
+    try {
+      const pdfParseModule = (await import('pdf-parse')).default || (await import('pdf-parse'))
+      const parsed = await pdfParseModule(fileBuffer)
+      text = parsed.text || ''
+    } catch (err) {
+      return NextResponse.json({ error: 'Failed to parse PDF: ' + err.message }, { status: 500 })
+    }
+
+    if (!text.trim()) {
+      return NextResponse.json({ error: 'PDF contains no text' }, { status: 400 })
+    }
+
+    // Limit size for LLM prompt
+    const trimmed = text.length > 16000 ? text.slice(0, 16000) : text
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return NextResponse.json({ error: 'Missing ANTHROPIC_API_KEY' }, { status: 500 })
+    }
+
+    const prompt = `You are an AI assistant that converts a sample exam question PDF into a structured bank for ${examType}.
+
+The input text contains question statements, options, answers, explanations, and related details.
+
+1) Identify core component topics and subtopics from this content.
+2) Extract as many strong example questions as possible into JSON array of objects with:
+   { topicId, question, options, correct, explanation, difficulty }
+3) Avoid generating questions not referenced in text; only derive from sample content.
+
+Return ONLY valid JSON with keys { topics:[{id,name,subtopics}], extractedQuestions:[...] }.
+
+Input text:
+${trimmed}`
+
+    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    })
+
+    if (!anthropicRes.ok) {
+      const err = await anthropicRes.text()
+      return NextResponse.json({ error: 'Claude API failed: ' + err }, { status: 500 })
+    }
+
+    const anthropicData = await anthropicRes.json()
+    const textOutput = anthropicData.content?.map(b => b.text || '').join('') || ''
+    let parsedResponse
+    try {
+      parsedResponse = JSON.parse(textOutput.replace(/```json|```/g, '').trim())
+    } catch (err) {
+      return NextResponse.json({ error: 'Failed to parse generate output: ' + err.message, raw: textOutput }, { status: 500 })
+    }
+
+    const questions = Array.isArray(parsedResponse.extractedQuestions) ? parsedResponse.extractedQuestions : []
+    const insertedQuestions = []
+    const questionErrors = []
+
+    for (const [idx, q] of questions.entries()) {
+      if (!q || !q.topicId || !q.question || !Array.isArray(q.options) || q.options.length < 2 || typeof q.correct !== 'number') {
+        questionErrors.push({ idx, error: 'Invalid question format', q })
+        continue
+      }
+      const insert = {
+        topic_id: q.topicId,
+        exam_type: examType,
+        created_by: null,
+        question: q.question,
+        visual: q.visual || null,
+        options: q.options,
+        correct: q.correct,
+        explanation: q.explanation || '',
+        difficulty: q.difficulty && ['easy', 'medium', 'hard'].includes(q.difficulty) ? q.difficulty : 'medium',
+      }
+      const { error: insertError } = await supabase.from('questions').insert(insert)
+      if (insertError) {
+        questionErrors.push({ idx, error: insertError.message })
+      } else {
+        insertedQuestions.push(q)
+      }
+    }
+
+    return NextResponse.json({
+      topics: parsedResponse.topics || [],
+      inserted: insertedQuestions.length,
+      errors: questionErrors,
+      raw: null,
+    })
+  }
+
   if (action === 'uploadQuestions') {
     const { examType, questions } = await request.json()
     const validTypes = ['NAPLAN', 'OC', 'Selective']

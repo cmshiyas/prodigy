@@ -248,6 +248,9 @@ function AdminPanel({ idToken }) {
   const [uploadFile, setUploadFile] = useState(null)
   const [uploadExamType, setUploadExamType] = useState('OC')
   const [uploadStatus, setUploadStatus] = useState('')
+  const [uploadPdfFile, setUploadPdfFile] = useState(null)
+  const [uploadPdfExamType, setUploadPdfExamType] = useState('OC')
+  const [uploadPdfStatus, setUploadPdfStatus] = useState('')
 
   const loadUsers = useCallback(async () => {
     setLoading(true)
@@ -352,6 +355,38 @@ function AdminPanel({ idToken }) {
       loadQuizBank()
     } catch (err) {
       setUploadStatus('Upload error: ' + err.message)
+    }
+  }
+
+  const uploadPdf = async () => {
+    if (!uploadPdfFile) {
+      setUploadPdfStatus('Please select a PDF file first.')
+      return
+    }
+
+    setUploadPdfStatus('Sending PDF for extraction...')
+    try {
+      const formData = new FormData()
+      formData.append('examType', uploadPdfExamType)
+      formData.append('file', uploadPdfFile)
+
+      const res = await fetch('/api/admin?action=uploadPdf', {
+        method: 'POST',
+        body: formData,
+        headers: { Authorization: 'Bearer ' + idToken },
+      })
+
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Upload failed')
+
+      const errors = data.errors?.length || 0
+      const topics = (data.topics || []).map(t => t.name).join(', ') || 'n/a'
+      setUploadPdfStatus(`Extracted topics: ${topics}. Inserted: ${data.inserted || 0}. Errors: ${errors}.`)
+      setUploadPdfFile(null)
+      document.getElementById('pdf-upload-input').value = ''
+      loadQuizBank()
+    } catch (err) {
+      setUploadPdfStatus('PDF upload failed: ' + err.message)
     }
   }
 
@@ -469,6 +504,20 @@ function AdminPanel({ idToken }) {
           <button className="btn btn-primary" style={{ padding: '7px 12px' }} onClick={uploadQuestions}>Upload sample questions</button>
         </div>
         {uploadStatus && <div style={{ fontSize: '0.8rem', color: uploadStatus.startsWith('Upload error') ? '#EF4444' : '#10B981' }}>{uploadStatus}</div>}
+      </div>
+      <div style={{ padding: 14, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface2)', marginBottom: 16 }}>
+        <div style={{ fontWeight: 700, marginBottom: 6 }}>Upload sample PDF for AI topic extraction</div>
+        <div style={{ fontSize: '0.82rem', color: 'var(--text2)', marginBottom: 8 }}>
+          Upload a PDF file with sample questions; the AI will extract core topics/components and generate question entries.
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
+          <select value={uploadPdfExamType} onChange={e => setUploadPdfExamType(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'white' }}>
+            {EXAM_TYPES.map(e => <option key={e.id} value={e.id}>{e.label}</option>)}
+          </select>
+          <input id="pdf-upload-input" type="file" accept="application/pdf" onChange={e => setUploadPdfFile(e.target.files?.[0] || null)} style={{ padding: '6px 8px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'white' }} />
+          <button className="btn btn-primary" style={{ padding: '7px 12px' }} onClick={uploadPdf}>Upload PDF and extract topics</button>
+        </div>
+        {uploadPdfStatus && <div style={{ fontSize: '0.8rem', color: uploadPdfStatus.startsWith('PDF upload failed') ? '#EF4444' : '#10B981' }}>{uploadPdfStatus}</div>}
       </div>
 
       {loadingQuizBank ? (
