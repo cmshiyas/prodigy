@@ -29,8 +29,8 @@ function LandingScreen({ onSignIn }) {
       <section className="landing-hero">
         <div>
           <p className="eyebrow">Practice Smarter for High-Stakes School Exams</p>
-          <h1>AI-powered NAPLAN, OC & Selective questions that adapt to your practice history.</h1>
-          <p className="landing-text">Get instant practice, track progress, and build confidence with real-style questions. We prioritize unattempted questions first, then generate new ones on demand.</p>
+          <h1>Sharpen skills for NAPLAN, OC & Selective with focused practice.</h1>
+          <p className="landing-text">Track your progress, identify strengths, and improve weaker topics with clear feedback after every attempt.</p>
           <div className="landing-cta-row">
             <button className="btn btn-primary" onClick={onSignIn}>Get Started</button>
             <button className="btn btn-secondary" onClick={onSignIn}>Sign in / Sign up</button>
@@ -48,12 +48,12 @@ function LandingScreen({ onSignIn }) {
           <p>Use topic-based questions for NAPLAN, OC, and Selective standards with immediate detailed explanations.</p>
         </div>
         <div className="feature-card">
-          <h3>AI Generation + Reuse</h3>
-          <p>Reuses unattempted items from the question bank first, then generates new questions only when needed.</p>
+          <h3>Identify Strengths & Gaps</h3>
+          <p>See which topics you do well in and where to focus next, with built-in performance insights.</p>
         </div>
         <div className="feature-card">
           <h3>Track Progress</h3>
-          <p>Monitor daily tokens, total attempts, accuracy, and performance over time.</p>
+          <p>Monitor accuracy, improvement, and confidence growth over time.</p>
         </div>
       </section>
       <section className="landing-how">
