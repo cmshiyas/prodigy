@@ -23,32 +23,37 @@ export const EXAM_TYPES = [
 
 export const EXAM_TOPICS = {
   NAPLAN: [
-    { id: 'number',      name: 'Number & Operations',   icon: '🔢', color: '#4A90D9', bg: '#EFF6FF', desc: 'Place value, arithmetic, rounding' },
-    { id: 'fractions',   name: 'Fractions & Decimals',  icon: '½',  color: '#7C3AED', bg: '#F5F3FF', desc: 'Fractions, decimals, percentages' },
-    { id: 'measurement', name: 'Measurement & Units',   icon: '📏', color: '#0F9B8E', bg: '#F0FDFA', desc: 'Length, mass, time, money' },
-    { id: 'data',        name: 'Data & Statistics',      icon: '📊', color: '#52C41A', bg: '#F0FDF4', desc: 'Graphs, tables, probability' },
+    { id: 'writing',       name: 'Writing',       icon: '✍️', color: '#4C51BF', bg: '#EEF2FF', desc: 'Writing tasks, clarity, structure, grammar' },
+    { id: 'reading',       name: 'Reading',       icon: '📖', color: '#047857', bg: '#ECFDF3', desc: 'Comprehension, inference, passage analysis' },
+    { id: 'conventions',   name: 'Conventions of Language', icon: '📝', color: '#B45309', bg: '#FFFAEB', desc: 'Spelling, grammar, punctuation' },
+    { id: 'numeracy',      name: 'Numeracy',      icon: '🔢', color: '#1D4ED8', bg: '#EFF6FF', desc: 'Number sense, arithmetic, problem solving' },
   ],
   OC: [
-    { id: 'number',      name: 'Number & Operations',   icon: '🔢', color: '#4A90D9', bg: '#EFF6FF', desc: 'Place value, arithmetic, order of operations' },
-    { id: 'fractions',   name: 'Fractions & Decimals',  icon: '½',  color: '#7C3AED', bg: '#F5F3FF', desc: 'Fractions, decimals, ratio' },
-    { id: 'geometry',    name: 'Geometry & Space',       icon: '📐', color: '#FF6B35', bg: '#FFF0E8', desc: 'Shapes, angles, area, volume' },
-    { id: 'reasoning',   name: 'Reasoning & Patterns',   icon: '🧩', color: '#8B5CF6', bg: '#F5F3FF', desc: 'Logic, sequences, pattern rules' },
+    { id: 'reading',       name: 'Reading Test',             icon: '📘', color: '#4A90D9', bg: '#EFF6FF', desc: 'Short passages, inference, comprehension' },
+    { id: 'mathematical',  name: 'Mathematical Reasoning',   icon: '📐', color: '#0F9B8E', bg: '#F0FDFA', desc: 'Algebra, operations, quantitative reasoning' },
+    { id: 'thinking',      name: 'Thinking Skills',          icon: '🧩', color: '#8B5CF6', bg: '#F5F3FF', desc: 'Logic puzzles, pattern recognition, critical thinking' },
   ],
   Selective: [
-    { id: 'number',      name: 'Algebra & Number',       icon: '🔢', color: '#4A90D9', bg: '#EFF6FF', desc: 'Number properties, expressions, equations' },
-    { id: 'geometry',    name: 'Spatial Reasoning',      icon: '📐', color: '#FF6B35', bg: '#FFF0E8', desc: '2D/3D visualisation, coordinates' },
-    { id: 'reasoning',   name: 'Logical Reasoning',      icon: '🧩', color: '#8B5CF6', bg: '#F5F3FF', desc: 'Critical thinking, patterns, inference' },
-    { id: 'data',        name: 'Data Interpretation',    icon: '📊', color: '#52C41A', bg: '#F0FDF4', desc: 'Charts, tables, statistics' },
+    { id: 'reading',       name: 'Reading Test',             icon: '📘', color: '#4A90D9', bg: '#EFF6FF', desc: 'Comprehension, inference, passage analysis' },
+    { id: 'mathematical',  name: 'Mathematical Reasoning',   icon: '📐', color: '#0F9B8E', bg: '#F0FDFA', desc: 'Algebra, arithmetic, equations' },
+    { id: 'thinking',      name: 'Thinking Skills',          icon: '🧩', color: '#8B5CF6', bg: '#F5F3FF', desc: 'Analytical reasoning, sequences, logic' },
+    { id: 'writing',       name: 'Writing Test',             icon: '✍️', color: '#B45309', bg: '#FFFAEB', desc: 'Sentence construction, expression, planning' },
   ]
 }
 
 export const TOPIC_PROMPTS = {
-  number:      'Problems on place value, addition/subtraction, multiplication/division, number rules, ordering, and simple algebra expressions.',
-  fractions:   'Questions on fractions, decimals, equivalent values, comparisons, conversions, and simple fraction operations.',
-  measurement: 'Problems on length, mass, capacity, time, and money with real-world contexts.',
-  geometry:    'Questions on 2D and 3D shapes, angles, area, perimeter, symmetry, coordinates, and transformations.',
-  patterns:    'Number sequences, patterns, function rules, and missing values in sequences.',
-  data:        'Interpreting bar graphs, line graphs, tables, and statistics in real contexts.',
-  probability: 'Basic probability language, outcomes, chance comparisons, and simple experiments.',
-  reasoning:   'Multi-step word problems, logic puzzles, inference, and spatial reasoning tasks.',
+  writing:       'Writing tasks: paragraph structure, sentence clarity, grammar, vocabulary, and persuasive/narrative writing.',
+  reading:       'Reading comprehension: passages, main ideas, inference, vocabulary context, and detail questions.',
+  conventions:   'Conventions: spelling, punctuation, grammar, sentence correctness, and word usage.',
+  numeracy:      'Numeracy: arithmetic, number patterns, data interpretation, basic algebra, and word problems.',
+  mathematical:  'Mathematical reasoning: numeric reasoning, algebraic thinking, problem solving, and quantitative logic.',
+  thinking:      'Thinking skills: logical puzzles, pattern recognition, deduction, and sequence reasoning.',
+  number:        'Problems on place value, addition/subtraction, multiplication/division, number rules, ordering, and simple algebra expressions.',
+  fractions:     'Questions on fractions, decimals, equivalent values, comparisons, conversions, and simple fraction operations.',
+  measurement:   'Problems on length, mass, capacity, time, and money with real-world contexts.',
+  geometry:      'Questions on 2D and 3D shapes, angles, area, perimeter, symmetry, coordinates, and transformations.',
+  patterns:      'Number sequences, patterns, function rules, and missing values in sequences.',
+  data:          'Interpreting bar graphs, line graphs, tables, and statistics in real contexts.',
+  probability:   'Basic probability language, outcomes, chance comparisons, and simple experiments.',
+  reasoning:     'Multi-step word problems, logic puzzles, inference, and spatial reasoning tasks.',
 }

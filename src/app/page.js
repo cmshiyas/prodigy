@@ -862,7 +862,7 @@ export default function App() {
     setQuestionError(null)
     setLoadingQuestion(true)
 
-    const prompt = `You are an expert at creating Australian Year 4 ${examType} exam-style maths questions.
+    const prompt = `You are an expert at creating Australian Year 4 ${examType} exam-style questions.
 Topic: ${topic.name} — ${TOPIC_PROMPTS[topicId]}
 Create ONE multiple choice question for Year 4 (9-10 year olds). Vary difficulty: 40% easy, 40% medium, 20% hard.
 Return ONLY valid JSON, no markdown:
