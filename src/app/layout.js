@@ -1,7 +1,7 @@
 import './globals.css'
 
 export const metadata = {
-  title: 'OC Test Trainer — Year 4',
+  title: 'Rephub',
   description: 'Practise for the NSW Opportunity Class Placement Test',
 }
 

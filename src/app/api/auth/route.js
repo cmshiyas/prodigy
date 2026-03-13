@@ -13,12 +13,28 @@ export async function POST(request) {
     const isAdmin = email === ADMIN_EMAIL
     const supabase = getSupabase()
 
-    // Check if user exists
-    const { data: existing } = await supabase
+    // Look up by google_id first, then fall back to email
+    // (handles the case where a placeholder row exists with the email but wrong google_id)
+    let { data: existing } = await supabase
       .from('users').select('*').eq('google_id', google_id).single()
+
+    if (!existing) {
+      const { data: byEmail } = await supabase
+        .from('users').select('*').eq('email', email).single()
+      if (byEmail) {
+        // Update the placeholder row with the real google_id
+        const { data, error } = await supabase
+          .from('users')
+          .update({ google_id, name, picture, is_admin: isAdmin, updated_at: new Date().toISOString() })
+          .eq('email', email).select().single()
+        if (error) throw new Error('DB update failed: ' + error.message)
+        return respond(supabase, data)
+      }
+    }
 
     let user
     if (existing) {
+      // Update profile info
       const { data, error } = await supabase
         .from('users')
         .update({ name, picture, updated_at: new Date().toISOString() })
@@ -26,6 +42,7 @@ export async function POST(request) {
       if (error) throw new Error('DB update failed: ' + error.message)
       user = data
     } else {
+      // Brand new user
       const { data, error } = await supabase
         .from('users')
         .insert({ google_id, email, name, picture, is_admin: isAdmin, status: isAdmin ? 'approved' : 'pending', tier: isAdmin ? 'admin' : 'silver' })
@@ -34,18 +51,20 @@ export async function POST(request) {
       user = data
     }
 
-    if (!user) throw new Error('Failed to create or fetch user')
+    return respond(supabase, user)
 
-    const today = new Date().toISOString().split('T')[0]
-    const { data: usage } = await supabase
-      .from('token_usage').select('tokens_used').eq('user_id', user.id).eq('date', today).single()
-
-    return NextResponse.json({
-      user: { id: user.id, email: user.email, name: user.name, picture: user.picture, status: user.status, tier: user.tier, is_admin: user.is_admin },
-      tokensUsedToday: usage?.tokens_used || 0,
-    })
   } catch (err) {
     console.error('Auth error:', err.message)
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
+}
+
+async function respond(supabase, user) {
+  const today = new Date().toISOString().split('T')[0]
+  const { data: usage } = await supabase
+    .from('token_usage').select('tokens_used').eq('user_id', user.id).eq('date', today).single()
+  return NextResponse.json({
+    user: { id: user.id, email: user.email, name: user.name, picture: user.picture, status: user.status, tier: user.tier, is_admin: user.is_admin },
+    tokensUsedToday: usage?.tokens_used || 0,
+  })
 }

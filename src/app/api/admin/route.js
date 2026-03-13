@@ -15,19 +15,25 @@ export async function GET(request) {
   catch (err) { return NextResponse.json({ error: err.message }, { status: 403 }) }
 
   const action = new URL(request.url).searchParams.get('action')
-  if (action !== 'users') return NextResponse.json({ error: 'Unknown action' }, { status: 404 })
-
   const supabase = getSupabase()
-  const today = new Date().toISOString().split('T')[0]
 
-  const { data: users, error } = await supabase.from('users').select('*').order('created_at', { ascending: false })
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (action === 'users') {
+    const today = new Date().toISOString().split('T')[0]
+    const { data: users, error } = await supabase.from('users').select('*').order('created_at', { ascending: false })
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    const { data: usageData } = await supabase.from('token_usage').select('user_id, tokens_used').eq('date', today)
+    const usageMap = {}
+    ;(usageData || []).forEach(u => { usageMap[u.user_id] = u.tokens_used })
+    return NextResponse.json({ users: users.map(u => ({ ...u, tokensToday: usageMap[u.id] || 0 })) })
+  }
 
-  const { data: usageData } = await supabase.from('token_usage').select('user_id, tokens_used').eq('date', today)
-  const usageMap = {}
-  ;(usageData || []).forEach(u => { usageMap[u.user_id] = u.tokens_used })
+  if (action === 'config') {
+    const { data, error } = await supabase.from('config').select('key, value')
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ config: data })
+  }
 
-  return NextResponse.json({ users: users.map(u => ({ ...u, tokensToday: usageMap[u.id] || 0 })) })
+  return NextResponse.json({ error: 'Unknown action' }, { status: 404 })
 }
 
 export async function POST(request) {
@@ -35,17 +41,27 @@ export async function POST(request) {
   catch (err) { return NextResponse.json({ error: err.message }, { status: 403 }) }
 
   const action = new URL(request.url).searchParams.get('action')
-  if (action !== 'update') return NextResponse.json({ error: 'Unknown action' }, { status: 404 })
-
-  const { userId, status, tier } = await request.json()
-  if (!userId) return NextResponse.json({ error: 'Missing userId' }, { status: 400 })
-
-  const updates = { updated_at: new Date().toISOString() }
-  if (status) updates.status = status
-  if (tier)   updates.tier   = tier
-
   const supabase = getSupabase()
-  const { data, error } = await supabase.from('users').update(updates).eq('id', userId).select().single()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ user: data })
+
+  if (action === 'update') {
+    const { userId, status, tier } = await request.json()
+    if (!userId) return NextResponse.json({ error: 'Missing userId' }, { status: 400 })
+    const updates = { updated_at: new Date().toISOString() }
+    if (status) updates.status = status
+    if (tier)   updates.tier   = tier
+    const { data, error } = await supabase.from('users').update(updates).eq('id', userId).select().single()
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ user: data })
+  }
+
+  if (action === 'config') {
+    const { key, value } = await request.json()
+    if (!key || value === undefined) return NextResponse.json({ error: 'Missing key or value' }, { status: 400 })
+    const { error } = await supabase.from('config')
+      .upsert({ key, value: String(value), updated_at: new Date().toISOString() })
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ ok: true })
+  }
+
+  return NextResponse.json({ error: 'Unknown action' }, { status: 404 })
 }

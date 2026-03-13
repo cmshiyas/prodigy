@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { verifyGoogleToken } from '@/lib/google'
 import { getSupabase } from '@/lib/supabase'
-import { TOKEN_LIMITS } from '@/lib/constants'
+import { getTokenLimits } from '@/lib/tokenLimits'
 
 export async function POST(request) {
   const authHeader = request.headers.get('authorization')
@@ -27,6 +27,7 @@ export async function POST(request) {
       .from('token_usage').select('tokens_used').eq('user_id', user.id).eq('date', today).single()
 
     const tokensUsedToday = usage?.tokens_used || 0
+    const TOKEN_LIMITS = await getTokenLimits()
     const limit = TOKEN_LIMITS[user.tier] || TOKEN_LIMITS.silver
 
     if (tokensUsedToday >= limit) {
@@ -56,7 +57,11 @@ export async function POST(request) {
       await supabase.from('token_usage').insert({ user_id: user.id, date: today, tokens_used: tokensUsed })
     }
 
-    return NextResponse.json({ ...data, _usage: { tokensUsedToday: newTotal, limit, tier: user.tier, remaining: Math.max(0, limit - newTotal) } }, { status: anthropicRes.status })
+    return NextResponse.json({
+      ...data,
+      _usage: { tokensUsedToday: newTotal, limit, tier: user.tier, remaining: Math.max(0, limit - newTotal) }
+    }, { status: anthropicRes.status })
+
   } catch (err) {
     console.error('Generate error:', err.message)
     return NextResponse.json({ error: err.message }, { status: 500 })

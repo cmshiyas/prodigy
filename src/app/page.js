@@ -89,6 +89,86 @@ function RejectedScreen({ onSignOut }) {
   )
 }
 
+
+// ── TOKEN LIMITS EDITOR ───────────────────────────────────────
+
+function TokenLimitsEditor({ idToken }) {
+  const [limits, setLimits] = useState(null)
+  const [saving, setSaving] = useState(null)
+  const [saved, setSaved] = useState(null)
+
+  useEffect(() => {
+    fetch('/api/admin?action=config', {
+      headers: { Authorization: 'Bearer ' + idToken }
+    })
+      .then(r => r.json())
+      .then(data => {
+        const map = {}
+        data.config.forEach(({ key, value }) => {
+          map[key.replace('token_limit_', '')] = value
+        })
+        setLimits(map)
+      })
+  }, [idToken])
+
+  const save = async (tier, value) => {
+    setSaving(tier)
+    try {
+      const res = await fetch('/api/admin?action=config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+        body: JSON.stringify({ key: 'token_limit_' + tier, value }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error)
+      setSaved(tier)
+      setTimeout(() => setSaved(null), 2000)
+    } catch (err) {
+      alert('Failed: ' + err.message)
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  if (!limits) return <div className="loading-text">Loading config...</div>
+
+  const tiers = [
+    { key: 'silver',   label: 'Silver',   color: '#94A3B8' },
+    { key: 'gold',     label: 'Gold',     color: '#F59E0B' },
+    { key: 'platinum', label: 'Platinum', color: '#8B5CF6' },
+    { key: 'admin',    label: 'Admin',    color: '#EF4444' },
+  ]
+
+  return (
+    <div style={{ padding: '20px 24px', borderTop: '1.5px solid var(--border)' }}>
+      <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1rem', marginBottom: 4 }}>Token Limits</div>
+      <div style={{ fontSize: '0.8rem', color: 'var(--text2)', marginBottom: 16 }}>Daily token limits per tier — changes take effect immediately, no redeployment needed.</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+        {tiers.map(({ key, label, color }) => (
+          <div key={key} style={{ background: 'var(--surface2)', borderRadius: 10, padding: '12px 16px', border: '1.5px solid var(--border)' }}>
+            <div style={{ fontWeight: 800, fontSize: '0.85rem', color, marginBottom: 8 }}>{label}</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                type="number"
+                value={limits[key] || ''}
+                onChange={e => setLimits(l => ({ ...l, [key]: e.target.value }))}
+                style={{ flex: 1, padding: '6px 10px', borderRadius: 8, border: '1.5px solid var(--border)', fontFamily: 'Nunito', fontWeight: 700, fontSize: '0.9rem', background: 'white' }}
+              />
+              <button
+                className="btn btn-primary"
+                style={{ padding: '6px 14px', fontSize: '0.8rem' }}
+                onClick={() => save(key, limits[key])}
+                disabled={saving === key}
+              >
+                {saving === key ? '...' : saved === key ? '✓' : 'Save'}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── ADMIN PANEL ───────────────────────────────────────────────
 
 function AdminPanel({ idToken }) {
@@ -211,6 +291,7 @@ function AdminPanel({ idToken }) {
           )
         })}
       </div>
+    <TokenLimitsEditor idToken={idToken} />
     </div>
   )
 }
