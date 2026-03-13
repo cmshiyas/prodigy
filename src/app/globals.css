@@ -49,6 +49,7 @@ header { background: var(--accent); padding: 0 2rem; display: flex; align-items:
 .admin-nav-btn.active { background: rgba(255,255,255,0.35); }
 .nav-btn { background: rgba(255,255,255,0.15); border: 1.5px solid rgba(255,255,255,0.4); color: white; border-radius: 8px; padding: 6px 12px; font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 0.8rem; cursor: pointer; transition: all 0.15s; margin-right: 8px; }
 .nav-btn:hover { background: rgba(255,255,255,0.25); }
+.nav-btn.active { background: rgba(255,255,255,0.35); }
 
 /* LAYOUT */
 .app { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; display: grid; grid-template-columns: 280px 1fr; gap: 1.5rem; }
