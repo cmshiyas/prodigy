@@ -608,7 +608,7 @@ function AdminPanel({ idToken }) {
 
 // ── SIDEBAR ───────────────────────────────────────────────────
 
-function Sidebar({ currentTopic, currentSubtopic, topics, topicStats, totalAnswered, onSelectTopic }) {
+function Sidebar({ currentTopic, currentSubtopic, topics, topicStats, subtopicStats, totalAnswered, onSelectTopic }) {
   return (
     <div className="sidebar">
       <div className="sidebar-card">
@@ -626,21 +626,32 @@ function Sidebar({ currentTopic, currentSubtopic, topics, topicStats, totalAnswe
               </button>
               {t.subtopics && t.subtopics.length > 0 && (
                 <div style={{ paddingLeft: 12, display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 4 }}>
-                  {t.subtopics.map(sub => (
-                    <button
-                      key={sub}
-                      onClick={() => onSelectTopic(t.id, sub)}
-                      style={{
-                        textAlign: 'left', padding: '4px 8px', borderRadius: 6, fontSize: '0.75rem',
-                        fontWeight: currentTopic === t.id && currentSubtopic === sub ? 700 : 500,
-                        background: currentTopic === t.id && currentSubtopic === sub ? t.bg : 'transparent',
-                        color: currentTopic === t.id && currentSubtopic === sub ? t.color : '#64748b',
-                        border: 'none', cursor: 'pointer', width: '100%',
-                      }}
-                    >
-                      · {sub}
-                    </button>
-                  ))}
+                  {t.subtopics.map(sub => {
+                    const stats = (subtopicStats[t.id] || {})[sub]
+                    const pct = stats?.total > 0 ? Math.round((stats.correct / stats.total) * 100) : null
+                    const dotColor = pct === null ? '#cbd5e1' : pct >= 70 ? '#22c55e' : pct >= 40 ? '#f59e0b' : '#ef4444'
+                    const isActive = currentTopic === t.id && currentSubtopic === sub
+                    return (
+                      <button
+                        key={sub}
+                        onClick={() => onSelectTopic(t.id, sub)}
+                        style={{
+                          textAlign: 'left', padding: '4px 8px', borderRadius: 6, fontSize: '0.75rem',
+                          fontWeight: isActive ? 700 : 500,
+                          background: isActive ? t.bg : 'transparent',
+                          color: isActive ? t.color : '#64748b',
+                          border: 'none', cursor: 'pointer', width: '100%',
+                          display: 'flex', alignItems: 'center', gap: 6,
+                        }}
+                      >
+                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
+                        <span style={{ flex: 1 }}>{sub}</span>
+                        {pct !== null && (
+                          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: dotColor }}>{pct}%</span>
+                        )}
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -1253,6 +1264,7 @@ Rules: exactly 5 options, correct is 0-4 index, difficulty is easy/medium/hard.`
             currentSubtopic={currentSubtopic}
             topics={currentTopics}
             topicStats={topicStats}
+            subtopicStats={subtopicStats}
             totalAnswered={totalAnswered}
             onSelectTopic={generateQuestion}
           />
