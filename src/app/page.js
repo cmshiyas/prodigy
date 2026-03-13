@@ -649,7 +649,7 @@ function Sidebar({ currentTopic, topics, topicStats, totalAnswered, onSelectTopi
 
 // ── HOME SCREEN ───────────────────────────────────────────────
 
-function HomeScreen({ user, examType, onExamTypeChange, tokensUsedToday, score, totalAnswered, topicStats, onSelectTopic }) {
+function HomeScreen({ user, examType, onExamTypeChange, tokensUsedToday, score, totalAnswered, topicStats, subtopicStats, onSelectTopic }) {
   const limit = TOKEN_LIMITS[user.tier] || 5000
   const remaining = Math.max(0, limit - tokensUsedToday)
   const totalCorrect = Object.values(topicStats).reduce((a, v) => a + v.correct, 0)
@@ -663,17 +663,17 @@ function HomeScreen({ user, examType, onExamTypeChange, tokensUsedToday, score, 
         Current track: <span style={{ fontWeight: 800 }}>{examType}</span>
       </div>
       <div className="exam-row" style={{ marginBottom: 16 }}>
-        {['NAPLAN', 'OC', 'Selective'].map(t => (
+        {EXAM_TYPES.map(item => (
           <button
-            key={t}
+            key={item.id}
             onClick={() => {
-              onExamTypeChange(t)
-              if (typeof window !== 'undefined') localStorage.setItem('oc-trainer-examType', t)
+              onExamTypeChange(item.id)
+              if (typeof window !== 'undefined') localStorage.setItem('oc-trainer-examType', item.id)
             }}
-            className={`exam-chip${examType === t ? ' active' : ''}`}
+            className={`exam-chip${examType === item.id ? ' active' : ''}`}
             style={{ marginRight: 8 }}
           >
-            {t}
+            {item.label}
           </button>
         ))}
       </div>
@@ -705,14 +705,27 @@ function HomeScreen({ user, examType, onExamTypeChange, tokensUsedToday, score, 
                   <div style={{ marginTop: 8, fontSize: '0.78rem', color: '#475569' }}>
                     <div style={{ fontWeight: 700, marginBottom: 4 }}>Subtopics</div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '4px' }}>
-                      {t.subtopics.map((sub, idx) => (
-                        <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                          <span style={{ fontSize: '0.72rem' }}>{sub}</span>
-                          <div style={{ height: 6, width: '100%', borderRadius: 999, background: '#E2E8F0' }}>
-                            <div style={{ width: `${pct}%`, height: '100%', borderRadius: 999, background: pct >= 75 ? '#22C55E' : pct >= 50 ? '#F59E0B' : '#EF4444' }} />
+                      {t.subtopics.map((sub, idx) => {
+                        const stats = (subtopicStats[t.id] || {})[sub]
+                        const subPct = stats && stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0
+                        return (
+                          <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <button
+                              className="subtopic-chip"
+                              style={{ fontSize: '0.72rem', textAlign: 'left', padding: '4px 6px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, cursor: 'pointer' }}
+                              onClick={(e) => { e.stopPropagation(); onSelectTopic(t.id, sub) }}
+                            >
+                              {sub}
+                            </button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <div style={{ width: 48, height: 6, borderRadius: 999, background: '#E2E8F0' }}>
+                                <div style={{ width: `${subPct}%`, height: '100%', borderRadius: 999, background: subPct >= 75 ? '#22C55E' : subPct >= 50 ? '#F59E0B' : '#EF4444' }} />
+                              </div>
+                              <span style={{ fontSize: '0.70rem', color: '#334155' }}>{stats ? `${subPct}%` : 'n/a'}</span>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                 )}
@@ -758,6 +771,9 @@ function QuestionView({ question, questionNumber, topicStats, examType, onAnswer
         <div className="question-header">
           <span className="question-num">Question {questionNumber}</span>
           <div className="topic-pill" style={{ background: topic.color }}>{topic.name}</div>
+          {question.subtopic && (
+            <div className="subtopic-pill" style={{ background: '#ECFDF5', color: '#065F46', fontWeight: 700, padding: '4px 8px', borderRadius: 999, fontSize: '0.78rem' }}>{question.subtopic}</div>
+          )}
           <div className="exam-pill" style={{ background: '#DBEAFE', color: '#1D4ED8', fontWeight: 700, padding: '4px 8px', borderRadius: 999, fontSize: '0.78rem' }}>{examType} Track</div>
           <div className={`diff-pill diff-${question.difficulty}`}>
             {question.difficulty.charAt(0).toUpperCase() + question.difficulty.slice(1)}
@@ -833,12 +849,14 @@ export default function App() {
   const [examType, setExamType] = useState('OC')
   const [showAdmin, setShowAdmin] = useState(false)
   const [currentTopic, setCurrentTopic] = useState(null)
+  const [currentSubtopic, setCurrentSubtopic] = useState(null)
   const [question, setQuestion] = useState(null)
   const [loadingQuestion, setLoadingQuestion] = useState(false)
   const [questionError, setQuestionError] = useState(null)
   const [score, setScore] = useState(0)
   const [totalAnswered, setTotalAnswered] = useState(0)
   const [topicStats, setTopicStats] = useState(initTopicStats)
+  const [subtopicStats, setSubtopicStats] = useState({})
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [quizSessionStartTime, setQuizSessionStartTime] = useState(null)
   const [quizTopicsAttempted, setQuizTopicsAttempted] = useState(new Set())
@@ -854,7 +872,8 @@ export default function App() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedExamType = localStorage.getItem('oc-trainer-examType')
-      if (savedExamType && ['NAPLAN', 'OC', 'Selective'].includes(savedExamType)) {
+      const validExamIds = EXAM_TYPES.map(item => item.id)
+      if (savedExamType && validExamIds.includes(savedExamType)) {
         setExamType(savedExamType)
       }
     }
@@ -870,6 +889,26 @@ export default function App() {
       }
     }
   }, [session])
+
+  useEffect(() => {
+    async function fetchSubtopicStats() {
+      if (!session?.idToken) return
+      try {
+        const res = await fetch(`/api/subtopic-performance?examType=${encodeURIComponent(examType)}`, {
+          headers: { 'Authorization': 'Bearer ' + session.idToken }
+        })
+        const data = await res.json()
+        if (res.ok && data.subtopicStats) {
+          setSubtopicStats(data.subtopicStats)
+        } else {
+          setSubtopicStats({})
+        }
+      } catch (err) {
+        console.error('Failed to fetch subtopic stats:', err)
+      }
+    }
+    fetchSubtopicStats()
+  }, [session.idToken, examType])
 
   // Validate stored session on app load - REMOVED
   // We now handle token expiration in API calls instead
@@ -925,7 +964,7 @@ export default function App() {
     setShowProfileMenu(prev => !prev)
   }
 
-  async function generateQuestion(topicId) {
+  async function generateQuestion(topicId, subtopic = null) {
     // Start quiz session tracking if not already started
     if (!quizSessionStartTime) {
       setQuizSessionStartTime(Date.now())
@@ -936,6 +975,7 @@ export default function App() {
 
     const topic = currentTopics.find(t => t.id === topicId)
     setCurrentTopic(topicId)
+    setCurrentSubtopic(subtopic)
     setQuestion(null)
     setQuestionError(null)
     setLoadingQuestion(true)
@@ -953,6 +993,7 @@ Rules: exactly 5 options, correct is 0-4 index, difficulty is easy/medium/hard.`
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.idToken },
         body: JSON.stringify({
           topicId,
+          subtopic,
           examType,
           model: 'claude-sonnet-4-20250514',
           max_tokens: 1000,
@@ -1015,6 +1056,23 @@ Rules: exactly 5 options, correct is 0-4 index, difficulty is easy/medium/hard.`
         total: prev[question.topicId].total + 1,
       }
     }))
+
+    if (question.subtopic) {
+      setSubtopicStats(prev => {
+        const topicMap = prev[question.topicId] || {}
+        const existing = topicMap[question.subtopic] || { correct: 0, total: 0 }
+        return {
+          ...prev,
+          [question.topicId]: {
+            ...topicMap,
+            [question.subtopic]: {
+              correct: existing.correct + (isCorrect ? 1 : 0),
+              total: existing.total + 1
+            }
+          }
+        }
+      })
+    }
 
     // Record the response in the database
     if (question.id) {
@@ -1154,6 +1212,7 @@ Rules: exactly 5 options, correct is 0-4 index, difficulty is easy/medium/hard.`
                 score={score}
                 totalAnswered={totalAnswered}
                 topicStats={topicStats}
+                subtopicStats={subtopicStats}
                 onSelectTopic={generateQuestion}
               />
             )}

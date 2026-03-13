@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { verifyGoogleToken } from '@/lib/google'
 import { getSupabase } from '@/lib/supabase'
 import { getTokenLimits } from '@/lib/tokenLimits'
+import { EXAM_TOPICS, EXAM_TYPES } from '@/lib/constants'
 
 export async function POST(request) {
   const authHeader = request.headers.get('authorization')
@@ -20,12 +21,16 @@ export async function POST(request) {
     if (userErr || !user) return NextResponse.json({ error: 'User not found' }, { status: 401 })
 
     const body = await request.json()
-    const { topicId, examType } = body
-    const exam = ['NAPLAN', 'OC', 'Selective'].includes(examType) ? examType : 'OC'
+    const { topicId, examType, subtopic } = body
+    const validExamIds = EXAM_TYPES.map(item => item.id)
+    const exam = validExamIds.includes(examType) ? examType : 'OC'
 
     if (!topicId) {
       return NextResponse.json({ error: 'topicId is required' }, { status: 400 })
     }
+
+    const topicDef = EXAM_TOPICS[exam]?.find(t => t.id === topicId)
+    const resolvedSubtopic = subtopic || topicDef?.subtopics?.[0] || null
 
     // First, get question IDs this user has already attempted in this topic
     const { data: attemptedResponses, error: attemptedError } = await supabase
@@ -47,6 +52,10 @@ export async function POST(request) {
       .eq('exam_type', exam)
       .limit(1)
 
+    if (resolvedSubtopic) {
+      questionQuery = questionQuery.eq('subtopic', resolvedSubtopic)
+    }
+
     if (attemptedIds.length > 0) {
       const quotedIds = attemptedIds.map(id => `'${id}'`).join(',')
       questionQuery = questionQuery.not('id', 'in', `(${quotedIds})`)
@@ -65,6 +74,7 @@ export async function POST(request) {
         explanation: existingQuestion.explanation,
         difficulty: existingQuestion.difficulty,
         topicId: existingQuestion.topic_id,
+        subtopic: existingQuestion.subtopic || null,
         _usage: { tokensUsedToday: 0, limit: 1000, tier: user.tier, remaining: 1000 } // No tokens used for existing questions
       })
     }
@@ -113,6 +123,7 @@ export async function POST(request) {
       .insert({
         topic_id: topicId,
         exam_type: exam,
+        subtopic: resolvedSubtopic,
         created_by: user.id,
         question: q.question,
         visual: q.visual || null,
@@ -147,6 +158,7 @@ export async function POST(request) {
       explanation: q.explanation,
       difficulty: q.difficulty,
       topicId: topicId,
+      subtopic: resolvedSubtopic,
       _usage: { tokensUsedToday: newTotal, limit, tier: user.tier, remaining: Math.max(0, limit - newTotal) }
     }, { status: anthropicRes.status })
 

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { EXAM_TYPES } from '../lib/constants'
 
 export default function HistoryScreen({ user, idToken, examType, onExamTypeChange, onHome, onRanking }) {
   const [history, setHistory] = useState([])
@@ -43,20 +44,20 @@ export default function HistoryScreen({ user, idToken, examType, onExamTypeChang
 
         <div className="screen">
           <div style={{ margin: '16px 0', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {['NAPLAN', 'OC', 'Selective'].map(type => (
+            {EXAM_TYPES.map(item => (
               <button
-                key={type}
-                onClick={() => onExamTypeChange(type)}
+                key={item.id}
+                onClick={() => onExamTypeChange(item.id)}
                 style={{
                   border: '1.5px solid #E5E7EB',
                   borderRadius: 999,
                   padding: '6px 12px',
-                  background: examType === type ? '#FFEDD5' : 'white',
+                  background: examType === item.id ? '#FFEDD5' : 'white',
                   fontWeight: 700,
                   cursor: 'pointer'
                 }}
               >
-                {type}
+                {item.label}
               </button>
             ))}
           </div>
@@ -84,20 +85,20 @@ export default function HistoryScreen({ user, idToken, examType, onExamTypeChang
 
       <div className="screen">
         <div style={{ margin: '16px 0', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {['NAPLAN', 'OC', 'Selective'].map(type => (
+          {EXAM_TYPES.map(item => (
             <button
-              key={type}
-              onClick={() => onExamTypeChange(type)}
+              key={item.id}
+              onClick={() => onExamTypeChange(item.id)}
               style={{
                 border: '1.5px solid #E5E7EB',
                 borderRadius: 999,
                 padding: '6px 12px',
-                background: examType === type ? '#FFEDD5' : 'white',
+                background: examType === item.id ? '#FFEDD5' : 'white',
                 fontWeight: 700,
                 cursor: 'pointer'
               }}
             >
-              {type}
+              {item.label}
             </button>
           ))}
         </div>

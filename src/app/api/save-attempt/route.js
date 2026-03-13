@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { verifyGoogleToken } from '@/lib/google'
 import { getSupabase } from '@/lib/supabase'
+import { EXAM_TYPES } from '@/lib/constants'
 
 export async function POST(request) {
   const authHeader = request.headers.get('authorization')
@@ -20,7 +21,8 @@ export async function POST(request) {
 
     const body = await request.json()
     const { score, totalQuestions, correctAnswers, durationSeconds, topics, examType } = body
-    const exam = ['NAPLAN', 'OC', 'Selective'].includes(examType) ? examType : 'OC'
+    const validExamIds = EXAM_TYPES.map(item => item.id)
+    const exam = validExamIds.includes(examType) ? examType : 'OC'
 
     const { error } = await supabase
       .from('quiz_attempts')

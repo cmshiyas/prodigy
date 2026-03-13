@@ -1,16 +1,20 @@
 import { useState, useEffect } from 'react'
+import { EXAM_TYPES } from '../lib/constants'
 
 export default function RankingScreen({ user, idToken, onHome, onHistory }) {
   const [rankings, setRankings] = useState([])
+  const [subtopicStats, setSubtopicStats] = useState({})
+  const [examType, setExamType] = useState('OC')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetchRankings()
-  }, [])
+    fetchSubtopicStats()
+  }, [examType])
 
   const fetchRankings = async () => {
     try {
-      const res = await fetch('/api/rankings', {
+      const res = await fetch(`/api/rankings?examType=${encodeURIComponent(examType)}`, {
         headers: { 'Authorization': `Bearer ${idToken}` }
       })
       if (res.ok) {
@@ -21,6 +25,20 @@ export default function RankingScreen({ user, idToken, onHome, onHistory }) {
       console.error('Failed to fetch rankings:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchSubtopicStats = async () => {
+    try {
+      const res = await fetch(`/api/subtopic-performance?examType=${encodeURIComponent(examType)}`, {
+        headers: { 'Authorization': `Bearer ${idToken}` }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setSubtopicStats(data.subtopicStats || {})
+      }
+    } catch (err) {
+      console.error('Failed to fetch subtopic stats:', err)
     }
   }
 
@@ -40,6 +58,25 @@ export default function RankingScreen({ user, idToken, onHome, onHistory }) {
             </div>
           </div>
         </header>
+
+        <div style={{ margin: '16px 0', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {EXAM_TYPES.map(item => (
+            <button
+              key={item.id}
+              onClick={() => setExamType(item.id)}
+              style={{
+                border: '1.5px solid #E5E7EB',
+                borderRadius: 999,
+                padding: '6px 12px',
+                background: examType === item.id ? '#FFEDD5' : 'white',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
 
         <div className="screen">
           <div className="loading">Loading rankings...</div>

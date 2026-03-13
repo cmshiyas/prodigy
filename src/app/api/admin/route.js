@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { verifyGoogleToken } from '@/lib/google'
 import { getSupabase } from '@/lib/supabase'
-import { ADMIN_EMAIL, EXAM_TOPICS } from '@/lib/constants'
+import { ADMIN_EMAIL, EXAM_TOPICS, EXAM_TYPES } from '@/lib/constants'
 
 async function verifyAdmin(request) {
   const authHeader = request.headers.get('authorization')
@@ -106,9 +106,9 @@ export async function POST(request) {
     const formData = await request.formData()
     const examType = formData.get('examType')?.toString() || ''
     const file = formData.get('file')
-    const validTypes = ['NAPLAN', 'OC', 'Selective']
+    const validExamIds = EXAM_TYPES.map(item => item.id)
 
-    if (!validTypes.includes(examType)) {
+    if (!validExamIds.includes(examType)) {
       return NextResponse.json({ error: 'Invalid exam type' }, { status: 400 })
     }
     if (!file || !(file instanceof Blob)) {
@@ -218,8 +218,8 @@ ${trimmed}`
 
   if (action === 'uploadQuestions') {
     const { examType, questions } = await request.json()
-    const validTypes = ['NAPLAN', 'OC', 'Selective']
-    if (!validTypes.includes(examType)) {
+    const validExamIds = EXAM_TYPES.map(item => item.id)
+    if (!validExamIds.includes(examType)) {
       return NextResponse.json({ error: 'Invalid exam type' }, { status: 400 })
     }
     if (!Array.isArray(questions) || questions.length === 0) {
