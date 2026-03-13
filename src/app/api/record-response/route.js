@@ -28,7 +28,7 @@ export async function POST(request) {
     // Get the question to check if the answer is correct
     const { data: question, error: questionError } = await supabase
       .from('questions')
-      .select('correct')
+      .select('correct, subtopic')
       .eq('id', questionId)
       .single()
 
@@ -46,7 +46,8 @@ export async function POST(request) {
         question_id: questionId,
         selected_option: selectedOption,
         is_correct: isCorrect,
-        response_time_seconds: responseTimeSeconds || null
+        response_time_seconds: responseTimeSeconds || null,
+        subtopic: question.subtopic || null
       }, {
         onConflict: ['user_id', 'question_id']
       })
