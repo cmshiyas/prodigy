@@ -191,8 +191,11 @@ function AdminPanel({ idToken }) {
   const [users, setUsers] = useState(null)
   const [filter, setFilter] = useState('all')
   const [loading, setLoading] = useState(true)
+
   const [quizBank, setQuizBank] = useState(null)
   const [loadingQuizBank, setLoadingQuizBank] = useState(false)
+  const [quizBankTopicFilter, setQuizBankTopicFilter] = useState('all')
+  const [quizBankUserSort, setQuizBankUserSort] = useState('countDesc')
 
   const loadUsers = useCallback(async () => {
     setLoading(true)
@@ -374,6 +377,27 @@ function AdminPanel({ idToken }) {
         <div className="loading-card"><div className="spinner" /><div className="loading-text">Loading quiz bank data...</div></div>
       ) : quizBank ? (
         <>
+          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontWeight: 700 }}>Topic:</span>
+              <select value={quizBankTopicFilter} onChange={e => setQuizBankTopicFilter(e.target.value)} style={{ padding: '6px 10px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'white', fontSize: '0.9rem' }}>
+                <option value="all">All</option>
+                {quizBank.topics.map(t => (
+                  <option key={t.topicId} value={t.topicId}>{t.topicId}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontWeight: 700 }}>Sort creators:</span>
+              <select value={quizBankUserSort} onChange={e => setQuizBankUserSort(e.target.value)} style={{ padding: '6px 10px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'white', fontSize: '0.9rem' }}>
+                <option value="countDesc">Most questions</option>
+                <option value="countAsc">Fewest questions</option>
+                <option value="nameAsc">Name A→Z</option>
+                <option value="nameDesc">Name Z→A</option>
+              </select>
+            </div>
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
             <div style={{ background: 'var(--surface)', borderRadius: 12, border: '1.5px solid var(--border)', padding: 16 }}>
               <div style={{ fontWeight: 800, marginBottom: 10 }}>Questions per Topic</div>
@@ -381,12 +405,15 @@ function AdminPanel({ idToken }) {
                 <div style={{ color: 'var(--text2)' }}>No questions yet.</div>
               ) : (
                 <div style={{ display: 'grid', gap: 10 }}>
-                  {quizBank.topics.sort((a, b) => b.count - a.count).map(t => (
-                    <div key={t.topicId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                      <span>{t.topicId}</span>
-                      <span style={{ fontWeight: 700 }}>{t.count}</span>
-                    </div>
-                  ))}
+                  {quizBank.topics
+                    .filter(t => quizBankTopicFilter === 'all' || t.topicId === quizBankTopicFilter)
+                    .sort((a, b) => b.count - a.count)
+                    .map(t => (
+                      <div key={t.topicId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
+                        <span>{t.topicId}</span>
+                        <span style={{ fontWeight: 700 }}>{t.count}</span>
+                      </div>
+                    ))}
                 </div>
               )}
             </div>
@@ -396,12 +423,21 @@ function AdminPanel({ idToken }) {
                 <div style={{ color: 'var(--text2)' }}>No creators found.</div>
               ) : (
                 <div style={{ display: 'grid', gap: 10 }}>
-                  {quizBank.users.map(u => (
-                    <div key={u.userId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                      <span>{u.name || u.email || 'Unknown'}</span>
-                      <span style={{ fontWeight: 700 }}>{u.count}</span>
-                    </div>
-                  ))}
+                  {quizBank.users
+                    .slice()
+                    .sort((a, b) => {
+                      if (quizBankUserSort === 'countDesc') return b.count - a.count
+                      if (quizBankUserSort === 'countAsc') return a.count - b.count
+                      if (quizBankUserSort === 'nameAsc') return (a.name || a.email || '').localeCompare(b.name || b.email || '')
+                      if (quizBankUserSort === 'nameDesc') return (b.name || b.email || '').localeCompare(a.name || a.email || '')
+                      return 0
+                    })
+                    .map(u => (
+                      <div key={u.userId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
+                        <span>{u.name || u.email || 'Unknown'}</span>
+                        <span style={{ fontWeight: 700 }}>{u.count}</span>
+                      </div>
+                    ))}
                 </div>
               )}
             </div>
