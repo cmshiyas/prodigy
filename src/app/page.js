@@ -692,20 +692,37 @@ function HomeScreen({ user, examType, onExamTypeChange, tokensUsedToday, score, 
       </div>
       <div className="home-sub" style={{ marginBottom: 12, fontWeight: 700, fontSize: '0.9rem' }}>Choose a topic to practise:</div>
       <div className="topics-overview">
-        {topicList.map(t => (
-          <div key={t.id} className="topic-overview-card" onClick={() => onSelectTopic(t.id)}>
-            <div className="toc-icon" style={{ background: t.bg }}>{t.icon}</div>
-            <div>
-              <div className="toc-name">{t.name}</div>
-              <div className="toc-desc">{t.desc}</div>
-              {t.subtopics && t.subtopics.length > 0 && (
-                <div className="toc-subtopics" style={{ marginTop: 6, fontSize: '0.80rem', color: '#475569' }}>
-                  <strong>Includes:</strong> {t.subtopics.join(', ')}
+        {topicList.map(t => {
+          const stats = topicStats[t.id] || { correct: 0, total: 0 }
+          const pct = stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0
+          return (
+            <div key={t.id} className="topic-overview-card" onClick={() => onSelectTopic(t.id)}>
+              <div className="toc-icon" style={{ background: t.bg }}>{t.icon}</div>
+              <div>
+                <div className="toc-name">{t.name}</div>
+                <div className="toc-desc">{t.desc}</div>
+                {t.subtopics && t.subtopics.length > 0 && (
+                  <div style={{ marginTop: 8, fontSize: '0.78rem', color: '#475569' }}>
+                    <div style={{ fontWeight: 700, marginBottom: 4 }}>Subtopics</div>
+                    <ul style={{ paddingLeft: 18, margin: 0 }}>
+                      {t.subtopics.map((sub, idx) => (
+                        <li key={idx} style={{ lineHeight: 1.3 }}>{sub}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <div style={{ marginTop: 8, fontSize: '0.8rem', color: '#334155' }}>
+                  Strength: {stats.total > 0 ? `${pct}% (${stats.correct}/${stats.total})` : 'No practice yet'}
                 </div>
-              )}
+                {stats.total > 0 && (
+                  <div style={{ marginTop: 6, height: 8, borderRadius: 999, background: '#E2E8F0' }}>
+                    <div style={{ width: `${pct}%`, height: '100%', borderRadius: 999, background: pct >= 75 ? '#22C55E' : pct >= 50 ? '#F59E0B' : '#EF4444' }} />
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
@@ -713,7 +730,7 @@ function HomeScreen({ user, examType, onExamTypeChange, tokensUsedToday, score, 
 
 // ── QUESTION VIEW ─────────────────────────────────────────────
 
-function QuestionView({ question, questionNumber, topicStats, onAnswer, onNext, onHome, currentTopics }) {
+function QuestionView({ question, questionNumber, topicStats, examType, onAnswer, onNext, onHome, currentTopics }) {
   const [answered, setAnswered] = useState(false)
   const [selectedIdx, setSelectedIdx] = useState(null)
   const topic = currentTopics.find(t => t.id === question.topicId) || { name: 'Topic' }
@@ -741,6 +758,7 @@ function QuestionView({ question, questionNumber, topicStats, onAnswer, onNext, 
         <div className="question-header">
           <span className="question-num">Question {questionNumber}</span>
           <div className="topic-pill" style={{ background: topic.color }}>{topic.name}</div>
+          <div className="exam-pill" style={{ background: '#DBEAFE', color: '#1D4ED8', fontWeight: 700, padding: '4px 8px', borderRadius: 999, fontSize: '0.78rem' }}>{examType} Track</div>
           <div className={`diff-pill diff-${question.difficulty}`}>
             {question.difficulty.charAt(0).toUpperCase() + question.difficulty.slice(1)}
           </div>
@@ -1167,6 +1185,7 @@ Rules: exactly 5 options, correct is 0-4 index, difficulty is easy/medium/hard.`
                 question={question}
                 questionNumber={totalAnswered + 1}
                 topicStats={topicStats}
+                examType={examType}
                 currentTopics={currentTopics}
                 onAnswer={handleAnswer}
                 onNext={() => generateQuestion(currentTopic)}
