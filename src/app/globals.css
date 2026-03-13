@@ -19,6 +19,35 @@ body { font-family: 'Nunito Sans', sans-serif; background: var(--bg); color: var
 .auth-divider::before, .auth-divider::after { content:''; flex:1; height:1px; background: var(--border); }
 .g_id_signin { display: flex; justify-content: center; }
 
+/* LANDING */
+.landing-screen { min-height: 100vh; background: linear-gradient(180deg, #FFFDFC 0%, #FFF8EE 100%); display: flex; flex-direction: column; align-items: center; padding: 35px 16px 60px; gap: 24px; }
+.landing-nav { width: min(1100px, 100%); display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.landing-logo { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 1.35rem; color: #1F2937; letter-spacing: -0.2px; }
+.landing-hero { width: min(1100px, 100%); background: white; border: 1px solid #F3E8FF; border-radius: 20px; padding: 30px; display: grid; grid-template-columns: 1.3fr 1fr; gap: 20px; box-shadow: 0 10px 28px rgba(31,41,55,0.08); }
+.eyebrow { color: #EF4444; font-weight: 800; font-size: 0.78rem; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 8px; }
+.landing-hero h1 { font-family: 'Nunito', sans-serif; font-size: clamp(1.6rem, 5vw, 2.8rem); line-height: 1.2; margin-bottom: 16px; color: #111827; }
+.landing-text { color: #4B5563; line-height: 1.7; margin-bottom: 20px; font-size: 0.97rem; max-width: 520px; }
+.landing-cta-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.hero-box { background: #F3F4F6; border-radius: 16px; padding: 14px; display: grid; gap: 10px; }
+.hero-stat { background: white; border-radius: 12px; border: 1px solid #E5E7EB; padding: 10px; font-weight: 800; color: #111827; }
+.landing-features-grid { width: min(1100px, 100%); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 10px; }
+.feature-card { background: white; border: 1px solid #E7E6F7; border-radius: 14px; padding: 16px; box-shadow: 0 4px 16px rgba(15,23,42,0.05); }
+.feature-card h3 { font-size: 1rem; margin-bottom: 8px; }
+.feature-card p { color: #4B5563; line-height: 1.5; font-size: 0.92rem; }
+.landing-how { width: min(1100px, 100%); background: white; border-radius: 14px; border: 1px solid #EBD9FF; padding: 20px; margin-top: 10px; }
+.landing-how h2 { margin-bottom: 12px; font-size: 1.2rem; }
+.step-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.step-card { background: #F9FAFB; border-radius: 12px; border: 1px solid #E5E7EB; padding: 10px; display: flex; gap: 10px; align-items: flex-start; }
+.step-num { width: 30px; height: 30px; border-radius: 50%; background: #EDE9FE; color: #5B21B6; font-weight: 800; display: grid; place-items: center; }
+.step-card h4 { margin: 0; font-size: 0.95rem; }
+.step-card p { margin: 2px 0 0; color: #4B5563; font-size: 0.85rem; line-height: 1.4; }
+
+@media (max-width: 900px) {
+  .landing-hero { grid-template-columns: 1fr; }
+  .landing-features-grid { grid-template-columns: 1fr; }
+  .step-grid { grid-template-columns: 1fr; }
+}
+
 /* STATUS SCREENS */
 .status-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #FFF8F0 0%, #FFE5D0 100%); }
 .status-card { background: white; border-radius: 24px; padding: 3rem 2.5rem; box-shadow: 0 8px 40px rgba(0,0,0,0.1); max-width: 440px; width: 90%; text-align: center; }

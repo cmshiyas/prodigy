@@ -22,20 +22,48 @@ const initTopicStats = () => {
 function LandingScreen({ onSignIn }) {
   return (
     <div className="landing-screen">
-      <div className="landing-card">
-        <div className="landing-logo">📘 Exam Booster</div>
-        <p className="landing-sub">Personalised practice for NAPLAN, OC, and Selective exams.</p>
-        <p className="landing-copy">Generate AI-backed practice questions, revisit unattempted questions, and track your progress with a simple practice workflow.</p>
-        <div className="landing-features">
-          <div className="feature-item"><strong>✅ Three exam tracks:</strong> NAPLAN, OC, Selective.</div>
-          <div className="feature-item"><strong>✅ Smart question flow:</strong> reuse unattempted on file before generating new questions.</div>
-          <div className="feature-item"><strong>✅ Progress & analytics:</strong> score, accuracy, and daily token usage.</div>
-        </div>
-        <div style={{ marginTop: 18, display: 'flex', gap: 10 }}>
-          <button className="btn btn-primary" onClick={onSignIn}>Sign in / Sign up</button>
-          <button className="btn btn-secondary" onClick={onSignIn}>Start practicing</button>
-        </div>
+      <div className="landing-nav">
+        <div className="landing-logo">Exam Booster</div>
+        <button className="btn btn-primary" onClick={onSignIn}>Sign in</button>
       </div>
+      <section className="landing-hero">
+        <div>
+          <p className="eyebrow">Practice Smarter for High-Stakes School Exams</p>
+          <h1>AI-powered NAPLAN, OC & Selective questions that adapt to your practice history.</h1>
+          <p className="landing-text">Get instant practice, track progress, and build confidence with real-style questions. We prioritize unattempted questions first, then generate new ones on demand.</p>
+          <div className="landing-cta-row">
+            <button className="btn btn-primary" onClick={onSignIn}>Get Started</button>
+            <button className="btn btn-secondary" onClick={onSignIn}>Sign in / Sign up</button>
+          </div>
+        </div>
+        <div className="hero-box">
+          <div className="hero-stat"><strong>3+</strong> Exam tracks</div>
+          <div className="hero-stat"><strong>1000+</strong> dynamic questions</div>
+          <div className="hero-stat"><strong>1-click</strong> generate + save</div>
+        </div>
+      </section>
+      <section className="landing-features-grid">
+        <div className="feature-card">
+          <h3>Exam-ready Practice</h3>
+          <p>Use topic-based questions for NAPLAN, OC, and Selective standards with immediate detailed explanations.</p>
+        </div>
+        <div className="feature-card">
+          <h3>AI Generation + Reuse</h3>
+          <p>Reuses unattempted items from the question bank first, then generates new questions only when needed.</p>
+        </div>
+        <div className="feature-card">
+          <h3>Track Progress</h3>
+          <p>Monitor daily tokens, total attempts, accuracy, and performance over time.</p>
+        </div>
+      </section>
+      <section className="landing-how">
+        <h2>How it works</h2>
+        <div className="step-grid">
+          <div className="step-card"><div className="step-num">1</div><div><h4>Sign in</h4><p>Register with Google and get approved in minutes.</p></div></div>
+          <div className="step-card"><div className="step-num">2</div><div><h4>Choose topic</h4><p>Select a subject and start a practice session.</p></div></div>
+          <div className="step-card"><div className="step-num">3</div><div><h4>Answer & improve</h4><p>Submit answers, track responses, and continue with fresh questions.</p></div></div>
+        </div>
+      </section>
     </div>
   )
 }
