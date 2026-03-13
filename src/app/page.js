@@ -610,6 +610,9 @@ function HomeScreen({ user, examType, onExamTypeChange, tokensUsedToday, score, 
     <div className="home-screen">
       <div className="home-title">Hi {user.name.split(' ')[0]}! 👋</div>
       <div className="home-sub">Practice for {examType} exam-style questions. Choose a topic to generate a question.</div>
+      <div style={{ marginBottom: 10, fontSize: '0.86rem', color: '#334155', fontWeight: 600 }}>
+        Current track: <span style={{ fontWeight: 800 }}>{examType}</span>
+      </div>
       <div className="exam-row" style={{ marginBottom: 16 }}>
         {['NAPLAN', 'OC', 'Selective'].map(t => (
           <button

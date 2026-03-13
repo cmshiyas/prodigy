@@ -3,3 +3,4 @@ supabase-schema.sql
 .env.local
 .vercel
 .next
+requirements.md
