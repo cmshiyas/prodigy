@@ -468,11 +468,23 @@ export default function App() {
   const [score, setScore] = useState(0)
   const [totalAnswered, setTotalAnswered] = useState(0)
   const [topicStats, setTopicStats] = useState(initTopicStats)
+  const [showProfileMenu, setShowProfileMenu] = useState(false)
 
   // Register global Google callback
   useEffect(() => {
     window._googleCallback = handleGoogleSignIn
   }, [])
+
+  // Close profile menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (showProfileMenu && !event.target.closest('.user-pill')) {
+        setShowProfileMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showProfileMenu])
 
   async function handleGoogleSignIn(response) {
     const idToken = response.credential
@@ -502,6 +514,11 @@ export default function App() {
     setShowAdmin(false)
     setCurrentTopic(null)
     setQuestion(null)
+    setShowProfileMenu(false)
+  }
+
+  function handleProfileClick() {
+    setShowProfileMenu(prev => !prev)
   }
 
   async function generateQuestion(topicId) {
@@ -595,12 +612,17 @@ Rules: exactly 5 options, correct is 0-4 index, difficulty is easy/medium/hard.`
               Admin Panel
             </button>
           )}
-          <div className="user-pill" onClick={handleSignOut} title="Click to sign out">
+          <div className="user-pill" onClick={handleProfileClick}>
             {user.picture && <img src={user.picture} className="user-avatar" alt="" />}
             <span>{user.name.split(' ')[0]}</span>
             <span className={`tier-badge ${TIER_CLASSES[user.tier] || 'tier-silver'}`}>
               {TIER_LABELS[user.tier] || user.tier}
             </span>
+            <div className="profile-dropdown" style={{ display: showProfileMenu ? 'block' : 'none' }}>
+              <button className="dropdown-item" onClick={handleSignOut}>
+                <span>🚪</span> Logout
+              </button>
+            </div>
           </div>
         </div>
       </header>
