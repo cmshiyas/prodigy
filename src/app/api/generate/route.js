@@ -99,7 +99,7 @@ export async function POST(request) {
     if (!process.env.ANTHROPIC_API_KEY) throw new Error('Missing ANTHROPIC_API_KEY')
 
     // Remove topicId from body before sending to Claude
-    const { topicId: _, examType: __, ...claudeBody } = body
+    const { topicId: _, examType: __, subtopic: ___, ...claudeBody } = body
 
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
