@@ -999,7 +999,7 @@ export default function App() {
     setLoadingQuestion(true)
 
     const prompt = `You are an expert at creating Australian Year 4 ${examType} exam-style questions.
-Topic: ${topic.name} — ${TOPIC_PROMPTS[topicId]}
+Topic: ${topic.name} — ${TOPIC_PROMPTS[topicId]}${subtopic ? `\nSubtopic: ${subtopic} — focus the question specifically on this subtopic.` : ''}
 Create ONE multiple choice question for Year 4 (9-10 year olds). Vary difficulty: 40% easy, 40% medium, 20% hard.
 Return ONLY valid JSON, no markdown:
 {"question":"...","visual":"optional table/list or empty string","options":["A","B","C","D","E"],"correct":0,"explanation":"step-by-step solution","difficulty":"easy"}
