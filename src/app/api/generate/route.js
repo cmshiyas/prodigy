@@ -50,7 +50,7 @@ export async function POST(request) {
       .select('*')
       .eq('topic_id', topicId)
       .eq('exam_type', exam)
-      .limit(1)
+      .limit(50)
 
     if (resolvedSubtopic) {
       questionQuery = questionQuery.eq('subtopic', resolvedSubtopic)
@@ -61,7 +61,11 @@ export async function POST(request) {
       questionQuery = questionQuery.not('id', 'in', `(${quotedIds})`)
     }
 
-    const { data: existingQuestion, error: questionError } = await questionQuery.single()
+    const { data: existingQuestions, error: questionError } = await questionQuery
+
+    const existingQuestion = existingQuestions?.length > 0
+      ? existingQuestions[Math.floor(Math.random() * existingQuestions.length)]
+      : null
 
     if (existingQuestion && !questionError) {
       // Return existing question
