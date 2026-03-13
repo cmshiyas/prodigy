@@ -551,7 +551,7 @@ function Sidebar({ currentTopic, topicStats, totalAnswered, onSelectTopic }) {
 
 // ── HOME SCREEN ───────────────────────────────────────────────
 
-function HomeScreen({ user, tokensUsedToday, score, totalAnswered, topicStats, onSelectTopic }) {
+function HomeScreen({ user, examType, onExamTypeChange, tokensUsedToday, score, totalAnswered, topicStats, onSelectTopic }) {
   const limit = TOKEN_LIMITS[user.tier] || 5000
   const remaining = Math.max(0, limit - tokensUsedToday)
   const totalCorrect = Object.values(topicStats).reduce((a, v) => a + v.correct, 0)
@@ -559,7 +559,22 @@ function HomeScreen({ user, tokensUsedToday, score, totalAnswered, topicStats, o
   return (
     <div className="home-screen">
       <div className="home-title">Hi {user.name.split(' ')[0]}! 👋</div>
-      <div className="home-sub">Practice for NAPLAN, OC, and Selective exam-style questions. Choose a topic to generate a question.</div>
+      <div className="home-sub">Practice for NAPLAN, OC, and Selective exam-style questions. Choose an exam style and topic to generate a question.</div>
+      <div className="exam-row" style={{ marginBottom: 16 }}>
+        {['NAPLAN', 'OC', 'Selective'].map(t => (
+          <button
+            key={t}
+            onClick={() => {
+              onExamTypeChange(t)
+              if (typeof window !== 'undefined') localStorage.setItem('oc-trainer-examType', t)
+            }}
+            className={`exam-chip${examType === t ? ' active' : ''}`}
+            style={{ marginRight: 8 }}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
       {!user.is_admin && (
         <div className="limit-banner" style={{ marginBottom: 20 }}>
           <strong>{TIER_LABELS[user.tier]} Tier</strong> — {remaining.toLocaleString()} tokens remaining today ({tokensUsedToday.toLocaleString()} / {limit.toLocaleString()} used). Resets at midnight.
@@ -687,6 +702,7 @@ export default function App() {
   const initialSession = getInitialSession()
   const [screen, setScreen] = useState(initialSession.user ? 'app' : 'landing') // landing | auth | pending | rejected | app | history | ranking
   const [session, setSession] = useState(initialSession)
+  const [examType, setExamType] = useState('OC')
   const [showAdmin, setShowAdmin] = useState(false)
   const [currentTopic, setCurrentTopic] = useState(null)
   const [question, setQuestion] = useState(null)
@@ -702,6 +718,16 @@ export default function App() {
   // Register global Google callback
   useEffect(() => {
     window._googleCallback = handleGoogleSignIn
+  }, [])
+
+  // Load exam-type preference from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedExamType = localStorage.getItem('oc-trainer-examType')
+      if (savedExamType && ['NAPLAN', 'OC', 'Selective'].includes(savedExamType)) {
+        setExamType(savedExamType)
+      }
+    }
   }, [])
 
   // Save session to localStorage whenever it changes
@@ -740,10 +766,7 @@ export default function App() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       setSession({ user: data.user, idToken, tokensUsedToday: data.tokensUsedToday || 0 })
-      const s = data.user.status
-      if (s === 'pending') setScreen('pending')
-      else if (s === 'rejected') setScreen('rejected')
-      else setScreen('app')
+      setScreen('app')
     } catch (err) {
       alert('Sign-in failed: ' + err.message)
     }
@@ -787,7 +810,7 @@ export default function App() {
     setQuestionError(null)
     setLoadingQuestion(true)
 
-    const prompt = `You are an expert at creating Australian Year 4 OC Placement Test maths questions.
+    const prompt = `You are an expert at creating Australian Year 4 ${examType} exam-style maths questions.
 Topic: ${topic.name} — ${TOPIC_PROMPTS[topicId]}
 Create ONE multiple choice question for Year 4 (9-10 year olds). Vary difficulty: 40% easy, 40% medium, 20% hard.
 Return ONLY valid JSON, no markdown:
@@ -992,6 +1015,8 @@ Rules: exactly 5 options, correct is 0-4 index, difficulty is easy/medium/hard.`
             {!currentTopic && !loadingQuestion && (
               <HomeScreen
                 user={user}
+                examType={examType}
+                onExamTypeChange={setExamType}
                 tokensUsedToday={tokensUsedToday}
                 score={score}
                 totalAnswered={totalAnswered}

@@ -15,6 +15,12 @@ export const TIER_CLASSES = {
   silver: 'tier-silver', gold: 'tier-gold', platinum: 'tier-platinum', admin: 'tier-admin',
 }
 
+export const EXAM_TYPES = [
+  { id: 'NAPLAN', label: 'NAPLAN' },
+  { id: 'OC', label: 'OC' },
+  { id: 'Selective', label: 'Selective' },
+]
+
 export const TOPICS = [
   { id: 'number',      name: 'Number & Operations',   icon: '🔢', color: '#4A90D9', bg: '#EFF6FF', desc: 'Place value, arithmetic, ordering, rounding' },
   { id: 'fractions',   name: 'Fractions & Decimals',  icon: '½',  color: '#7C3AED', bg: '#F5F3FF', desc: 'Fractions, mixed numbers, comparing' },

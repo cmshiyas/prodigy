@@ -18,9 +18,6 @@ export async function POST(request) {
       .from('users').select('*').eq('google_id', google_id).single()
 
     if (userErr || !user) return NextResponse.json({ error: 'User not found' }, { status: 401 })
-    if (user.status === 'pending')  return NextResponse.json({ error: 'PENDING',  message: 'Your account is awaiting admin approval.' }, { status: 403 })
-    if (user.status === 'rejected') return NextResponse.json({ error: 'REJECTED', message: 'Your access request was declined.' }, { status: 403 })
-    if (user.status !== 'approved') return NextResponse.json({ error: 'Access denied' }, { status: 403 })
 
     const body = await request.json()
     const { topicId } = body

@@ -17,7 +17,6 @@ export async function POST(request) {
       .from('users').select('*').eq('google_id', google_id).single()
 
     if (userErr || !user) return NextResponse.json({ error: 'User not found' }, { status: 401 })
-    if (user.status !== 'approved') return NextResponse.json({ error: 'Access denied' }, { status: 403 })
 
     const body = await request.json()
     const { questionId, selectedOption, responseTimeSeconds } = body

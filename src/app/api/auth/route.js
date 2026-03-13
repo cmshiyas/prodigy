@@ -42,10 +42,10 @@ export async function POST(request) {
       if (error) throw new Error('DB update failed: ' + error.message)
       user = data
     } else {
-      // Brand new user
+      // Brand new user (auto-approved)
       const { data, error } = await supabase
         .from('users')
-        .insert({ google_id, email, name, picture, is_admin: isAdmin, status: isAdmin ? 'approved' : 'pending', tier: isAdmin ? 'admin' : 'silver' })
+        .insert({ google_id, email, name, picture, is_admin: isAdmin, status: 'approved', tier: isAdmin ? 'admin' : 'silver' })
         .select().single()
       if (error) throw new Error('DB insert failed: ' + error.message)
       user = data

@@ -149,7 +149,10 @@ header { background: var(--accent); padding: 0 2rem; display: flex; align-items:
 .error-box { background: #FEF2F2; border: 1.5px solid #FECACA; border-radius: 12px; padding: 16px; color: #991B1B; font-size: 0.9rem; font-weight: 600; }
 .home-screen { background: var(--surface); border-radius: var(--radius); border: 1.5px solid var(--border); padding: 2rem; box-shadow: var(--shadow); }
 .home-title { font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 1.8rem; margin-bottom: 8px; }
-.home-sub { color: var(--text2); font-size: 0.95rem; margin-bottom: 24px; line-height: 1.6; }
+..home-sub { color: var(--text2); font-size: 0.95rem; margin-bottom: 16px; line-height: 1.6; }
+.exam-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.exam-chip { padding: 7px 13px; font-size: 0.8rem; border-radius: 999px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text); font-weight: 700; cursor: pointer; transition: all 0.15s; }
+.exam-chip.active { border-color: var(--accent); background: #FFF7ED; color: #C2410C; }
 .topics-overview { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 24px; }
 .topic-overview-card { background: var(--surface2); border-radius: 12px; padding: 14px; display: flex; align-items: center; gap: 12px; border: 1.5px solid var(--border); cursor: pointer; transition: all 0.15s; }
 .topic-overview-card:hover { border-color: var(--accent); background: #FFF0E8; transform: translateY(-1px); }
