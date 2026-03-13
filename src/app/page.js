@@ -26,22 +26,16 @@ function AuthScreen() {
         client_id: GOOGLE_CLIENT_ID,
         callback: (r) => window._googleCallback(r),
         auto_select: false,
+        cancel_on_tap_outside: true,
         use_fedcm_for_prompt: false,
+        itp_support: false,
       })
+      // Only render the button — no prompt()/One Tap/FedCM
+      // This works in all browsers regardless of FedCM settings
       window.google.accounts.id.renderButton(
         document.getElementById('google-btn'),
         { theme: 'outline', size: 'large', shape: 'rectangular', width: 300 }
       )
-      // prompt() can abort with FedCM — ignore that error
-      try {
-        window.google.accounts.id.prompt((notification) => {
-          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            // One Tap not shown — button is still available
-          }
-        })
-      } catch (e) {
-        // FedCM aborted — button still works
-      }
     }
     window.onGoogleLibraryLoad = init
     if (typeof window.google !== 'undefined' && window.google.accounts) init()
