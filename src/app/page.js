@@ -458,8 +458,22 @@ function QuestionView({ question, questionNumber, topicStats, onAnswer, onNext, 
 // ── MAIN APP ──────────────────────────────────────────────────
 
 export default function App() {
+  // Initialize session from localStorage if available
+  const getInitialSession = () => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('oc-trainer-session')
+        return stored ? JSON.parse(stored) : { user: null, idToken: null, tokensUsedToday: 0 }
+      } catch (err) {
+        console.warn('Failed to load session from localStorage:', err)
+        return { user: null, idToken: null, tokensUsedToday: 0 }
+      }
+    }
+    return { user: null, idToken: null, tokensUsedToday: 0 }
+  }
+
   const [screen, setScreen] = useState('auth') // auth | pending | rejected | app
-  const [session, setSession] = useState({ user: null, idToken: null, tokensUsedToday: 0 })
+  const [session, setSession] = useState(getInitialSession)
   const [showAdmin, setShowAdmin] = useState(false)
   const [currentTopic, setCurrentTopic] = useState(null)
   const [question, setQuestion] = useState(null)
@@ -474,6 +488,53 @@ export default function App() {
   useEffect(() => {
     window._googleCallback = handleGoogleSignIn
   }, [])
+
+  // Save session to localStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('oc-trainer-session', JSON.stringify(session))
+      } catch (err) {
+        console.warn('Failed to save session to localStorage:', err)
+      }
+    }
+  }, [session])
+
+  // Validate stored session on app load
+  useEffect(() => {
+    const validateStoredSession = async () => {
+      if (session.idToken && session.user) {
+        try {
+          // Try to validate the token by making a request to the auth endpoint
+          const res = await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ credential: session.idToken }),
+          })
+          
+          if (res.ok) {
+            const data = await res.json()
+            // Update session with fresh data
+            setSession({ user: data.user, idToken: session.idToken, tokensUsedToday: data.tokensUsedToday || 0 })
+            const s = data.user.status
+            if (s === 'pending') setScreen('pending')
+            else if (s === 'rejected') setScreen('rejected')
+            else setScreen('app')
+          } else {
+            // Token is invalid, clear session
+            console.warn('Stored session token is invalid')
+            setSession({ user: null, idToken: null, tokensUsedToday: 0 })
+          }
+        } catch (err) {
+          console.warn('Failed to validate stored session:', err)
+          // On validation error, clear session to be safe
+          setSession({ user: null, idToken: null, tokensUsedToday: 0 })
+        }
+      }
+    }
+
+    validateStoredSession()
+  }, []) // Only run once on mount
 
   // Close profile menu when clicking outside
   useEffect(() => {
@@ -515,6 +576,14 @@ export default function App() {
     setCurrentTopic(null)
     setQuestion(null)
     setShowProfileMenu(false)
+    // Clear stored session
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('oc-trainer-session')
+      } catch (err) {
+        console.warn('Failed to clear session from localStorage:', err)
+      }
+    }
   }
 
   function handleProfileClick() {
