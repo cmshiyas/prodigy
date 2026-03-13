@@ -602,22 +602,42 @@ function AdminPanel({ idToken }) {
 
 // ── SIDEBAR ───────────────────────────────────────────────────
 
-function Sidebar({ currentTopic, topics, topicStats, totalAnswered, onSelectTopic }) {
+function Sidebar({ currentTopic, currentSubtopic, topics, topicStats, totalAnswered, onSelectTopic }) {
   return (
     <div className="sidebar">
       <div className="sidebar-card">
         <div className="sidebar-title">Topics</div>
         <div className="topic-list">
           {topics.map(t => (
-            <button
-              key={t.id}
-              className={`topic-btn${currentTopic === t.id ? ' active' : ''}`}
-              onClick={() => onSelectTopic(t.id)}
-            >
-              <div className="topic-icon" style={{ background: t.bg, color: t.color, fontWeight: 800, fontSize: t.id === 'fractions' ? '13px' : '15px' }}>{t.icon}</div>
-              <span style={{ flex: 1, lineHeight: 1.3 }}>{t.name}</span>
-              <span className="topic-count">{topicStats[t.id]?.total || 0}</span>
-            </button>
+            <div key={t.id}>
+              <button
+                className={`topic-btn${currentTopic === t.id && !currentSubtopic ? ' active' : currentTopic === t.id ? ' active-parent' : ''}`}
+                onClick={() => onSelectTopic(t.id, null)}
+              >
+                <div className="topic-icon" style={{ background: t.bg, color: t.color, fontWeight: 800, fontSize: t.id === 'fractions' ? '13px' : '15px' }}>{t.icon}</div>
+                <span style={{ flex: 1, lineHeight: 1.3 }}>{t.name}</span>
+                <span className="topic-count">{topicStats[t.id]?.total || 0}</span>
+              </button>
+              {t.subtopics && t.subtopics.length > 0 && (
+                <div style={{ paddingLeft: 12, display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 4 }}>
+                  {t.subtopics.map(sub => (
+                    <button
+                      key={sub}
+                      onClick={() => onSelectTopic(t.id, sub)}
+                      style={{
+                        textAlign: 'left', padding: '4px 8px', borderRadius: 6, fontSize: '0.75rem',
+                        fontWeight: currentTopic === t.id && currentSubtopic === sub ? 700 : 500,
+                        background: currentTopic === t.id && currentSubtopic === sub ? t.bg : 'transparent',
+                        color: currentTopic === t.id && currentSubtopic === sub ? t.color : '#64748b',
+                        border: 'none', cursor: 'pointer', width: '100%',
+                      }}
+                    >
+                      · {sub}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           ))}
         </div>
       </div>
@@ -1214,6 +1234,7 @@ Rules: exactly 5 options, correct is 0-4 index, difficulty is easy/medium/hard.`
         <div className="app">
           <Sidebar
             currentTopic={currentTopic}
+            currentSubtopic={currentSubtopic}
             topics={currentTopics}
             topicStats={topicStats}
             totalAnswered={totalAnswered}
