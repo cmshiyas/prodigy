@@ -19,6 +19,27 @@ const initTopicStats = () => {
 
 // ── SCREEN COMPONENTS ─────────────────────────────────────────
 
+function LandingScreen({ onSignIn }) {
+  return (
+    <div className="landing-screen">
+      <div className="landing-card">
+        <div className="landing-logo">📘 Exam Booster</div>
+        <p className="landing-sub">Personalised practice for NAPLAN, OC, and Selective exams.</p>
+        <p className="landing-copy">Generate AI-backed practice questions, revisit unattempted questions, and track your progress with a simple practice workflow.</p>
+        <div className="landing-features">
+          <div className="feature-item"><strong>✅ Three exam tracks:</strong> NAPLAN, OC, Selective.</div>
+          <div className="feature-item"><strong>✅ Smart question flow:</strong> reuse unattempted on file before generating new questions.</div>
+          <div className="feature-item"><strong>✅ Progress & analytics:</strong> score, accuracy, and daily token usage.</div>
+        </div>
+        <div style={{ marginTop: 18, display: 'flex', gap: 10 }}>
+          <button className="btn btn-primary" onClick={onSignIn}>Sign in / Sign up</button>
+          <button className="btn btn-secondary" onClick={onSignIn}>Start practicing</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function AuthScreen() {
   useEffect(() => {
     function init() {
@@ -46,12 +67,12 @@ function AuthScreen() {
   return (
     <div className="auth-screen">
       <div className="auth-card">
-        <div className="auth-logo">🎓 OC Trainer</div>
-        <p className="auth-sub">Year 4 Opportunity Class Placement Test practice. Sign in to start practising.</p>
+        <div className="auth-logo">📘 Exam Booster</div>
+        <p className="auth-sub">Get started with AI-generated exam practice.</p>
         <div className="auth-divider">Sign in with Google</div>
         <div id="google-btn" className="g_id_signin" />
         <p style={{ marginTop: '1.5rem', fontSize: '0.78rem', color: 'var(--text2)' }}>
-          Your progress is saved across sessions.
+          Save your progress and continue later.
         </p>
       </div>
     </div>
@@ -510,7 +531,7 @@ function HomeScreen({ user, tokensUsedToday, score, totalAnswered, topicStats, o
   return (
     <div className="home-screen">
       <div className="home-title">Hi {user.name.split(' ')[0]}! 👋</div>
-      <div className="home-sub">Year 4 OC Test practice. Choose a topic to generate questions just like the real exam.</div>
+      <div className="home-sub">Practice for NAPLAN, OC, and Selective exam-style questions. Choose a topic to generate a question.</div>
       {!user.is_admin && (
         <div className="limit-banner" style={{ marginBottom: 20 }}>
           <strong>{TIER_LABELS[user.tier]} Tier</strong> — {remaining.toLocaleString()} tokens remaining today ({tokensUsedToday.toLocaleString()} / {limit.toLocaleString()} used). Resets at midnight.
@@ -636,7 +657,7 @@ export default function App() {
   }
 
   const initialSession = getInitialSession()
-  const [screen, setScreen] = useState(initialSession.user ? 'app' : 'auth') // auth | pending | rejected | app | history | ranking
+  const [screen, setScreen] = useState(initialSession.user ? 'app' : 'landing') // landing | auth | pending | rejected | app | history | ranking
   const [session, setSession] = useState(initialSession)
   const [showAdmin, setShowAdmin] = useState(false)
   const [currentTopic, setCurrentTopic] = useState(null)
@@ -873,6 +894,7 @@ Rules: exactly 5 options, correct is 0-4 index, difficulty is easy/medium/hard.`
   }
 
   // ── RENDER SCREENS ──────────────────────────────────────────
+  if (screen === 'landing') return <LandingScreen onSignIn={() => setScreen('auth')} />
   if (screen === 'auth') return <AuthScreen />
   if (screen === 'pending') return <PendingScreen email={session.user?.email} onSignOut={handleSignOut} />
   if (screen === 'rejected') return <RejectedScreen onSignOut={handleSignOut} />
@@ -888,7 +910,7 @@ Rules: exactly 5 options, correct is 0-4 index, difficulty is easy/medium/hard.`
     <div>
       {/* HEADER */}
       <header>
-        <div className="logo" onClick={() => { saveQuizAttempt(); resetQuizSession(); setShowAdmin(false); setScreen('app') }} style={{ cursor: 'pointer' }}>RepHub <span>Mastering by Reps</span></div>
+        <div className="logo" onClick={() => { saveQuizAttempt(); resetQuizSession(); setShowAdmin(false); setScreen('app') }} style={{ cursor: 'pointer' }}>Exam Booster <span>Practice Smarter</span></div>
         <div className="header-right">
           <button className="nav-btn" onClick={() => { saveQuizAttempt(); resetQuizSession(); setShowAdmin(false); setScreen('app') }}>Home</button>
           <button className="nav-btn" onClick={() => { setCurrentTopic(null); setShowAdmin(false); setScreen('history') }}>History</button>
