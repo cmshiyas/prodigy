@@ -383,7 +383,7 @@ function AdminPanel({ idToken }) {
 
       const errors = data.errors?.length || 0
       const topics = (data.topics || []).map(t => t.name).join(', ') || 'n/a'
-      setUploadPdfStatus(`Extracted topics: ${topics}. Inserted: ${data.inserted || 0}. Errors: ${errors}.`)
+      setUploadPdfStatus(`Extracted topics: ${topics}. Inserted: ${data.inserted || 0}. Skipped (duplicates): ${data.skipped || 0}. Errors: ${errors}.`)
       setUploadPdfFile(null)
       document.getElementById('pdf-upload-input').value = ''
       loadQuizBank()

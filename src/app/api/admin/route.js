@@ -194,7 +194,28 @@ ${trimmed}`
     }
 
     const questions = Array.isArray(parsedResponse.extractedQuestions) ? parsedResponse.extractedQuestions : []
+
+    // Fetch existing questions for deduplication
+    const { data: existingQs } = await supabase
+      .from('questions')
+      .select('question, topic_id')
+      .eq('exam_type', examType)
+    const existingSet = new Set((existingQs || []).map(q => `${q.topic_id}::${q.question.trim().toLowerCase()}`))
+
+    // Collect unique subtopics to upsert
+    const subtopicSet = new Set()
+    for (const q of questions) {
+      if (q.subtopic && (topicId || q.topicId)) {
+        subtopicSet.add(JSON.stringify({ topic_id: topicId || q.topicId, name: q.subtopic }))
+      }
+    }
+    for (const entry of subtopicSet) {
+      const { topic_id, name } = JSON.parse(entry)
+      await supabase.from('subtopics').upsert({ topic_id, exam_type: examType, name }, { onConflict: 'topic_id,exam_type,name' })
+    }
+
     const insertedQuestions = []
+    const skippedQuestions = []
     const questionErrors = []
 
     for (const [idx, q] of questions.entries()) {
@@ -202,8 +223,16 @@ ${trimmed}`
         questionErrors.push({ idx, error: 'Invalid question format', q })
         continue
       }
+
+      const resolvedTopicId = topicId || q.topicId
+      const key = `${resolvedTopicId}::${q.question.trim().toLowerCase()}`
+      if (existingSet.has(key)) {
+        skippedQuestions.push(idx)
+        continue
+      }
+
       const insert = {
-        topic_id: topicId || q.topicId,
+        topic_id: resolvedTopicId,
         exam_type: examType,
         subtopic: q.subtopic || null,
         created_by: null,
@@ -219,12 +248,14 @@ ${trimmed}`
         questionErrors.push({ idx, error: insertError.message })
       } else {
         insertedQuestions.push(q)
+        existingSet.add(key)
       }
     }
 
     return NextResponse.json({
       topics: parsedResponse.topics || [],
       inserted: insertedQuestions.length,
+      skipped: skippedQuestions.length,
       errors: questionErrors,
       raw: null,
     })
