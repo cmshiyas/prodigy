@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { verifyGoogleToken } from '@/lib/google'
 import { getSupabase } from '@/lib/supabase'
-import { ADMIN_EMAIL } from '@/lib/constants'
+import { ADMIN_EMAIL, EXAM_TOPICS } from '@/lib/constants'
 
 async function verifyAdmin(request) {
   const authHeader = request.headers.get('authorization')
@@ -100,6 +100,82 @@ export async function POST(request) {
       .upsert({ key, value: String(value), updated_at: new Date().toISOString() })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true })
+  }
+
+  if (action === 'uploadQuestions') {
+    const { examType, questions } = await request.json()
+    const validTypes = ['NAPLAN', 'OC', 'Selective']
+    if (!validTypes.includes(examType)) {
+      return NextResponse.json({ error: 'Invalid exam type' }, { status: 400 })
+    }
+    if (!Array.isArray(questions) || questions.length === 0) {
+      return NextResponse.json({ error: 'questions must be a non-empty array' }, { status: 400 })
+    }
+
+    const validTopicIds = (EXAM_TOPICS[examType] || []).map(t => t.id)
+    const inserted = []
+    const errors = []
+
+    for (let index = 0; index < questions.length; index++) {
+      const q = questions[index]
+      if (!q || typeof q !== 'object') {
+        errors.push({ index, error: 'Question must be an object' })
+        continue
+      }
+      const topicId = q.topicId || q.topic_id
+      const questionText = q.question
+      const options = q.options
+      const correct = q.correct
+      const explanation = q.explanation
+      const difficulty = q.difficulty || 'medium'
+      const visual = q.visual || null
+
+      if (!topicId || !validTopicIds.includes(topicId)) {
+        errors.push({ index, error: 'Invalid or missing topicId for exam type', topicId })
+        continue
+      }
+      if (!questionText || typeof questionText !== 'string' || questionText.trim().length < 10) {
+        errors.push({ index, error: 'Invalid or missing question text' })
+        continue
+      }
+      if (!Array.isArray(options) || options.length < 2) {
+        errors.push({ index, error: 'options must be an array with at least 2 items' })
+        continue
+      }
+      if (typeof correct !== 'number' || correct < 0 || correct >= options.length) {
+        errors.push({ index, error: 'correct must be a 0-based valid index in options array' })
+        continue
+      }
+      if (!explanation || typeof explanation !== 'string' || explanation.trim().length < 5) {
+        errors.push({ index, error: 'Invalid or missing explanation' })
+        continue
+      }
+      if (!['easy', 'medium', 'hard'].includes(difficulty)) {
+        errors.push({ index, error: 'difficulty must be easy, medium, or hard' })
+        continue
+      }
+
+      const { error: insertError } = await supabase.from('questions').insert({
+        topic_id: topicId,
+        exam_type: examType,
+        created_by: null,
+        question: questionText.trim(),
+        visual,
+        options,
+        correct,
+        explanation: explanation.trim(),
+        difficulty,
+      })
+
+      if (insertError) {
+        // Allow duplicate question skip
+        errors.push({ index, error: insertError.message })
+      } else {
+        inserted.push(index)
+      }
+    }
+
+    return NextResponse.json({ inserted: inserted.length, errors })
   }
 
   return NextResponse.json({ error: 'Unknown action' }, { status: 404 })

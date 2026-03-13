@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { EXAM_TOPICS, TOPIC_PROMPTS, TOKEN_LIMITS, TIER_LABELS, TIER_CLASSES, ADMIN_EMAIL } from '@/lib/constants'
+import { EXAM_TYPES, EXAM_TOPICS, TOPIC_PROMPTS, TOKEN_LIMITS, TIER_LABELS, TIER_CLASSES, ADMIN_EMAIL } from '@/lib/constants'
 import HistoryScreen from '@/components/HistoryScreen'
 import RankingScreen from '@/components/RankingScreen'
 
@@ -245,6 +245,9 @@ function AdminPanel({ idToken }) {
   const [loadingQuizBank, setLoadingQuizBank] = useState(false)
   const [quizBankTopicFilter, setQuizBankTopicFilter] = useState('all')
   const [quizBankUserSort, setQuizBankUserSort] = useState('countDesc')
+  const [uploadFile, setUploadFile] = useState(null)
+  const [uploadExamType, setUploadExamType] = useState('OC')
+  const [uploadStatus, setUploadStatus] = useState('')
 
   const loadUsers = useCallback(async () => {
     setLoading(true)
@@ -318,6 +321,38 @@ function AdminPanel({ idToken }) {
       if (!res.ok) throw new Error((await res.json()).error)
       await loadUsers()
     } catch (err) { alert('Failed: ' + err.message) }
+  }
+
+  const uploadQuestions = async () => {
+    if (!uploadFile) {
+      setUploadStatus('Please choose a JSON file first.')
+      return
+    }
+
+    setUploadStatus('Reading file and uploading...')
+    try {
+      const text = await uploadFile.text()
+      const questionData = JSON.parse(text)
+      if (!Array.isArray(questionData)) {
+        throw new Error('Upload file must be a JSON array of questions.')
+      }
+
+      const res = await fetch('/api/admin?action=uploadQuestions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+        body: JSON.stringify({ examType: uploadExamType, questions: questionData }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Upload failed')
+
+      const errCount = data.errors?.length || 0
+      setUploadStatus(`Uploaded ${data.inserted || 0} questions. ${errCount > 0 ? `${errCount} records failed.` : 'Done.'}`)
+      setUploadFile(null)
+      document.getElementById('question-upload-input').value = ''
+      loadQuizBank()
+    } catch (err) {
+      setUploadStatus('Upload error: ' + err.message)
+    }
   }
 
   if (adminView === 'users') {
@@ -421,6 +456,20 @@ function AdminPanel({ idToken }) {
     <div style={{ padding: '20px 24px', borderTop: '1.5px solid var(--border)' }}>
       <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1rem', marginBottom: 4 }}>Quiz Bank</div>
       <div style={{ fontSize: '0.85rem', color: 'var(--text2)', marginBottom: 16 }}>Analytics for questions created by users (per topic + most active creators).</div>
+      <div style={{ padding: 14, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface2)', marginBottom: 16 }}>
+        <div style={{ fontWeight: 700, marginBottom: 6 }}>Bulk upload sample questions</div>
+        <div style={{ fontSize: '0.82rem', color: 'var(--text2)', marginBottom: 8 }}>
+          Upload a JSON file containing an array of questions. Each question should include topicId, question, options (array), correct (index 0-based), explanation, difficulty (easy|medium|hard), and optional visual.
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
+          <select value={uploadExamType} onChange={e => setUploadExamType(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'white' }}>
+            {EXAM_TYPES.map(e => <option key={e.id} value={e.id}>{e.label}</option>)}
+          </select>
+          <input id="question-upload-input" type="file" accept="application/json" onChange={e => setUploadFile(e.target.files?.[0] || null)} style={{ padding: '6px 8px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'white' }} />
+          <button className="btn btn-primary" style={{ padding: '7px 12px' }} onClick={uploadQuestions}>Upload sample questions</button>
+        </div>
+        {uploadStatus && <div style={{ fontSize: '0.8rem', color: uploadStatus.startsWith('Upload error') ? '#EF4444' : '#10B981' }}>{uploadStatus}</div>}
+      </div>
 
       {loadingQuizBank ? (
         <div className="loading-card"><div className="spinner" /><div className="loading-text">Loading quiz bank data...</div></div>
