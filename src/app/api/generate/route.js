@@ -22,6 +22,41 @@ export async function POST(request) {
     if (user.status === 'rejected') return NextResponse.json({ error: 'REJECTED', message: 'Your access request was declined.' }, { status: 403 })
     if (user.status !== 'approved') return NextResponse.json({ error: 'Access denied' }, { status: 403 })
 
+    const body = await request.json()
+    const { topicId } = body
+
+    if (!topicId) {
+      return NextResponse.json({ error: 'topicId is required' }, { status: 400 })
+    }
+
+    // First, try to find an existing question for this topic that the user hasn't attempted
+    const { data: existingQuestion, error: questionError } = await supabase
+      .from('questions')
+      .select(`
+        *,
+        question_responses!left(user_id)
+      `)
+      .eq('topic_id', topicId)
+      .is('question_responses.user_id', null) // No response from this user
+      .limit(1)
+      .single()
+
+    if (existingQuestion && !questionError) {
+      // Return existing question
+      return NextResponse.json({
+        id: existingQuestion.id,
+        question: existingQuestion.question,
+        visual: existingQuestion.visual,
+        options: existingQuestion.options,
+        correct: existingQuestion.correct,
+        explanation: existingQuestion.explanation,
+        difficulty: existingQuestion.difficulty,
+        topicId: existingQuestion.topic_id,
+        _usage: { tokensUsedToday: 0, limit: 1000, tier: user.tier, remaining: 1000 } // No tokens used for existing questions
+      })
+    }
+
+    // No existing question found, generate a new one
     const today = new Date().toISOString().split('T')[0]
     const { data: usage } = await supabase
       .from('token_usage').select('tokens_used').eq('user_id', user.id).eq('date', today).single()
@@ -40,14 +75,45 @@ export async function POST(request) {
 
     if (!process.env.ANTHROPIC_API_KEY) throw new Error('Missing ANTHROPIC_API_KEY')
 
-    const body = await request.json()
+    // Remove topicId from body before sending to Claude
+    const { topicId: _, ...claudeBody } = body
+
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify(body),
+      body: JSON.stringify(claudeBody),
     })
 
     const data = await anthropicRes.json()
+
+    if (!anthropicRes.ok) {
+      throw new Error(data.error?.message || 'Claude API error')
+    }
+
+    // Parse the generated question
+    const text = data.content.map(b => b.text || '').join('').trim()
+    const q = JSON.parse(text.replace(/```json|```/g, '').trim())
+
+    // Store the new question in the database
+    const { data: storedQuestion, error: storeError } = await supabase
+      .from('questions')
+      .insert({
+        topic_id: topicId,
+        question: q.question,
+        visual: q.visual || null,
+        options: q.options,
+        correct: q.correct,
+        explanation: q.explanation,
+        difficulty: q.difficulty
+      })
+      .select()
+      .single()
+
+    if (storeError) {
+      console.error('Failed to store question:', storeError)
+      // Continue anyway, just return the question without storing
+    }
+
     const tokensUsed = (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0) || 500
     const newTotal = tokensUsedToday + tokensUsed
 
@@ -58,7 +124,14 @@ export async function POST(request) {
     }
 
     return NextResponse.json({
-      ...data,
+      id: storedQuestion?.id,
+      question: q.question,
+      visual: q.visual,
+      options: q.options,
+      correct: q.correct,
+      explanation: q.explanation,
+      difficulty: q.difficulty,
+      topicId: topicId,
       _usage: { tokensUsedToday: newTotal, limit, tier: user.tier, remaining: Math.max(0, limit - newTotal) }
     }, { status: anthropicRes.status })
 

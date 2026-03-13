@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { verifyGoogleToken } from '@/lib/google'
 import { getSupabase } from '@/lib/supabase'
+import { TOPICS } from '@/lib/constants'
 
 export async function GET(request) {
   const authHeader = request.headers.get('authorization')
@@ -19,35 +20,38 @@ export async function GET(request) {
     if (userErr || !user) return NextResponse.json({ error: 'User not found' }, { status: 401 })
     if (user.status !== 'approved') return NextResponse.json({ error: 'Access denied' }, { status: 403 })
 
-    // Get all quiz attempts for this user
-    const { data: attempts, error } = await supabase
-      .from('quiz_attempts')
-      .select('*')
+    // Get topic performance based on question responses
+    const { data: responses, error } = await supabase
+      .from('question_responses')
+      .select(`
+        is_correct,
+        questions!inner(topic_id)
+      `)
       .eq('user_id', user.id)
 
     if (error) {
-      console.error('Failed to fetch quiz attempts:', error)
+      console.error('Failed to fetch question responses:', error)
       return NextResponse.json({ error: 'Failed to fetch rankings' }, { status: 500 })
     }
 
     // Aggregate data by topic
     const topicStats = {}
 
-    attempts.forEach(attempt => {
-      attempt.topics.forEach(topic => {
-        if (!topicStats[topic]) {
-          topicStats[topic] = {
-            id: topic,
-            name: topic,
-            totalQuestions: 0,
-            correctAnswers: 0,
-            totalAttempts: 0
-          }
+    responses.forEach(response => {
+      const topicId = response.questions.topic_id
+      const topic = TOPICS.find(t => t.id === topicId)
+      if (!topicStats[topicId]) {
+        topicStats[topicId] = {
+          id: topicId,
+          name: topic ? topic.name : topicId,
+          totalQuestions: 0,
+          correctAnswers: 0
         }
-        topicStats[topic].totalQuestions += attempt.total_questions
-        topicStats[topic].correctAnswers += attempt.correct_answers
-        topicStats[topic].totalAttempts += 1
-      })
+      }
+      topicStats[topicId].totalQuestions += 1
+      if (response.is_correct) {
+        topicStats[topicId].correctAnswers += 1
+      }
     })
 
     // Calculate accuracy and sort by accuracy descending

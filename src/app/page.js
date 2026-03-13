@@ -623,7 +623,12 @@ Rules: exactly 5 options, correct is 0-4 index, difficulty is easy/medium/hard.`
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.idToken },
-        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] }),
+        body: JSON.stringify({
+          topicId,
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{ role: 'user', content: prompt }]
+        }),
       })
 
       if (res.status === 403) {
@@ -658,10 +663,8 @@ Rules: exactly 5 options, correct is 0-4 index, difficulty is easy/medium/hard.`
       const data = await res.json()
       if (data._usage) setSession(s => ({ ...s, tokensUsedToday: data._usage.tokensUsedToday }))
 
-      const text = data.content.map(b => b.text || '').join('').trim()
-      const q = JSON.parse(text.replace(/```json|```/g, '').trim())
-      q.topicId = topicId
-      setQuestion(q)
+      // The API now returns the question data directly
+      setQuestion(data)
     } catch (err) {
       setQuestionError(err.message || 'Could not generate question. Please try again.')
     } finally {
@@ -669,7 +672,7 @@ Rules: exactly 5 options, correct is 0-4 index, difficulty is easy/medium/hard.`
     }
   }
 
-  function handleAnswer(idx) {
+  async function handleAnswer(idx) {
     if (!question) return
     const isCorrect = idx === question.correct
     setTotalAnswered(n => n + 1)
@@ -683,6 +686,27 @@ Rules: exactly 5 options, correct is 0-4 index, difficulty is easy/medium/hard.`
         total: prev[question.topicId].total + 1,
       }
     }))
+
+    // Record the response in the database
+    if (question.id) {
+      try {
+        await fetch('/api/record-response', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.idToken}`
+          },
+          body: JSON.stringify({
+            questionId: question.id,
+            selectedOption: idx,
+            responseTimeSeconds: null // Could track this in the future
+          })
+        })
+      } catch (err) {
+        console.error('Failed to record response:', err)
+        // Don't block the UI if recording fails
+      }
+    }
   }
 
   async function saveQuizAttempt() {
