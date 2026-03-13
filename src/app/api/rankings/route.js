@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { verifyGoogleToken } from '@/lib/google'
 import { getSupabase } from '@/lib/supabase'
-import { TOPICS } from '@/lib/constants'
+import { EXAM_TOPICS } from '@/lib/constants'
 
 export async function GET(request) {
   const authHeader = request.headers.get('authorization')
@@ -34,11 +34,12 @@ export async function GET(request) {
     }
 
     // Aggregate data by topic
+    const allTopics = Object.values(EXAM_TOPICS).flat()
     const topicStats = {}
 
     responses.forEach(response => {
       const topicId = response.questions.topic_id
-      const topic = TOPICS.find(t => t.id === topicId)
+      const topic = allTopics.find(t => t.id === topicId)
       if (!topicStats[topicId]) {
         topicStats[topicId] = {
           id: topicId,

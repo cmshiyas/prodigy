@@ -20,7 +20,8 @@ export async function POST(request) {
     if (userErr || !user) return NextResponse.json({ error: 'User not found' }, { status: 401 })
 
     const body = await request.json()
-    const { topicId } = body
+    const { topicId, examType } = body
+    const exam = ['NAPLAN', 'OC', 'Selective'].includes(examType) ? examType : 'OC'
 
     if (!topicId) {
       return NextResponse.json({ error: 'topicId is required' }, { status: 400 })
@@ -43,6 +44,7 @@ export async function POST(request) {
       .from('questions')
       .select('*')
       .eq('topic_id', topicId)
+      .eq('exam_type', exam)
       .limit(1)
 
     if (attemptedIds.length > 0) {
@@ -87,7 +89,7 @@ export async function POST(request) {
     if (!process.env.ANTHROPIC_API_KEY) throw new Error('Missing ANTHROPIC_API_KEY')
 
     // Remove topicId from body before sending to Claude
-    const { topicId: _, ...claudeBody } = body
+    const { topicId: _, examType: __, ...claudeBody } = body
 
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -110,6 +112,7 @@ export async function POST(request) {
       .from('questions')
       .insert({
         topic_id: topicId,
+        exam_type: exam,
         created_by: user.id,
         question: q.question,
         visual: q.visual || null,

@@ -21,24 +21,34 @@ export const EXAM_TYPES = [
   { id: 'Selective', label: 'Selective' },
 ]
 
-export const TOPICS = [
-  { id: 'number',      name: 'Number & Operations',   icon: '🔢', color: '#4A90D9', bg: '#EFF6FF', desc: 'Place value, arithmetic, ordering, rounding' },
-  { id: 'fractions',   name: 'Fractions & Decimals',  icon: '½',  color: '#7C3AED', bg: '#F5F3FF', desc: 'Fractions, mixed numbers, comparing' },
-  { id: 'measurement', name: 'Measurement & Units',   icon: '📏', color: '#0F9B8E', bg: '#F0FDFA', desc: 'Length, mass, volume, time, money' },
-  { id: 'geometry',    name: 'Geometry & Space',       icon: '📐', color: '#FF6B35', bg: '#FFF0E8', desc: 'Shapes, angles, area, perimeter, symmetry' },
-  { id: 'patterns',    name: 'Patterns & Algebra',     icon: '🔁', color: '#F59E0B', bg: '#FFFBEB', desc: 'Number patterns, sequences, rules' },
-  { id: 'data',        name: 'Data & Statistics',      icon: '📊', color: '#52C41A', bg: '#F0FDF4', desc: 'Graphs, tables, interpreting data' },
-  { id: 'probability', name: 'Chance & Probability',   icon: '🎲', color: '#EF4444', bg: '#FEF2F2', desc: 'Likelihood, possible outcomes' },
-  { id: 'reasoning',   name: 'Logical Reasoning',      icon: '🧩', color: '#8B5CF6', bg: '#F5F3FF', desc: 'Word problems, multi-step, spatial' },
-]
+export const EXAM_TOPICS = {
+  NAPLAN: [
+    { id: 'number',      name: 'Number & Operations',   icon: '🔢', color: '#4A90D9', bg: '#EFF6FF', desc: 'Place value, arithmetic, rounding' },
+    { id: 'fractions',   name: 'Fractions & Decimals',  icon: '½',  color: '#7C3AED', bg: '#F5F3FF', desc: 'Fractions, decimals, percentages' },
+    { id: 'measurement', name: 'Measurement & Units',   icon: '📏', color: '#0F9B8E', bg: '#F0FDFA', desc: 'Length, mass, time, money' },
+    { id: 'data',        name: 'Data & Statistics',      icon: '📊', color: '#52C41A', bg: '#F0FDF4', desc: 'Graphs, tables, probability' },
+  ],
+  OC: [
+    { id: 'number',      name: 'Number & Operations',   icon: '🔢', color: '#4A90D9', bg: '#EFF6FF', desc: 'Place value, arithmetic, order of operations' },
+    { id: 'fractions',   name: 'Fractions & Decimals',  icon: '½',  color: '#7C3AED', bg: '#F5F3FF', desc: 'Fractions, decimals, ratio' },
+    { id: 'geometry',    name: 'Geometry & Space',       icon: '📐', color: '#FF6B35', bg: '#FFF0E8', desc: 'Shapes, angles, area, volume' },
+    { id: 'reasoning',   name: 'Reasoning & Patterns',   icon: '🧩', color: '#8B5CF6', bg: '#F5F3FF', desc: 'Logic, sequences, pattern rules' },
+  ],
+  Selective: [
+    { id: 'number',      name: 'Algebra & Number',       icon: '🔢', color: '#4A90D9', bg: '#EFF6FF', desc: 'Number properties, expressions, equations' },
+    { id: 'geometry',    name: 'Spatial Reasoning',      icon: '📐', color: '#FF6B35', bg: '#FFF0E8', desc: '2D/3D visualisation, coordinates' },
+    { id: 'reasoning',   name: 'Logical Reasoning',      icon: '🧩', color: '#8B5CF6', bg: '#F5F3FF', desc: 'Critical thinking, patterns, inference' },
+    { id: 'data',        name: 'Data Interpretation',    icon: '📊', color: '#52C41A', bg: '#F0FDF4', desc: 'Charts, tables, statistics' },
+  ]
+}
 
 export const TOPIC_PROMPTS = {
-  number:      'Place value, addition/subtraction up to 100000, multiplication/division, ordering numbers, rounding. Use real-world contexts.',
-  fractions:   'Identifying fractions, equivalent fractions, comparing fractions, simple mixed numbers, fractions of quantities.',
-  measurement: 'Length (cm/m/km), mass (g/kg), volume (mL/L), time (reading clocks, duration, calendars), money (Australian dollars/cents).',
-  geometry:    '2D shapes (properties), 3D objects, area, perimeter, angles (right/acute/obtuse), symmetry, transformations, coordinate grids.',
-  patterns:    'Number sequences (finding rules, next terms), number patterns, missing numbers in equations, function machines.',
-  data:        'Reading bar graphs, picture graphs, tally charts, line graphs. Calculating totals, differences from graphs.',
-  probability: 'Likelihood language (certain/likely/unlikely/impossible), equally likely events, comparing probabilities.',
-  reasoning:   'Multi-step word problems, spatial reasoning, 3D visualisation, logic puzzles, working backwards.',
+  number:      'Problems on place value, addition/subtraction, multiplication/division, number rules, ordering, and simple algebra expressions.',
+  fractions:   'Questions on fractions, decimals, equivalent values, comparisons, conversions, and simple fraction operations.',
+  measurement: 'Problems on length, mass, capacity, time, and money with real-world contexts.',
+  geometry:    'Questions on 2D and 3D shapes, angles, area, perimeter, symmetry, coordinates, and transformations.',
+  patterns:    'Number sequences, patterns, function rules, and missing values in sequences.',
+  data:        'Interpreting bar graphs, line graphs, tables, and statistics in real contexts.',
+  probability: 'Basic probability language, outcomes, chance comparisons, and simple experiments.',
+  reasoning:   'Multi-step word problems, logic puzzles, inference, and spatial reasoning tasks.',
 }

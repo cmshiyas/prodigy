@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { TOPICS, TOPIC_PROMPTS, TOKEN_LIMITS, TIER_LABELS, TIER_CLASSES, ADMIN_EMAIL } from '@/lib/constants'
+import { EXAM_TOPICS, TOPIC_PROMPTS, TOKEN_LIMITS, TIER_LABELS, TIER_CLASSES, ADMIN_EMAIL } from '@/lib/constants'
 import HistoryScreen from '@/components/HistoryScreen'
 import RankingScreen from '@/components/RankingScreen'
 
@@ -13,7 +13,7 @@ if (!GOOGLE_CLIENT_ID) {
 
 const initTopicStats = () => {
   const s = {}
-  TOPICS.forEach(t => { s[t.id] = { correct: 0, total: 0 } })
+  Object.values(EXAM_TOPICS).flat().forEach(t => { s[t.id] = { correct: 0, total: 0 } })
   return s
 }
 
@@ -504,13 +504,13 @@ function AdminPanel({ idToken }) {
 
 // ── SIDEBAR ───────────────────────────────────────────────────
 
-function Sidebar({ currentTopic, topicStats, totalAnswered, onSelectTopic }) {
+function Sidebar({ currentTopic, topics, topicStats, totalAnswered, onSelectTopic }) {
   return (
     <div className="sidebar">
       <div className="sidebar-card">
         <div className="sidebar-title">Topics</div>
         <div className="topic-list">
-          {TOPICS.map(t => (
+          {topics.map(t => (
             <button
               key={t.id}
               className={`topic-btn${currentTopic === t.id ? ' active' : ''}`}
@@ -518,7 +518,7 @@ function Sidebar({ currentTopic, topicStats, totalAnswered, onSelectTopic }) {
             >
               <div className="topic-icon" style={{ background: t.bg, color: t.color, fontWeight: 800, fontSize: t.id === 'fractions' ? '13px' : '15px' }}>{t.icon}</div>
               <span style={{ flex: 1, lineHeight: 1.3 }}>{t.name}</span>
-              <span className="topic-count">{topicStats[t.id].total}</span>
+              <span className="topic-count">{topicStats[t.id]?.total || 0}</span>
             </button>
           ))}
         </div>
@@ -528,10 +528,10 @@ function Sidebar({ currentTopic, topicStats, totalAnswered, onSelectTopic }) {
         <div className="progress-section">
           <div className="progress-row"><span>Questions Answered</span><span>{totalAnswered}</span></div>
           <div className="progress-bar"><div className="progress-fill" style={{ width: Math.min(100, totalAnswered * 5) + '%' }} /></div>
-          {TOPICS.filter(t => topicStats[t.id].total > 0).length === 0 ? (
+          {topics.filter(t => (topicStats[t.id]?.total || 0) > 0).length === 0 ? (
             <p style={{ fontSize: '0.8rem', color: 'var(--text2)', textAlign: 'center', padding: '8px 0' }}>Start practising to see your stats!</p>
-          ) : TOPICS.filter(t => topicStats[t.id].total > 0).map(t => {
-            const s = topicStats[t.id]
+          ) : topics.filter(t => (topicStats[t.id]?.total || 0) > 0).map(t => {
+            const s = topicStats[t.id] || { correct: 0, total: 0 }
             const pct = s.total > 0 ? Math.round((s.correct / s.total) * 100) : 0
             return (
               <div key={t.id} className="topic-stat-row">
@@ -555,11 +555,12 @@ function HomeScreen({ user, examType, onExamTypeChange, tokensUsedToday, score, 
   const limit = TOKEN_LIMITS[user.tier] || 5000
   const remaining = Math.max(0, limit - tokensUsedToday)
   const totalCorrect = Object.values(topicStats).reduce((a, v) => a + v.correct, 0)
+  const topicList = EXAM_TOPICS[examType] || EXAM_TOPICS.OC
 
   return (
     <div className="home-screen">
       <div className="home-title">Hi {user.name.split(' ')[0]}! 👋</div>
-      <div className="home-sub">Practice for NAPLAN, OC, and Selective exam-style questions. Choose an exam style and topic to generate a question.</div>
+      <div className="home-sub">Practice for {examType} exam-style questions. Choose a topic to generate a question.</div>
       <div className="exam-row" style={{ marginBottom: 16 }}>
         {['NAPLAN', 'OC', 'Selective'].map(t => (
           <button
@@ -590,7 +591,7 @@ function HomeScreen({ user, examType, onExamTypeChange, tokensUsedToday, score, 
       </div>
       <div className="home-sub" style={{ marginBottom: 12, fontWeight: 700, fontSize: '0.9rem' }}>Choose a topic to practise:</div>
       <div className="topics-overview">
-        {TOPICS.map(t => (
+        {topicList.map(t => (
           <div key={t.id} className="topic-overview-card" onClick={() => onSelectTopic(t.id)}>
             <div className="toc-icon" style={{ background: t.bg }}>{t.icon}</div>
             <div><div className="toc-name">{t.name}</div><div className="toc-desc">{t.desc}</div></div>
@@ -603,10 +604,10 @@ function HomeScreen({ user, examType, onExamTypeChange, tokensUsedToday, score, 
 
 // ── QUESTION VIEW ─────────────────────────────────────────────
 
-function QuestionView({ question, questionNumber, topicStats, onAnswer, onNext, onHome }) {
+function QuestionView({ question, questionNumber, topicStats, onAnswer, onNext, onHome, currentTopics }) {
   const [answered, setAnswered] = useState(false)
   const [selectedIdx, setSelectedIdx] = useState(null)
-  const topic = TOPICS.find(t => t.id === question.topicId)
+  const topic = currentTopics.find(t => t.id === question.topicId) || { name: 'Topic' }
   const labels = ['A', 'B', 'C', 'D', 'E']
 
   const handleAnswer = (idx) => {
@@ -715,6 +716,8 @@ export default function App() {
   const [quizSessionStartTime, setQuizSessionStartTime] = useState(null)
   const [quizTopicsAttempted, setQuizTopicsAttempted] = useState(new Set())
 
+  const currentTopics = EXAM_TOPICS[examType] || EXAM_TOPICS.OC
+
   // Register global Google callback
   useEffect(() => {
     window._googleCallback = handleGoogleSignIn
@@ -802,9 +805,9 @@ export default function App() {
       setQuizTopicsAttempted(new Set())
     }
     // Add topic to attempted topics
-    setQuizTopicsAttempted(prev => new Set([...prev, TOPICS.find(t => t.id === topicId)?.name]))
+    setQuizTopicsAttempted(prev => new Set([...prev, currentTopics.find(t => t.id === topicId)?.name]))
 
-    const topic = TOPICS.find(t => t.id === topicId)
+    const topic = currentTopics.find(t => t.id === topicId)
     setCurrentTopic(topicId)
     setQuestion(null)
     setQuestionError(null)
@@ -823,6 +826,7 @@ Rules: exactly 5 options, correct is 0-4 index, difficulty is easy/medium/hard.`
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.idToken },
         body: JSON.stringify({
           topicId,
+          examType,
           model: 'claude-sonnet-4-20250514',
           max_tokens: 1000,
           messages: [{ role: 'user', content: prompt }]
@@ -1006,6 +1010,7 @@ Rules: exactly 5 options, correct is 0-4 index, difficulty is easy/medium/hard.`
         <div className="app">
           <Sidebar
             currentTopic={currentTopic}
+            topics={currentTopics}
             topicStats={topicStats}
             totalAnswered={totalAnswered}
             onSelectTopic={generateQuestion}
@@ -1029,7 +1034,7 @@ Rules: exactly 5 options, correct is 0-4 index, difficulty is easy/medium/hard.`
             {loadingQuestion && (
               <div className="loading-card">
                 <div className="spinner" />
-                <div className="loading-text">Generating a {TOPICS.find(t => t.id === currentTopic)?.name} question...</div>
+                <div className="loading-text">Generating a {currentTopics.find(t => t.id === currentTopic)?.name} question...</div>
               </div>
             )}
 
@@ -1052,6 +1057,7 @@ Rules: exactly 5 options, correct is 0-4 index, difficulty is easy/medium/hard.`
                 question={question}
                 questionNumber={totalAnswered + 1}
                 topicStats={topicStats}
+                currentTopics={currentTopics}
                 onAnswer={handleAnswer}
                 onNext={() => generateQuestion(currentTopic)}
                 onHome={() => { saveQuizAttempt(); resetQuizSession(); setShowAdmin(false); setScreen('app') }}
