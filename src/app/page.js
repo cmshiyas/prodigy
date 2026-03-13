@@ -646,7 +646,15 @@ function HomeScreen({ user, examType, onExamTypeChange, tokensUsedToday, score, 
         {topicList.map(t => (
           <div key={t.id} className="topic-overview-card" onClick={() => onSelectTopic(t.id)}>
             <div className="toc-icon" style={{ background: t.bg }}>{t.icon}</div>
-            <div><div className="toc-name">{t.name}</div><div className="toc-desc">{t.desc}</div></div>
+            <div>
+              <div className="toc-name">{t.name}</div>
+              <div className="toc-desc">{t.desc}</div>
+              {t.subtopics && t.subtopics.length > 0 && (
+                <div className="toc-subtopics" style={{ marginTop: 6, fontSize: '0.80rem', color: '#475569' }}>
+                  <strong>Includes:</strong> {t.subtopics.join(', ')}
+                </div>
+              )}
+            </div>
           </div>
         ))}
       </div>

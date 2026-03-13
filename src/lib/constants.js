@@ -23,21 +23,54 @@ export const EXAM_TYPES = [
 
 export const EXAM_TOPICS = {
   NAPLAN: [
-    { id: 'writing',       name: 'Writing',       icon: '✍️', color: '#4C51BF', bg: '#EEF2FF', desc: 'Writing tasks, clarity, structure, grammar' },
-    { id: 'reading',       name: 'Reading',       icon: '📖', color: '#047857', bg: '#ECFDF3', desc: 'Comprehension, inference, passage analysis' },
-    { id: 'conventions',   name: 'Conventions of Language', icon: '📝', color: '#B45309', bg: '#FFFAEB', desc: 'Spelling, grammar, punctuation' },
-    { id: 'numeracy',      name: 'Numeracy',      icon: '🔢', color: '#1D4ED8', bg: '#EFF6FF', desc: 'Number sense, arithmetic, problem solving' },
+    {
+      id: 'writing', name: 'Writing', icon: '✍️', color: '#4C51BF', bg: '#EEF2FF', desc: 'Writing tasks, clarity, structure, grammar',
+      subtopics: ['Text structure', 'Sentence variety', 'Punctuation', 'Tone & purpose']
+    },
+    {
+      id: 'reading', name: 'Reading', icon: '📖', color: '#047857', bg: '#ECFDF3', desc: 'Comprehension, inference, passage analysis',
+      subtopics: ['Main idea', 'Inference', 'Vocabulary', 'Text evidence']
+    },
+    {
+      id: 'conventions', name: 'Conventions of Language', icon: '📝', color: '#B45309', bg: '#FFFAEB', desc: 'Spelling, grammar, punctuation',
+      subtopics: ['Spelling rules', 'Grammar usage', 'Punctuation', 'Sentence correctness']
+    },
+    {
+      id: 'numeracy', name: 'Numeracy', icon: '🔢', color: '#1D4ED8', bg: '#EFF6FF', desc: 'Number sense, arithmetic, problem solving',
+      subtopics: ['Number operations', 'Word problems', 'Data & graphs', 'Measurement']
+    },
   ],
   OC: [
-    { id: 'reading',       name: 'Reading Test',             icon: '📘', color: '#4A90D9', bg: '#EFF6FF', desc: 'Short passages, inference, comprehension' },
-    { id: 'mathematical',  name: 'Mathematical Reasoning',   icon: '📐', color: '#0F9B8E', bg: '#F0FDFA', desc: 'Algebra, operations, quantitative reasoning' },
-    { id: 'thinking',      name: 'Thinking Skills',          icon: '🧩', color: '#8B5CF6', bg: '#F5F3FF', desc: 'Logic puzzles, pattern recognition, critical thinking' },
+    {
+      id: 'reading', name: 'Reading Test', icon: '📘', color: '#4A90D9', bg: '#EFF6FF', desc: 'Short passages, inference, comprehension',
+      subtopics: ['Inference', 'Main idea', 'Vocabulary', 'Comparison']
+    },
+    {
+      id: 'mathematical', name: 'Mathematical Reasoning', icon: '📐', color: '#0F9B8E', bg: '#F0FDFA', desc: 'Algebra, operations, quantitative reasoning',
+      subtopics: ['Arithmetic', 'Algebraic thinking', 'Number patterns', 'Problem solving']
+    },
+    {
+      id: 'thinking', name: 'Thinking Skills', icon: '🧩', color: '#8B5CF6', bg: '#F5F3FF', desc: 'Logic puzzles, pattern recognition, critical thinking',
+      subtopics: ['Sequences', 'Spatial reasoning', 'Logic puzzles', 'Reasoning']
+    },
   ],
   Selective: [
-    { id: 'reading',       name: 'Reading Test',             icon: '📘', color: '#4A90D9', bg: '#EFF6FF', desc: 'Comprehension, inference, passage analysis' },
-    { id: 'mathematical',  name: 'Mathematical Reasoning',   icon: '📐', color: '#0F9B8E', bg: '#F0FDFA', desc: 'Algebra, arithmetic, equations' },
-    { id: 'thinking',      name: 'Thinking Skills',          icon: '🧩', color: '#8B5CF6', bg: '#F5F3FF', desc: 'Analytical reasoning, sequences, logic' },
-    { id: 'writing',       name: 'Writing Test',             icon: '✍️', color: '#B45309', bg: '#FFFAEB', desc: 'Sentence construction, expression, planning' },
+    {
+      id: 'reading', name: 'Reading Test', icon: '📘', color: '#4A90D9', bg: '#EFF6FF', desc: 'Comprehension, inference, passage analysis',
+      subtopics: ['Inference', 'Summary', 'Vocabulary', 'Opinion']
+    },
+    {
+      id: 'mathematical', name: 'Mathematical Reasoning', icon: '📐', color: '#0F9B8E', bg: '#F0FDFA', desc: 'Algebra, arithmetic, equations',
+      subtopics: ['Algebra', 'Fractions', 'Ratios', 'Word problems']
+    },
+    {
+      id: 'thinking', name: 'Thinking Skills', icon: '🧩', color: '#8B5CF6', bg: '#F5F3FF', desc: 'Analytical reasoning, sequences, logic',
+      subtopics: ['Patterns', 'Sequences', 'Logic', 'Problem solving']
+    },
+    {
+      id: 'writing', name: 'Writing Test', icon: '✍️', color: '#B45309', bg: '#FFFAEB', desc: 'Sentence construction, expression, planning',
+      subtopics: ['Structure', 'Grammar', 'Persuasion', 'Clarity']
+    },
   ]
 }
 
