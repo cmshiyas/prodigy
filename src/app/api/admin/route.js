@@ -105,6 +105,7 @@ export async function POST(request) {
   if (action === 'uploadPdf') {
     const formData = await request.formData()
     const examType = formData.get('examType')?.toString() || ''
+    const topicId = formData.get('topicId')?.toString() || ''
     const file = formData.get('file')
     const validExamIds = EXAM_TYPES.map(item => item.id)
 
@@ -141,9 +142,13 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Missing ANTHROPIC_API_KEY' }, { status: 500 })
     }
 
+    const topicInstruction = topicId
+      ? `All questions belong to topic "${topicId}". Set topicId to "${topicId}" for every question.`
+      : `Identify the appropriate topicId for each question based on the content.`
+
     const prompt = `You are an AI assistant that extracts exam questions from PDF text for ${examType}.
 
-Extract all questions from the text below. For each question identify the topic, subtopic, options, correct answer index (0-based), explanation, and difficulty (easy/medium/hard).
+Extract all questions from the text below. For each question identify the subtopic, options, correct answer index (0-based), explanation, and difficulty (easy/medium/hard). ${topicInstruction}
 
 IMPORTANT: You MUST respond with ONLY a valid JSON object. No explanations, no markdown, no prose. If no questions are found, return empty arrays.
 
@@ -198,7 +203,7 @@ ${trimmed}`
         continue
       }
       const insert = {
-        topic_id: q.topicId,
+        topic_id: topicId || q.topicId,
         exam_type: examType,
         subtopic: q.subtopic || null,
         created_by: null,

@@ -250,6 +250,7 @@ function AdminPanel({ idToken }) {
   const [uploadStatus, setUploadStatus] = useState('')
   const [uploadPdfFile, setUploadPdfFile] = useState(null)
   const [uploadPdfExamType, setUploadPdfExamType] = useState('OC')
+  const [uploadPdfTopicId, setUploadPdfTopicId] = useState('')
   const [uploadPdfStatus, setUploadPdfStatus] = useState('')
 
   const loadUsers = useCallback(async () => {
@@ -368,6 +369,7 @@ function AdminPanel({ idToken }) {
     try {
       const formData = new FormData()
       formData.append('examType', uploadPdfExamType)
+      if (uploadPdfTopicId) formData.append('topicId', uploadPdfTopicId)
       formData.append('file', uploadPdfFile)
 
       const res = await fetch('/api/admin?action=uploadPdf', {
@@ -511,8 +513,12 @@ function AdminPanel({ idToken }) {
           Upload a PDF file with sample questions; the AI will extract core topics/components and generate question entries.
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
-          <select value={uploadPdfExamType} onChange={e => setUploadPdfExamType(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'white' }}>
+          <select value={uploadPdfExamType} onChange={e => { setUploadPdfExamType(e.target.value); setUploadPdfTopicId('') }} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'white' }}>
             {EXAM_TYPES.map(e => <option key={e.id} value={e.id}>{e.label}</option>)}
+          </select>
+          <select value={uploadPdfTopicId} onChange={e => setUploadPdfTopicId(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'white' }}>
+            <option value="">Auto-detect topic</option>
+            {(EXAM_TOPICS[uploadPdfExamType] || []).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select>
           <input id="pdf-upload-input" type="file" accept="application/pdf" onChange={e => setUploadPdfFile(e.target.files?.[0] || null)} style={{ padding: '6px 8px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'white' }} />
           <button className="btn btn-primary" style={{ padding: '7px 12px' }} onClick={uploadPdf}>Upload PDF and extract topics</button>
