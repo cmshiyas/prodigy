@@ -29,17 +29,31 @@ export async function POST(request) {
       return NextResponse.json({ error: 'topicId is required' }, { status: 400 })
     }
 
-    // First, try to find an existing question for this topic that the user hasn't attempted
-    const { data: existingQuestion, error: questionError } = await supabase
+    // First, get question IDs this user has already attempted in this topic
+    const { data: attemptedResponses, error: attemptedError } = await supabase
+      .from('question_responses')
+      .select('question_id')
+      .eq('user_id', user.id)
+
+    if (attemptedError) {
+      console.error('Failed to fetch attempted responses:', attemptedError)
+      return NextResponse.json({ error: 'Failed to fetch attempted questions' }, { status: 500 })
+    }
+
+    const attemptedIds = attemptedResponses?.map(r => r.question_id) || []
+
+    let questionQuery = supabase
       .from('questions')
-      .select(`
-        *,
-        question_responses!left(user_id)
-      `)
+      .select('*')
       .eq('topic_id', topicId)
-      .is('question_responses.user_id', null) // No response from this user
       .limit(1)
-      .single()
+
+    if (attemptedIds.length > 0) {
+      const quotedIds = attemptedIds.map(id => `'${id}'`).join(',')
+      questionQuery = questionQuery.not('id', 'in', `(${quotedIds})`)
+    }
+
+    const { data: existingQuestion, error: questionError } = await questionQuery.single()
 
     if (existingQuestion && !questionError) {
       // Return existing question

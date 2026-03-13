@@ -49,7 +49,7 @@ export async function POST(request) {
         is_correct: isCorrect,
         response_time_seconds: responseTimeSeconds || null
       }, {
-        onConflict: 'user_id,question_id'
+        onConflict: ['user_id', 'question_id']
       })
 
     if (responseError) {
