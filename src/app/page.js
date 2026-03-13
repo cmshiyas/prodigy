@@ -187,9 +187,12 @@ function TokenLimitsEditor({ idToken }) {
 // ── ADMIN PANEL ───────────────────────────────────────────────
 
 function AdminPanel({ idToken }) {
+  const [adminView, setAdminView] = useState('users') // users | quizBank
   const [users, setUsers] = useState(null)
   const [filter, setFilter] = useState('all')
   const [loading, setLoading] = useState(true)
+  const [quizBank, setQuizBank] = useState(null)
+  const [loadingQuizBank, setLoadingQuizBank] = useState(false)
 
   const loadUsers = useCallback(async () => {
     setLoading(true)
@@ -215,7 +218,35 @@ function AdminPanel({ idToken }) {
     }
   }, [idToken])
 
+  const loadQuizBank = useCallback(async () => {
+    setLoadingQuizBank(true)
+    try {
+      const res = await fetch('/api/admin?action=quizBank', {
+        headers: { Authorization: 'Bearer ' + idToken },
+      })
+      if (res.status === 403) {
+        const err = await res.json()
+        if (err.error && (err.error.includes('Not authenticated') || err.error.includes('token') || err.error.includes('Token'))) {
+          console.log('Admin API authentication failed - clearing session')
+          handleSignOut()
+          return
+        }
+      }
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setQuizBank(data)
+    } catch (err) {
+      alert('Failed to load quiz bank data: ' + err.message)
+    } finally {
+      setLoadingQuizBank(false)
+    }
+  }, [idToken])
+
   useEffect(() => { loadUsers() }, [loadUsers])
+
+  useEffect(() => {
+    if (adminView === 'quizBank') loadQuizBank()
+  }, [adminView])
 
   const updateUser = async (userId, updates) => {
     try {
@@ -237,8 +268,10 @@ function AdminPanel({ idToken }) {
     } catch (err) { alert('Failed: ' + err.message) }
   }
 
-  if (loading) return <div className="loading-card"><div className="spinner" /><div className="loading-text">Loading users...</div></div>
-  if (!users) return null
+  if (adminView === 'users') {
+    if (loading) return <div className="loading-card"><div className="spinner" /><div className="loading-text">Loading users...</div></div>
+    if (!users) return null
+  }
 
   const counts = {
     all: users.length,
@@ -252,10 +285,18 @@ function AdminPanel({ idToken }) {
   return (
     <div className="admin-panel">
       <div className="admin-header">
-        <div className="admin-title">Admin Panel</div>
-        <div className="admin-sub">Manage user access and token limits</div>
+        <div>
+          <div className="admin-title">Admin Panel</div>
+          <div className="admin-sub">Manage user access and token limits</div>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button className={`filter-btn${adminView === 'users' ? ' active' : ''}`} onClick={() => setAdminView('users')}>Users</button>
+          <button className={`filter-btn${adminView === 'quizBank' ? ' active' : ''}`} onClick={() => setAdminView('quizBank')}>Quiz Bank</button>
+        </div>
       </div>
-      <div className="admin-stats">
+      {adminView === 'users' ? (
+        <>
+          <div className="admin-stats">
         <div className="admin-stat"><div className="admin-stat-num">{counts.all}</div><div className="admin-stat-label">Total Users</div></div>
         <div className="admin-stat"><div className="admin-stat-num" style={{ color: '#F59E0B' }}>{counts.pending}</div><div className="admin-stat-label">Pending</div></div>
         <div className="admin-stat"><div className="admin-stat-num" style={{ color: '#52C41A' }}>{counts.approved}</div><div className="admin-stat-label">Approved</div></div>
@@ -322,10 +363,59 @@ function AdminPanel({ idToken }) {
           )
         })}
       </div>
-    <TokenLimitsEditor idToken={idToken} />
+      <TokenLimitsEditor idToken={idToken} />
+    </>
+  ) : (
+    <div style={{ padding: '20px 24px', borderTop: '1.5px solid var(--border)' }}>
+      <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1rem', marginBottom: 4 }}>Quiz Bank</div>
+      <div style={{ fontSize: '0.85rem', color: 'var(--text2)', marginBottom: 16 }}>Analytics for questions created by users (per topic + most active creators).</div>
+
+      {loadingQuizBank ? (
+        <div className="loading-card"><div className="spinner" /><div className="loading-text">Loading quiz bank data...</div></div>
+      ) : quizBank ? (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+            <div style={{ background: 'var(--surface)', borderRadius: 12, border: '1.5px solid var(--border)', padding: 16 }}>
+              <div style={{ fontWeight: 800, marginBottom: 10 }}>Questions per Topic</div>
+              {quizBank.topics.length === 0 ? (
+                <div style={{ color: 'var(--text2)' }}>No questions yet.</div>
+              ) : (
+                <div style={{ display: 'grid', gap: 10 }}>
+                  {quizBank.topics.sort((a, b) => b.count - a.count).map(t => (
+                    <div key={t.topicId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
+                      <span>{t.topicId}</span>
+                      <span style={{ fontWeight: 700 }}>{t.count}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div style={{ background: 'var(--surface)', borderRadius: 12, border: '1.5px solid var(--border)', padding: 16 }}>
+              <div style={{ fontWeight: 800, marginBottom: 10 }}>Top Creators</div>
+              {quizBank.users.length === 0 ? (
+                <div style={{ color: 'var(--text2)' }}>No creators found.</div>
+              ) : (
+                <div style={{ display: 'grid', gap: 10 }}>
+                  {quizBank.users.map(u => (
+                    <div key={u.userId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
+                      <span>{u.name || u.email || 'Unknown'}</span>
+                      <span style={{ fontWeight: 700 }}>{u.count}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      ) : (
+        <div style={{ color: 'var(--text2)' }}>No quiz bank data available.</div>
+      )}
     </div>
+  )}
+  </div>
   )
 }
+
 
 // ── SIDEBAR ───────────────────────────────────────────────────
 

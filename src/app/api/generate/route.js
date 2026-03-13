@@ -99,6 +99,7 @@ export async function POST(request) {
       .from('questions')
       .insert({
         topic_id: topicId,
+        created_by: user.id,
         question: q.question,
         visual: q.visual || null,
         options: q.options,

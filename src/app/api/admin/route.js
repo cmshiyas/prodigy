@@ -33,6 +33,45 @@ export async function GET(request) {
     return NextResponse.json({ config: data })
   }
 
+  if (action === 'quizBank') {
+    // Fetch question stats per topic and per creator
+    const { data: questions, error: questionsError } = await supabase
+      .from('questions')
+      .select('id, topic_id, created_by')
+
+    if (questionsError) return NextResponse.json({ error: questionsError.message }, { status: 500 })
+
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('id, name, email')
+
+    if (usersError) return NextResponse.json({ error: usersError.message }, { status: 500 })
+
+    const topicCounts = {}
+    const userCounts = {}
+
+    questions.forEach(q => {
+      topicCounts[q.topic_id] = (topicCounts[q.topic_id] || 0) + 1
+      if (q.created_by) {
+        userCounts[q.created_by] = (userCounts[q.created_by] || 0) + 1
+      }
+    })
+
+    const topics = Object.entries(topicCounts).map(([topicId, count]) => ({ topicId, count }))
+    const userMap = Object.fromEntries(users.map(u => [u.id, u]))
+
+    const userRanking = Object.entries(userCounts)
+      .map(([userId, count]) => ({
+        userId,
+        count,
+        name: userMap[userId]?.name || 'Unknown',
+        email: userMap[userId]?.email || ''
+      }))
+      .sort((a, b) => b.count - a.count)
+
+    return NextResponse.json({ topics, users: userRanking })
+  }
+
   return NextResponse.json({ error: 'Unknown action' }, { status: 404 })
 }
 
