@@ -18,11 +18,15 @@ export async function GET(request) {
 
     if (userErr || !user) return NextResponse.json({ error: 'User not found' }, { status: 401 })
 
-    const { data: attempts, error } = await supabase
+    const examType = new URL(request.url).searchParams.get('examType') || 'OC'
+    const attemptsQuery = supabase
       .from('quiz_attempts')
       .select('*')
       .eq('user_id', user.id)
+      .eq('exam_type', examType)
       .order('created_at', { ascending: false })
+
+    const { data: attempts, error } = await attemptsQuery
 
     if (error) {
       console.error('Failed to fetch quiz attempts:', error)

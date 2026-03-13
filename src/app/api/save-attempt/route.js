@@ -19,12 +19,14 @@ export async function POST(request) {
     if (userErr || !user) return NextResponse.json({ error: 'User not found' }, { status: 401 })
 
     const body = await request.json()
-    const { score, totalQuestions, correctAnswers, durationSeconds, topics } = body
+    const { score, totalQuestions, correctAnswers, durationSeconds, topics, examType } = body
+    const exam = ['NAPLAN', 'OC', 'Selective'].includes(examType) ? examType : 'OC'
 
     const { error } = await supabase
       .from('quiz_attempts')
       .insert({
         user_id: user.id,
+        exam_type: exam,
         score,
         total_questions: totalQuestions,
         correct_answers: correctAnswers,

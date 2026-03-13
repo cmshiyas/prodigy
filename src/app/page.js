@@ -929,7 +929,8 @@ Rules: exactly 5 options, correct is 0-4 index, difficulty is easy/medium/hard.`
           totalQuestions: totalAnswered,
           correctAnswers,
           durationSeconds: duration,
-          topics: Array.from(quizTopicsAttempted)
+          topics: Array.from(quizTopicsAttempted),
+          examType
         })
       })
     } catch (err) {
@@ -953,7 +954,7 @@ Rules: exactly 5 options, correct is 0-4 index, difficulty is easy/medium/hard.`
   if (screen === 'auth') return <AuthScreen />
   if (screen === 'pending') return <PendingScreen email={session.user?.email} onSignOut={handleSignOut} />
   if (screen === 'rejected') return <RejectedScreen onSignOut={handleSignOut} />
-  if (screen === 'history') return <HistoryScreen user={session.user} idToken={session.idToken} onHome={() => setScreen('app')} onRanking={() => setScreen('ranking')} />
+  if (screen === 'history') return <HistoryScreen user={session.user} idToken={session.idToken} examType={examType} onExamTypeChange={setExamType} onHome={() => setScreen('app')} onRanking={() => setScreen('ranking')} />
   if (screen === 'ranking') return <RankingScreen user={session.user} idToken={session.idToken} onHome={() => setScreen('app')} onHistory={() => setScreen('history')} />
 
   const { user, tokensUsedToday } = session

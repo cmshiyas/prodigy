@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react'
 
-export default function HistoryScreen({ user, idToken, onHome, onRanking }) {
+export default function HistoryScreen({ user, idToken, examType, onExamTypeChange, onHome, onRanking }) {
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetchHistory()
-  }, [])
+  }, [examType])
 
   const fetchHistory = async () => {
     try {
-      const res = await fetch('/api/history', {
+      const res = await fetch(`/api/history?examType=${encodeURIComponent(examType)}`, {
         headers: { 'Authorization': `Bearer ${idToken}` }
       })
       if (res.ok) {
@@ -42,6 +42,24 @@ export default function HistoryScreen({ user, idToken, onHome, onRanking }) {
         </header>
 
         <div className="screen">
+          <div style={{ margin: '16px 0', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {['NAPLAN', 'OC', 'Selective'].map(type => (
+              <button
+                key={type}
+                onClick={() => onExamTypeChange(type)}
+                style={{
+                  border: '1.5px solid #E5E7EB',
+                  borderRadius: 999,
+                  padding: '6px 12px',
+                  background: examType === type ? '#FFEDD5' : 'white',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                {type}
+              </button>
+            ))}
+          </div>
           <div className="loading">Loading history...</div>
         </div>
       </div>
@@ -65,6 +83,24 @@ export default function HistoryScreen({ user, idToken, onHome, onRanking }) {
       </header>
 
       <div className="screen">
+        <div style={{ margin: '16px 0', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {['NAPLAN', 'OC', 'Selective'].map(type => (
+            <button
+              key={type}
+              onClick={() => onExamTypeChange(type)}
+              style={{
+                border: '1.5px solid #E5E7EB',
+                borderRadius: 999,
+                padding: '6px 12px',
+                background: examType === type ? '#FFEDD5' : 'white',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              {type}
+            </button>
+          ))}
+        </div>
         <div className="history-container">
           {history.length === 0 ? (
             <div className="empty-state">
