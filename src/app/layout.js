@@ -1,7 +1,7 @@
 import './globals.css'
 
 export const metadata = {
-  title: 'Rephub',
+  title: 'RepHub - Mastering by Reps',
   description: 'Practise for the NSW Opportunity Class Placement Test',
 }
 

@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { TOPICS, TOPIC_PROMPTS, TOKEN_LIMITS, TIER_LABELS, TIER_CLASSES, ADMIN_EMAIL } from '@/lib/constants'
+import HistoryScreen from '@/components/HistoryScreen'
+import RankingScreen from '@/components/RankingScreen'
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
 
@@ -508,7 +510,7 @@ export default function App() {
   }
 
   const initialSession = getInitialSession()
-  const [screen, setScreen] = useState(initialSession.user ? 'app' : 'auth') // auth | pending | rejected | app
+  const [screen, setScreen] = useState(initialSession.user ? 'app' : 'auth') // auth | pending | rejected | app | history | ranking
   const [session, setSession] = useState(initialSession)
   const [showAdmin, setShowAdmin] = useState(false)
   const [currentTopic, setCurrentTopic] = useState(null)
@@ -519,6 +521,8 @@ export default function App() {
   const [totalAnswered, setTotalAnswered] = useState(0)
   const [topicStats, setTopicStats] = useState(initTopicStats)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
+  const [quizSessionStartTime, setQuizSessionStartTime] = useState(null)
+  const [quizTopicsAttempted, setQuizTopicsAttempted] = useState(new Set())
 
   // Register global Google callback
   useEffect(() => {
@@ -594,6 +598,14 @@ export default function App() {
   }
 
   async function generateQuestion(topicId) {
+    // Start quiz session tracking if not already started
+    if (!quizSessionStartTime) {
+      setQuizSessionStartTime(Date.now())
+      setQuizTopicsAttempted(new Set())
+    }
+    // Add topic to attempted topics
+    setQuizTopicsAttempted(prev => new Set([...prev, TOPICS.find(t => t.id === topicId)?.name]))
+
     const topic = TOPICS.find(t => t.id === topicId)
     setCurrentTopic(topicId)
     setQuestion(null)
@@ -673,10 +685,49 @@ Rules: exactly 5 options, correct is 0-4 index, difficulty is easy/medium/hard.`
     }))
   }
 
+  async function saveQuizAttempt() {
+    if (!quizSessionStartTime || totalAnswered === 0) return
+
+    try {
+      const duration = Math.floor((Date.now() - quizSessionStartTime) / 1000)
+      const correctAnswers = Object.values(topicStats).reduce((sum, topic) => sum + topic.correct, 0)
+
+      await fetch('/api/save-attempt', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.idToken}`
+        },
+        body: JSON.stringify({
+          score,
+          totalQuestions: totalAnswered,
+          correctAnswers,
+          durationSeconds: duration,
+          topics: Array.from(quizTopicsAttempted)
+        })
+      })
+    } catch (err) {
+      console.error('Failed to save quiz attempt:', err)
+    }
+  }
+
+  function resetQuizSession() {
+    setQuizSessionStartTime(null)
+    setQuizTopicsAttempted(new Set())
+    setScore(0)
+    setTotalAnswered(0)
+    setTopicStats(initTopicStats)
+    setCurrentTopic(null)
+    setQuestion(null)
+    setQuestionError(null)
+  }
+
   // ── RENDER SCREENS ──────────────────────────────────────────
   if (screen === 'auth') return <AuthScreen />
   if (screen === 'pending') return <PendingScreen email={session.user?.email} onSignOut={handleSignOut} />
   if (screen === 'rejected') return <RejectedScreen onSignOut={handleSignOut} />
+  if (screen === 'history') return <HistoryScreen user={session.user} idToken={session.idToken} onHome={() => setScreen('app')} />
+  if (screen === 'ranking') return <RankingScreen user={session.user} idToken={session.idToken} onHome={() => setScreen('app')} />
 
   const { user, tokensUsedToday } = session
   const limit = TOKEN_LIMITS[user.tier] || 5000
@@ -687,8 +738,11 @@ Rules: exactly 5 options, correct is 0-4 index, difficulty is easy/medium/hard.`
     <div>
       {/* HEADER */}
       <header>
-        <div className="logo">OC Test <span>Trainer</span></div>
+        <div className="logo" onClick={() => { saveQuizAttempt(); resetQuizSession(); setShowAdmin(false); setScreen('app') }} style={{ cursor: 'pointer' }}>RepHub <span>Mastering by Reps</span></div>
         <div className="header-right">
+          <button className="nav-btn" onClick={() => { saveQuizAttempt(); resetQuizSession(); setShowAdmin(false); setScreen('app') }}>Home</button>
+          <button className="nav-btn" onClick={() => { setCurrentTopic(null); setShowAdmin(false); setScreen('history') }}>History</button>
+          <button className="nav-btn" onClick={() => { setCurrentTopic(null); setShowAdmin(false); setScreen('ranking') }}>Ranking</button>
           {!user.is_admin && (
             <div className="token-bar-wrap">
               <div>{tokensUsedToday.toLocaleString()} / {limit.toLocaleString()} tokens</div>
@@ -761,7 +815,7 @@ Rules: exactly 5 options, correct is 0-4 index, difficulty is easy/medium/hard.`
                   <div className="error-box">{questionError}</div>
                   <div style={{ marginTop: 16, display: 'flex', gap: 10 }}>
                     <button className="btn btn-primary" onClick={() => generateQuestion(currentTopic)}>Try Again</button>
-                    <button className="btn btn-secondary" onClick={() => { setCurrentTopic(null); setQuestionError(null) }}>Back to Home</button>
+                    <button className="btn btn-secondary" onClick={() => { saveQuizAttempt(); resetQuizSession(); setShowAdmin(false); setScreen('app') }}>Back to Home</button>
                   </div>
                 </div>
               </div>
@@ -775,7 +829,7 @@ Rules: exactly 5 options, correct is 0-4 index, difficulty is easy/medium/hard.`
                 topicStats={topicStats}
                 onAnswer={handleAnswer}
                 onNext={() => generateQuestion(currentTopic)}
-                onHome={() => { setCurrentTopic(null); setQuestion(null); setQuestionError(null) }}
+                onHome={() => { saveQuizAttempt(); resetQuizSession(); setShowAdmin(false); setScreen('app') }}
               />
             )}
           </div>
