@@ -95,8 +95,19 @@ function TokenLimitsEditor({ idToken }) {
     fetch('/api/admin?action=config', {
       headers: { Authorization: 'Bearer ' + idToken }
     })
-      .then(r => r.json())
+      .then(async r => {
+        if (r.status === 403) {
+          const err = await r.json()
+          if (err.error && (err.error.includes('Not authenticated') || err.error.includes('token') || err.error.includes('Token'))) {
+            console.log('Admin API authentication failed - clearing session')
+            handleSignOut()
+            return null
+          }
+        }
+        return r.json()
+      })
       .then(data => {
+        if (!data) return // Already handled auth error
         const map = {}
         data.config.forEach(({ key, value }) => {
           map[key.replace('token_limit_', '')] = value
@@ -113,6 +124,14 @@ function TokenLimitsEditor({ idToken }) {
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
         body: JSON.stringify({ key: 'token_limit_' + tier, value }),
       })
+      if (res.status === 403) {
+        const err = await res.json()
+        if (err.error && (err.error.includes('Not authenticated') || err.error.includes('token') || err.error.includes('Token'))) {
+          console.log('Admin API authentication failed - clearing session')
+          handleSignOut()
+          return
+        }
+      }
       if (!res.ok) throw new Error((await res.json()).error)
       setSaved(tier)
       setTimeout(() => setSaved(null), 2000)
@@ -176,6 +195,14 @@ function AdminPanel({ idToken }) {
       const res = await fetch('/api/admin?action=users', {
         headers: { Authorization: 'Bearer ' + idToken },
       })
+      if (res.status === 403) {
+        const err = await res.json()
+        if (err.error && (err.error.includes('Not authenticated') || err.error.includes('token') || err.error.includes('Token'))) {
+          console.log('Admin API authentication failed - clearing session')
+          handleSignOut()
+          return
+        }
+      }
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       setUsers(data.users)
@@ -195,6 +222,14 @@ function AdminPanel({ idToken }) {
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
         body: JSON.stringify({ userId, ...updates }),
       })
+      if (res.status === 403) {
+        const err = await res.json()
+        if (err.error && (err.error.includes('Not authenticated') || err.error.includes('token') || err.error.includes('Token'))) {
+          console.log('Admin API authentication failed - clearing session')
+          handleSignOut()
+          return
+        }
+      }
       if (!res.ok) throw new Error((await res.json()).error)
       await loadUsers()
     } catch (err) { alert('Failed: ' + err.message) }
@@ -472,8 +507,9 @@ export default function App() {
     return { user: null, idToken: null, tokensUsedToday: 0 }
   }
 
-  const [screen, setScreen] = useState('auth') // auth | pending | rejected | app
-  const [session, setSession] = useState(getInitialSession)
+  const initialSession = getInitialSession()
+  const [screen, setScreen] = useState(initialSession.user ? 'app' : 'auth') // auth | pending | rejected | app
+  const [session, setSession] = useState(initialSession)
   const [showAdmin, setShowAdmin] = useState(false)
   const [currentTopic, setCurrentTopic] = useState(null)
   const [question, setQuestion] = useState(null)
@@ -500,41 +536,8 @@ export default function App() {
     }
   }, [session])
 
-  // Validate stored session on app load
-  useEffect(() => {
-    const validateStoredSession = async () => {
-      if (session.idToken && session.user) {
-        try {
-          // Try to validate the token by making a request to the auth endpoint
-          const res = await fetch('/api/auth', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ credential: session.idToken }),
-          })
-          
-          if (res.ok) {
-            const data = await res.json()
-            // Update session with fresh data
-            setSession({ user: data.user, idToken: session.idToken, tokensUsedToday: data.tokensUsedToday || 0 })
-            const s = data.user.status
-            if (s === 'pending') setScreen('pending')
-            else if (s === 'rejected') setScreen('rejected')
-            else setScreen('app')
-          } else {
-            // Token is invalid, clear session
-            console.warn('Stored session token is invalid')
-            setSession({ user: null, idToken: null, tokensUsedToday: 0 })
-          }
-        } catch (err) {
-          console.warn('Failed to validate stored session:', err)
-          // On validation error, clear session to be safe
-          setSession({ user: null, idToken: null, tokensUsedToday: 0 })
-        }
-      }
-    }
-
-    validateStoredSession()
-  }, []) // Only run once on mount
+  // Validate stored session on app load - REMOVED
+  // We now handle token expiration in API calls instead
 
   // Close profile menu when clicking outside
   useEffect(() => {
@@ -615,6 +618,24 @@ Rules: exactly 5 options, correct is 0-4 index, difficulty is easy/medium/hard.`
         const err = await res.json()
         if (err.error === 'PENDING') { setScreen('pending'); return }
         if (err.error === 'TOKEN_LIMIT') { setQuestionError(err.message + '\n\nUpgrade your tier to get more daily tokens.'); return }
+        if (err.error === 'INVALID_TOKEN' || err.error.includes('token')) {
+          // Token expired or invalid - clear session
+          console.log('Token expired during API call - clearing session')
+          handleSignOut()
+          setQuestionError('Your session has expired. Please sign in again.')
+          return
+        }
+      }
+
+      if (res.status === 500) {
+        const err = await res.json().catch(() => ({ error: 'Server error' }))
+        // Check if it's a token-related error
+        if (err.error && (err.error.includes('token') || err.error.includes('Token') || err.error.includes('credential'))) {
+          console.log('Token validation failed - clearing session')
+          handleSignOut()
+          setQuestionError('Your session has expired. Please sign in again.')
+          return
+        }
       }
 
       if (!res.ok) {
