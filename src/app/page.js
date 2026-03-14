@@ -786,15 +786,19 @@ function QuestionView({ question, questionNumber, topicStats, examType, onAnswer
   const topic = currentTopics.find(t => t.id === question.topicId) || { name: 'Topic' }
   const labels = ['A', 'B', 'C', 'D', 'E']
 
-  const handleAnswer = (idx) => {
+  const handleSelect = (idx) => {
     if (answered) return
-    setAnswered(true)
     setSelectedIdx(idx)
-    onAnswer(idx)
+  }
+
+  const handleSubmit = () => {
+    if (answered || selectedIdx === null) return
+    setAnswered(true)
+    onAnswer(selectedIdx)
   }
 
   const getOptionClass = (i) => {
-    if (!answered) return 'option-btn'
+    if (!answered) return i === selectedIdx ? 'option-btn selected' : 'option-btn'
     if (i === question.correct) return 'option-btn correct'
     if (i === selectedIdx && i !== question.correct) return 'option-btn wrong'
     return 'option-btn'
@@ -840,7 +844,7 @@ function QuestionView({ question, questionNumber, topicStats, examType, onAnswer
           )}
           <div className="options-grid">
             {question.options.map((opt, i) => (
-              <button key={i} className={getOptionClass(i)} onClick={() => handleAnswer(i)} disabled={answered}>
+              <button key={i} className={getOptionClass(i)} onClick={() => handleSelect(i)} disabled={answered}>
                 <div className="option-label">{answered && i === question.correct ? '✓' : answered && i === selectedIdx && !isCorrect ? '✗' : labels[i]}</div>
                 <span>{opt}</span>
               </button>
@@ -858,7 +862,8 @@ function QuestionView({ question, questionNumber, topicStats, examType, onAnswer
         <div className="question-footer">
           <button className="btn btn-secondary" onClick={onHome}>Home</button>
           {answered && <button className="btn btn-generate" onClick={onNext}>Next Question</button>}
-          {!answered && <span className="hint-text">Select an answer above</span>}
+          {!answered && selectedIdx === null && <span className="hint-text">Select an answer above</span>}
+          {!answered && selectedIdx !== null && <button className="btn btn-primary" onClick={handleSubmit}>Submit Answer</button>}
         </div>
       </div>
       <div className="stats-card">

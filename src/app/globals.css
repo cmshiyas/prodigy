@@ -120,6 +120,8 @@ header { background: var(--accent); padding: 0 2rem; display: flex; align-items:
 .option-btn { padding: 14px 16px; border: 2px solid var(--border); border-radius: 12px; background: var(--surface); cursor: pointer; font-family: 'Nunito Sans', sans-serif; font-size: 0.95rem; font-weight: 600; color: var(--text); text-align: left; transition: all 0.15s; display: flex; align-items: center; gap: 10px; }
 .option-btn:hover:not(:disabled) { border-color: var(--accent); background: #FFF0E8; }
 .option-label { width: 28px; height: 28px; border-radius: 50%; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.8rem; flex-shrink: 0; color: var(--text2); }
+.option-btn.selected { border-color: var(--accent); background: #FFF0E8; }
+.option-btn.selected .option-label { background: var(--accent); color: white; }
 .option-btn.correct { border-color: var(--green); background: #F0FDF4; }
 .option-btn.correct .option-label { background: var(--green); color: white; }
 .option-btn.wrong { border-color: var(--red); background: #FEF2F2; }
