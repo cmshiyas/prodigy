@@ -864,9 +864,38 @@ const PLANS = [
 
 const WA_UPGRADE_NUMBER = '61432302644'
 
-function PlansScreen({ user, onHome, onReferFriend }) {
+function PlansScreen({ user, idToken, onHome, onReferFriend, onTierUpgrade }) {
   const currentTier = user.tier || 'silver'
   const [showTrialModal, setShowTrialModal] = useState(true)
+  const [promoCode, setPromoCode] = useState('')
+  const [promoStatus, setPromoStatus] = useState(null) // { type: 'success'|'error', message }
+  const [promoLoading, setPromoLoading] = useState(false)
+
+  async function redeemPromo() {
+    if (!promoCode.trim()) return
+    setPromoLoading(true)
+    setPromoStatus(null)
+    try {
+      const token = idToken
+      const res = await fetch('/api/promo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ code: promoCode.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setPromoStatus({ type: 'error', message: data.error || 'Failed to redeem code' })
+      } else {
+        setPromoStatus({ type: 'success', message: data.message })
+        setPromoCode('')
+        if (onTierUpgrade) onTierUpgrade(data.tier)
+      }
+    } catch {
+      setPromoStatus({ type: 'error', message: 'Network error. Please try again.' })
+    } finally {
+      setPromoLoading(false)
+    }
+  }
 
   function upgradeUrl(plan) {
     const msg = `Hi! I'm ${user.name} (${user.email}) and I'd like to upgrade to the ${plan.label} plan (${ plan.price}${plan.period || ''}). Please help me get set up!`
@@ -931,6 +960,28 @@ function PlansScreen({ user, onHome, onReferFriend }) {
             </div>
           )
         })}
+      </div>
+
+      <div className="promo-box">
+        <div className="promo-box-title">Have a promo code?</div>
+        <div className="promo-box-row">
+          <input
+            className="promo-input"
+            type="text"
+            placeholder="Enter code (e.g. GOLD30)"
+            value={promoCode}
+            onChange={e => { setPromoCode(e.target.value.toUpperCase()); setPromoStatus(null) }}
+            onKeyDown={e => e.key === 'Enter' && redeemPromo()}
+          />
+          <button
+            className="btn btn-primary promo-btn"
+            onClick={redeemPromo}
+            disabled={promoLoading || !promoCode.trim()}
+          >{promoLoading ? '...' : 'Apply'}</button>
+        </div>
+        {promoStatus && (
+          <div className={`promo-status promo-status--${promoStatus.type}`}>{promoStatus.message}</div>
+        )}
       </div>
 
       <p className="plans-note">
@@ -1520,7 +1571,13 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
         </div>
       </header>
       <div style={{ maxWidth: 1100, margin: '2rem auto', padding: '0 1.5rem' }}>
-        <PlansScreen user={session.user} onHome={() => setScreen('app')} onReferFriend={() => setShowReferralModal(true)} />
+        <PlansScreen
+          user={session.user}
+          idToken={session.idToken}
+          onHome={() => setScreen('app')}
+          onReferFriend={() => setShowReferralModal(true)}
+          onTierUpgrade={newTier => setSession(s => ({ ...s, user: { ...s.user, tier: newTier } }))}
+        />
       </div>
       <WhatsAppButton user={session.user} />
     </div>

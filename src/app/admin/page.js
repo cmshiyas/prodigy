@@ -319,6 +319,7 @@ function AdminPanel({ idToken, onSignOut }) {
           {tabBtn('quizBank', 'Quiz Bank')}
           {tabBtn('analytics', 'Analytics')}
           {tabBtn('review', 'Answer Review')}
+          {tabBtn('promos', 'Promo Codes')}
         </div>
       </div>
 
@@ -711,6 +712,163 @@ function AdminPanel({ idToken, onSignOut }) {
               </>
             )
           })()}
+        </div>
+      )}
+
+      {/* Promo Codes tab */}
+      {adminView === 'promos' && (
+        <PromoManager idToken={idToken} onSignOut={onSignOut} />
+      )}
+    </div>
+  )
+}
+
+// ── PROMO MANAGER ──────────────────────────────────────────────
+
+function PromoManager({ idToken, onSignOut }) {
+  const [promos, setPromos] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [form, setForm] = useState({ code: '', tier: 'gold', duration_days: '', max_uses: '', expires_at: '' })
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState('')
+
+  const loadPromos = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/admin?action=promos', { headers: { Authorization: 'Bearer ' + idToken } })
+      if (res.status === 403) { const e = await res.json(); if (e.error?.includes('Not')) { onSignOut(); return } }
+      const data = await res.json()
+      setPromos(data.promos || [])
+    } catch (err) { alert('Failed to load promos: ' + err.message) }
+    finally { setLoading(false) }
+  }
+
+  useEffect(() => { loadPromos() }, [idToken])
+
+  const createPromo = async () => {
+    if (!form.code.trim() || !form.tier) { setCreateError('Code and tier are required'); return }
+    setCreating(true); setCreateError('')
+    try {
+      const res = await fetch('/api/admin?action=createPromo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+        body: JSON.stringify({
+          code: form.code.trim(),
+          tier: form.tier,
+          duration_days: form.duration_days ? parseInt(form.duration_days) : null,
+          max_uses: form.max_uses ? parseInt(form.max_uses) : null,
+          expires_at: form.expires_at || null,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setForm({ code: '', tier: 'gold', duration_days: '', max_uses: '', expires_at: '' })
+      await loadPromos()
+    } catch (err) { setCreateError(err.message) }
+    finally { setCreating(false) }
+  }
+
+  const togglePromo = async (promoId, isActive) => {
+    try {
+      const res = await fetch('/api/admin?action=togglePromo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+        body: JSON.stringify({ promoId, isActive }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error)
+      await loadPromos()
+    } catch (err) { alert('Failed: ' + err.message) }
+  }
+
+  const deletePromo = async (promoId, code) => {
+    if (!confirm(`Delete promo code "${code}"? This cannot be undone.`)) return
+    try {
+      const res = await fetch('/api/admin?action=deletePromo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+        body: JSON.stringify({ promoId }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error)
+      await loadPromos()
+    } catch (err) { alert('Failed: ' + err.message) }
+  }
+
+  const inp = (label, key, type = 'text', placeholder = '') => (
+    <div style={{ flex: 1, minWidth: 100 }}>
+      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 4 }}>{label}</div>
+      <input
+        type={type}
+        placeholder={placeholder}
+        value={form[key]}
+        onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+        style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', fontFamily: 'Nunito', fontWeight: 700, fontSize: '0.88rem', boxSizing: 'border-box' }}
+      />
+    </div>
+  )
+
+  const tierColors = { gold: '#F59E0B', platinum: '#8B5CF6' }
+
+  return (
+    <div style={{ padding: '20px 24px' }}>
+      <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1rem', marginBottom: 4 }}>Promo Codes</div>
+      <div style={{ fontSize: '0.8rem', color: '#7A5C3F', marginBottom: 20 }}>Create and manage promo codes that users can redeem to upgrade their plan.</div>
+
+      {/* Create form */}
+      <div style={{ background: '#FFF3E6', borderRadius: 12, padding: '16px 20px', border: '1.5px solid #E8D5C0', marginBottom: 24 }}>
+        <div style={{ fontFamily: 'Nunito', fontWeight: 800, fontSize: '0.9rem', marginBottom: 12, color: '#2D1B0E' }}>Create New Code</div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+          {inp('Code *', 'code', 'text', 'e.g. GOLD30')}
+          <div style={{ flex: 1, minWidth: 100 }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 4 }}>Tier *</div>
+            <select
+              value={form.tier}
+              onChange={e => setForm(f => ({ ...f, tier: e.target.value }))}
+              style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', fontFamily: 'Nunito', fontWeight: 700, fontSize: '0.88rem', background: 'white' }}
+            >
+              <option value="gold">Gold</option>
+              <option value="platinum">Platinum</option>
+            </select>
+          </div>
+          {inp('Duration (days)', 'duration_days', 'number', 'blank = forever')}
+          {inp('Max Uses', 'max_uses', 'number', 'blank = unlimited')}
+          {inp('Expires At', 'expires_at', 'date', '')}
+        </div>
+        {createError && <div style={{ color: '#991B1B', fontSize: '0.83rem', fontWeight: 700, marginBottom: 8 }}>{createError}</div>}
+        <button
+          onClick={createPromo}
+          disabled={creating}
+          style={{ background: '#FF6B35', color: 'white', border: 'none', borderRadius: 8, padding: '8px 20px', fontFamily: 'Nunito', fontWeight: 800, fontSize: '0.88rem', cursor: creating ? 'not-allowed' : 'pointer', opacity: creating ? 0.7 : 1 }}
+        >{creating ? 'Creating...' : 'Create Code'}</button>
+      </div>
+
+      {/* Promo list */}
+      {loading ? (
+        <div style={{ color: '#7A5C3F', padding: '20px 0' }}>Loading...</div>
+      ) : !promos || promos.length === 0 ? (
+        <div style={{ color: '#94A3B8', fontSize: '0.9rem', padding: '20px 0' }}>No promo codes yet.</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {promos.map(p => (
+            <div key={p.id} style={{ background: p.is_active ? 'white' : '#F8F8F8', border: `1.5px solid ${p.is_active ? '#E8D5C0' : '#D1D5DB'}`, borderRadius: 10, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', opacity: p.is_active ? 1 : 0.65 }}>
+              <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1.05rem', letterSpacing: '0.06em', color: '#2D1B0E', minWidth: 110 }}>{p.code}</div>
+              <span style={{ padding: '2px 10px', borderRadius: 20, background: p.tier === 'platinum' ? '#EDE9FE' : '#FEF3C7', color: tierColors[p.tier] || '#555', fontSize: '0.8rem', fontWeight: 800 }}>{p.tier}</span>
+              <div style={{ fontSize: '0.8rem', color: '#7A5C3F', flex: 1 }}>
+                {p.duration_days ? `${p.duration_days}d` : 'Permanent'} · {p.max_uses ? `${p.uses_count}/${p.max_uses} uses` : `${p.uses_count} uses`}
+                {p.expires_at && ` · Exp ${new Date(p.expires_at).toLocaleDateString('en-AU')}`}
+              </div>
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, padding: '2px 8px', borderRadius: 8, background: p.is_active ? '#DCFCE7' : '#FEE2E2', color: p.is_active ? '#166534' : '#991B1B' }}>{p.is_active ? 'Active' : 'Inactive'}</span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  onClick={() => togglePromo(p.id, !p.is_active)}
+                  style={{ padding: '4px 12px', fontSize: '0.78rem', borderRadius: 6, border: '1.5px solid #E8D5C0', background: 'white', fontFamily: 'Nunito', fontWeight: 700, cursor: 'pointer', color: '#2D1B0E' }}
+                >{p.is_active ? 'Deactivate' : 'Activate'}</button>
+                <button
+                  onClick={() => deletePromo(p.id, p.code)}
+                  style={{ padding: '4px 12px', fontSize: '0.78rem', borderRadius: 6, border: '1.5px solid #FECACA', background: '#FEF2F2', fontFamily: 'Nunito', fontWeight: 700, cursor: 'pointer', color: '#991B1B' }}
+                >Delete</button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

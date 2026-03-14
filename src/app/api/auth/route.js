@@ -100,6 +100,21 @@ async function respond(supabase, user) {
       .eq('id', user.id).select().single()
     if (updated) user = updated
   }
+
+  // Check if a promo-based tier upgrade has expired
+  if (user.promo_expires_at && new Date(user.promo_expires_at) < new Date() && user.tier !== 'admin') {
+    const { count: refCount } = await supabase
+      .from('users').select('id', { count: 'exact', head: true }).eq('referred_by', user.id)
+    let revertTier = 'silver'
+    if ((refCount || 0) >= 5) revertTier = 'platinum'
+    else if ((refCount || 0) >= 3) revertTier = 'gold'
+    const { data: reverted } = await supabase
+      .from('users').update({ tier: revertTier, promo_expires_at: null, updated_at: new Date().toISOString() })
+      .eq('id', user.id).select().single()
+    if (reverted) user = reverted
+    console.log(`Promo expired: reverted user ${user.id} to ${revertTier}`)
+  }
+
   const today = new Date().toISOString().split('T')[0]
   const { data: usage } = await supabase
     .from('token_usage').select('tokens_used').eq('user_id', user.id).eq('date', today).single()

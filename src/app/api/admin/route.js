@@ -159,6 +159,15 @@ export async function GET(request) {
     })
   }
 
+  if (action === 'promos') {
+    const { data: promos, error } = await supabase
+      .from('promo_codes')
+      .select('id, code, tier, duration_days, max_uses, uses_count, expires_at, is_active, created_at')
+      .order('created_at', { ascending: false })
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ promos })
+  }
+
   if (action === 'userResponses') {
     const userId = new URL(request.url).searchParams.get('userId')
     if (!userId) return NextResponse.json({ error: 'Missing userId' }, { status: 400 })
@@ -214,6 +223,36 @@ export async function POST(request) {
     if (!key || value === undefined) return NextResponse.json({ error: 'Missing key or value' }, { status: 400 })
     const { error } = await supabase.from('config')
       .upsert({ key, value: String(value), updated_at: new Date().toISOString() })
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ ok: true })
+  }
+
+  if (action === 'createPromo') {
+    const { code, tier, duration_days, max_uses, expires_at } = await request.json()
+    if (!code || !tier) return NextResponse.json({ error: 'code and tier are required' }, { status: 400 })
+    const { data, error } = await supabase.from('promo_codes').insert({
+      code: code.toUpperCase().trim(),
+      tier,
+      duration_days: duration_days || null,
+      max_uses: max_uses || null,
+      expires_at: expires_at || null,
+    }).select().single()
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ promo: data })
+  }
+
+  if (action === 'togglePromo') {
+    const { promoId, isActive } = await request.json()
+    if (!promoId) return NextResponse.json({ error: 'promoId required' }, { status: 400 })
+    const { data, error } = await supabase.from('promo_codes').update({ is_active: isActive }).eq('id', promoId).select().single()
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ promo: data })
+  }
+
+  if (action === 'deletePromo') {
+    const { promoId } = await request.json()
+    if (!promoId) return NextResponse.json({ error: 'promoId required' }, { status: 400 })
+    const { error } = await supabase.from('promo_codes').delete().eq('id', promoId)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true })
   }
