@@ -1518,10 +1518,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
   )
 
   const { user, tokensUsedToday } = session
-  const limit = TOKEN_LIMITS[user.tier] || 5000
   const perms = TIER_PERMISSIONS[user.tier] || TIER_PERMISSIONS.silver
-  const tokenPct = Math.min(100, Math.round((tokensUsedToday / limit) * 100))
-  const tokenFillColor = tokenPct > 80 ? '#FCA5A5' : tokenPct > 50 ? '#FDE68A' : 'white'
 
   return (
     <div>
@@ -1546,14 +1543,6 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
               <button className="nav-btn nav-btn--plans" onClick={() => { setCurrentTopic(null); setScreen('plans') }}>Plans</button>
             )}
           </div>
-          {!user.is_admin && (
-            <div className="token-bar-wrap">
-              <div>{tokensUsedToday.toLocaleString()} / {limit.toLocaleString()} tokens</div>
-              <div className="token-bar">
-                <div className="token-bar-fill" style={{ width: tokenPct + '%', background: tokenFillColor }} />
-              </div>
-            </div>
-          )}
           <div className="user-pill" onClick={handleProfileClick}>
             {user.picture && <img src={user.picture} className="user-avatar" alt="" />}
             <span className="user-first-name">{user.name.split(' ')[0]}</span>
