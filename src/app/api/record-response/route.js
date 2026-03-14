@@ -21,8 +21,13 @@ export async function POST(request) {
     const body = await request.json()
     const { questionId, selectedOption, responseTimeSeconds } = body
 
-    if (!questionId || selectedOption === undefined) {
-      return NextResponse.json({ error: 'questionId and selectedOption are required' }, { status: 400 })
+    if (selectedOption === undefined) {
+      return NextResponse.json({ error: 'selectedOption is required' }, { status: 400 })
+    }
+
+    // If question wasn't persisted (store failed during generation), nothing to record
+    if (!questionId) {
+      return NextResponse.json({ success: true, isCorrect: null, correctAnswer: null, skipped: true })
     }
 
     // Get the question to check if the answer is correct
