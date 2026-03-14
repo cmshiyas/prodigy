@@ -1,8 +1,8 @@
 import './globals.css'
 
 export const metadata = {
-  title: 'RepHub - Mastering by Reps',
-  description: 'Practise for the NSW Opportunity Class Placement Test',
+  title: 'RepHub - Master Any Exam, One Rep at a Time',
+  description: 'Adaptive practice platform for NSW selective school and scholarship exams. Build mastery through targeted, repeatable question sets across all exam types.',
 }
 
 export default function RootLayout({ children }) {
