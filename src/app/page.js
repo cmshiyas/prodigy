@@ -17,6 +17,32 @@ const initTopicStats = () => {
   return s
 }
 
+// ── WHATSAPP CHAT BUTTON ──────────────────────────────────────
+
+const WA_NUMBER = '61432302644'
+
+function WhatsAppButton({ user }) {
+  const message = user
+    ? `Hi! I'm ${user.name} (${user.email}). I have a question about Exam Booster.`
+    : `Hi! I have a question about Exam Booster.`
+  const url = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(message)}`
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="wa-btn"
+      aria-label="Chat with us on WhatsApp"
+    >
+      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="wa-icon">
+        <circle cx="16" cy="16" r="16" fill="#25D366"/>
+        <path d="M23.5 8.5A10.45 10.45 0 0016 5.5C10.2 5.5 5.5 10.2 5.5 16c0 1.84.48 3.63 1.38 5.2L5.5 26.5l5.42-1.42A10.46 10.46 0 0016 26.5c5.8 0 10.5-4.7 10.5-10.5 0-2.8-1.09-5.44-3-7.5zm-7.5 16.1c-1.56 0-3.08-.42-4.4-1.2l-.32-.19-3.22.85.86-3.14-.2-.33A8.56 8.56 0 017.44 16c0-4.73 3.84-8.56 8.56-8.56 2.28 0 4.44.89 6.05 2.51A8.52 8.52 0 0124.57 16c0 4.73-3.84 8.6-8.57 8.6zm4.7-6.42c-.26-.13-1.53-.75-1.77-.84-.24-.09-.41-.13-.58.13-.17.26-.66.84-.8 1.01-.15.17-.3.19-.55.06-.26-.13-1.08-.4-2.06-1.27-.76-.68-1.28-1.52-1.43-1.77-.15-.26-.02-.4.11-.53.12-.11.26-.3.39-.44.13-.14.17-.24.26-.4.09-.17.04-.31-.02-.44-.06-.13-.58-1.4-.8-1.92-.2-.5-.42-.43-.58-.44h-.5c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1s.9 2.43 1.02 2.6c.13.17 1.77 2.7 4.28 3.79.6.26 1.07.41 1.43.53.6.19 1.15.16 1.58.1.48-.07 1.53-.63 1.74-1.23.22-.6.22-1.11.15-1.23-.07-.12-.24-.18-.5-.31z" fill="white"/>
+      </svg>
+      <span className="wa-label">Chat with us</span>
+    </a>
+  )
+}
+
 // ── SCREEN COMPONENTS ─────────────────────────────────────────
 
 function LandingScreen({ onSignIn }) {
@@ -180,6 +206,7 @@ function LandingScreen({ onSignIn }) {
         </div>
       </footer>
 
+      <WhatsAppButton />
     </div>
   )
 }
@@ -1763,6 +1790,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
           </div>
         </div>
       )}
+      <WhatsAppButton user={user} />
     </div>
   )
 }

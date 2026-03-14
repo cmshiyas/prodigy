@@ -313,3 +313,33 @@ header { background: var(--accent); padding: 0 2rem; display: flex; align-items:
   0%   { opacity: 1; transform: translateY(0) rotate(0deg); }
   100% { opacity: 0; transform: translateY(100vh) rotate(720deg); }
 }
+
+/* ── WHATSAPP FLOATING BUTTON ──────────────────────────────── */
+.wa-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #25D366;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 50px;
+  padding: 12px 20px 12px 14px;
+  box-shadow: 0 4px 20px rgba(37,211,102,0.45);
+  font-weight: 700;
+  font-size: 0.92rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.wa-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 28px rgba(37,211,102,0.55);
+}
+.wa-icon { width: 28px; height: 28px; flex-shrink: 0; }
+.wa-label { white-space: nowrap; }
+@media (max-width: 480px) {
+  .wa-btn { padding: 12px; border-radius: 50%; }
+  .wa-label { display: none; }
+}
