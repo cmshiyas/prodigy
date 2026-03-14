@@ -60,6 +60,7 @@ function LandingScreen({ onSignIn }) {
             <a href="#how-it-works">How it works</a>
             <a href="#benefits">Benefits</a>
             <a href="#features">Features</a>
+            <a href="#pricing">Pricing</a>
           </nav>
           <button className="btn btn-primary" onClick={onSignIn}>Sign in</button>
         </div>
@@ -168,6 +169,80 @@ function LandingScreen({ onSignIn }) {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ── PRICING ── */}
+      <section className="lp-section lp-section-alt" id="pricing">
+        <div className="lp-section-inner">
+          <div className="lp-section-label">Pricing</div>
+          <h2 className="lp-section-h2">Simple, transparent plans</h2>
+          <p className="lp-section-sub">Start free. Upgrade when your child is ready to go further.</p>
+          <div className="lp-pricing">
+
+            {/* SILVER */}
+            <div className="lp-plan">
+              <div className="lp-plan-badge lp-plan-badge--silver">Silver</div>
+              <div className="lp-plan-price"><span className="lp-plan-amount">Free</span></div>
+              <p className="lp-plan-desc">Perfect for getting started and exploring the platform.</p>
+              <ul className="lp-plan-features">
+                <li className="lp-feat lp-feat--yes">All exam tracks (OC, Selective, NAPLAN)</li>
+                <li className="lp-feat lp-feat--yes">~10 questions per day</li>
+                <li className="lp-feat lp-feat--yes">Instant answer explanations</li>
+                <li className="lp-feat lp-feat--yes">Topic-level progress tracking</li>
+                <li className="lp-feat lp-feat--no">Subtopic drill & accuracy rates</li>
+                <li className="lp-feat lp-feat--no">Answer history review</li>
+                <li className="lp-feat lp-feat--no">Leaderboard & ranking</li>
+                <li className="lp-feat lp-feat--no">Streak celebration rewards</li>
+              </ul>
+              <button className="btn btn-secondary lp-plan-btn" onClick={onSignIn}>Get Started Free</button>
+            </div>
+
+            {/* GOLD */}
+            <div className="lp-plan lp-plan--gold">
+              <div className="lp-plan-badge lp-plan-badge--gold">Gold</div>
+              <div className="lp-plan-price">
+                <span className="lp-plan-amount">$5</span>
+                <span className="lp-plan-period">/month</span>
+              </div>
+              <p className="lp-plan-desc">For students who practise regularly and want to track improvement.</p>
+              <ul className="lp-plan-features">
+                <li className="lp-feat lp-feat--yes">All exam tracks (OC, Selective, NAPLAN)</li>
+                <li className="lp-feat lp-feat--yes">~40 questions per day</li>
+                <li className="lp-feat lp-feat--yes">Instant answer explanations</li>
+                <li className="lp-feat lp-feat--yes">Topic-level progress tracking</li>
+                <li className="lp-feat lp-feat--yes">Subtopic drill & accuracy rates</li>
+                <li className="lp-feat lp-feat--yes">Answer history review</li>
+                <li className="lp-feat lp-feat--no">Leaderboard & ranking</li>
+                <li className="lp-feat lp-feat--no">Streak celebration rewards</li>
+              </ul>
+              <button className="btn btn-primary lp-plan-btn" onClick={onSignIn}>Get Gold</button>
+            </div>
+
+            {/* PLATINUM */}
+            <div className="lp-plan lp-plan--platinum">
+              <div className="lp-plan-popular">Most Popular</div>
+              <div className="lp-plan-badge lp-plan-badge--platinum">Platinum</div>
+              <div className="lp-plan-price">
+                <span className="lp-plan-amount">$9</span>
+                <span className="lp-plan-period">/month</span>
+              </div>
+              <p className="lp-plan-desc">Unlimited practice with every feature — the complete exam prep experience.</p>
+              <ul className="lp-plan-features">
+                <li className="lp-feat lp-feat--yes">All exam tracks (OC, Selective, NAPLAN)</li>
+                <li className="lp-feat lp-feat--yes">~100 questions per day (unlimited)</li>
+                <li className="lp-feat lp-feat--yes">Instant answer explanations</li>
+                <li className="lp-feat lp-feat--yes">Topic-level progress tracking</li>
+                <li className="lp-feat lp-feat--yes">Subtopic drill & accuracy rates</li>
+                <li className="lp-feat lp-feat--yes">Answer history review</li>
+                <li className="lp-feat lp-feat--yes">Leaderboard & ranking</li>
+                <li className="lp-feat lp-feat--yes">Streak celebration rewards</li>
+              </ul>
+              <button className="btn btn-primary lp-plan-btn lp-plan-btn--platinum" onClick={onSignIn}>Get Platinum</button>
+            </div>
+
+          </div>
+          <p className="lp-pricing-note">All plans include a Google sign-in account and access via any device. Upgrades managed by the admin — contact us on WhatsApp to upgrade.</p>
         </div>
       </section>
 
