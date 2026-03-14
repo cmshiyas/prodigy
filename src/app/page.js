@@ -1240,6 +1240,146 @@ function Sidebar({ currentTopic, currentSubtopic, topics, topicStats, subtopicSt
   )
 }
 
+// ── PLANS SCREEN ──────────────────────────────────────────────
+
+const PLANS = [
+  {
+    tier: 'silver',
+    label: 'Silver',
+    price: 'Free',
+    period: null,
+    desc: 'Get started and explore the platform at no cost.',
+    color: '#64748B',
+    bg: '#F1F5F9',
+    features: [
+      { text: 'All exam tracks (OC, Selective, NAPLAN)', yes: true },
+      { text: '~10 questions per day', yes: true },
+      { text: 'Instant answer explanations', yes: true },
+      { text: 'Topic-level progress tracking', yes: true },
+      { text: 'Subtopic drill & accuracy rates', yes: false },
+      { text: 'Answer history review', yes: false },
+      { text: 'Leaderboard & ranking', yes: false },
+      { text: 'Streak celebration rewards', yes: false },
+    ],
+  },
+  {
+    tier: 'gold',
+    label: 'Gold',
+    price: '$5',
+    period: '/month',
+    desc: 'More questions and deeper tracking for serious practice.',
+    color: '#92400E',
+    bg: '#FEF3C7',
+    features: [
+      { text: 'All exam tracks (OC, Selective, NAPLAN)', yes: true },
+      { text: '~40 questions per day', yes: true },
+      { text: 'Instant answer explanations', yes: true },
+      { text: 'Topic-level progress tracking', yes: true },
+      { text: 'Subtopic drill & accuracy rates', yes: true },
+      { text: 'Answer history review', yes: true },
+      { text: 'Leaderboard & ranking', yes: false },
+      { text: 'Streak celebration rewards', yes: false },
+    ],
+  },
+  {
+    tier: 'platinum',
+    label: 'Platinum',
+    price: '$9',
+    period: '/month',
+    desc: 'Unlimited questions and every feature — the complete experience.',
+    color: '#6D28D9',
+    bg: '#EDE9FE',
+    popular: true,
+    features: [
+      { text: 'All exam tracks (OC, Selective, NAPLAN)', yes: true },
+      { text: '~100 questions per day (unlimited)', yes: true },
+      { text: 'Instant answer explanations', yes: true },
+      { text: 'Topic-level progress tracking', yes: true },
+      { text: 'Subtopic drill & accuracy rates', yes: true },
+      { text: 'Answer history review', yes: true },
+      { text: 'Leaderboard & ranking', yes: true },
+      { text: 'Streak celebration rewards', yes: true },
+    ],
+  },
+]
+
+const WA_UPGRADE_NUMBER = '61432302644'
+
+function PlansScreen({ user, onHome }) {
+  const currentTier = user.tier || 'silver'
+
+  function upgradeUrl(plan) {
+    const msg = `Hi! I'm ${user.name} (${user.email}) and I'd like to upgrade to the ${plan.label} plan (${ plan.price}${plan.period || ''}). Please help me get set up!`
+    return `https://wa.me/${WA_UPGRADE_NUMBER}?text=${encodeURIComponent(msg)}`
+  }
+
+  return (
+    <div className="plans-screen">
+      <div className="plans-header">
+        <button className="btn btn-secondary" onClick={onHome} style={{ marginBottom: '1.5rem' }}>← Back</button>
+        <h2 className="plans-title">Plans &amp; Pricing</h2>
+        <p className="plans-sub">
+          You are currently on the <strong style={{ color: PLANS.find(p=>p.tier===currentTier)?.color }}>{TIER_LABELS[currentTier]}</strong> plan.
+          {currentTier !== 'platinum' && ' Upgrade any time via WhatsApp — instant activation.'}
+        </p>
+      </div>
+
+      <div className="plans-grid">
+        {PLANS.map(plan => {
+          const isCurrent = plan.tier === currentTier
+          const isDowngrade = PLANS.findIndex(p=>p.tier===plan.tier) < PLANS.findIndex(p=>p.tier===currentTier)
+          return (
+            <div
+              key={plan.tier}
+              className={`plan-card${isCurrent ? ' plan-card--current' : ''}${plan.popular && !isCurrent ? ' plan-card--popular' : ''}`}
+              style={isCurrent ? { borderColor: plan.color } : {}}
+            >
+              {plan.popular && !isCurrent && (
+                <div className="plan-popular-badge">Most Popular</div>
+              )}
+              {isCurrent && (
+                <div className="plan-current-badge" style={{ background: plan.color }}>Your Plan</div>
+              )}
+              <div className="plan-badge" style={{ background: plan.bg, color: plan.color }}>{plan.label}</div>
+              <div className="plan-price-row">
+                <span className="plan-amount">{plan.price}</span>
+                {plan.period && <span className="plan-period">{plan.period}</span>}
+              </div>
+              <p className="plan-desc">{plan.desc}</p>
+              <ul className="plan-features">
+                {plan.features.map(f => (
+                  <li key={f.text} className={`plan-feat${f.yes ? ' plan-feat--yes' : ' plan-feat--no'}`}>
+                    {f.yes ? '✅' : '—'} {f.text}
+                  </li>
+                ))}
+              </ul>
+              {isCurrent ? (
+                <div className="plan-current-label" style={{ color: plan.color }}>Active plan</div>
+              ) : isDowngrade ? (
+                <div className="plan-current-label" style={{ color: '#94a3b8' }}>Lower tier</div>
+              ) : (
+                <a
+                  href={upgradeUrl(plan)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`btn btn-primary plan-upgrade-btn${plan.tier === 'platinum' ? ' plan-upgrade-btn--platinum' : ''}`}
+                  style={plan.tier === 'gold' ? { background: '#F59E0B', borderColor: '#F59E0B', color: '#fff' } : {}}
+                >
+                  Upgrade to {plan.label} via WhatsApp
+                </a>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      <p className="plans-note">
+        Upgrades are activated manually by the admin. Message us on WhatsApp and your plan will be upgraded within a few hours. No automatic billing — you are in full control.
+      </p>
+    </div>
+  )
+}
+
 // ── HOME SCREEN ───────────────────────────────────────────────
 
 function HomeScreen({ user, examType, onExamTypeChange, tokensUsedToday, score, totalAnswered, topicStats, subtopicStats, onSelectTopic }) {
@@ -1745,6 +1885,20 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
   if (screen === 'rejected') return <RejectedScreen onSignOut={handleSignOut} />
   if (screen === 'history') return <HistoryScreen user={session.user} idToken={session.idToken} examType={examType} onExamTypeChange={setExamType} onHome={() => setScreen('app')} onRanking={() => setScreen('ranking')} />
   if (screen === 'ranking') return <RankingScreen user={session.user} idToken={session.idToken} onHome={() => setScreen('app')} onHistory={() => setScreen('history')} />
+  if (screen === 'plans') return (
+    <div>
+      <header>
+        <div className="logo" style={{ cursor: 'pointer' }} onClick={() => setScreen('app')}>Exam Booster <span>Practice Smarter</span></div>
+        <div className="header-right">
+          <button className="nav-btn" onClick={() => setScreen('app')}>Home</button>
+        </div>
+      </header>
+      <div style={{ maxWidth: 1100, margin: '2rem auto', padding: '0 1.5rem' }}>
+        <PlansScreen user={session.user} onHome={() => setScreen('app')} />
+      </div>
+      <WhatsAppButton user={session.user} />
+    </div>
+  )
 
   const { user, tokensUsedToday } = session
   const limit = TOKEN_LIMITS[user.tier] || 5000
@@ -1760,6 +1914,11 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
           <button className="nav-btn" onClick={() => { saveQuizAttempt(); resetQuizSession(); setShowAdmin(false); setScreen('app') }}>Home</button>
           <button className="nav-btn" onClick={() => { setCurrentTopic(null); setShowAdmin(false); setScreen('history') }}>History</button>
           <button className="nav-btn" onClick={() => { setCurrentTopic(null); setShowAdmin(false); setScreen('ranking') }}>Ranking</button>
+          {!user.is_admin && (
+            <button className="nav-btn nav-btn--plans" onClick={() => { setCurrentTopic(null); setShowAdmin(false); setScreen('plans') }}>
+              Plans
+            </button>
+          )}
           {!user.is_admin && (
             <div className="token-bar-wrap">
               <div>{tokensUsedToday.toLocaleString()} / {limit.toLocaleString()} tokens</div>
