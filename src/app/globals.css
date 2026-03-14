@@ -433,6 +433,56 @@ header { background: var(--accent); padding: 0 2rem; display: flex; align-items:
   100% { opacity: 0; transform: translateY(100vh) rotate(720deg); }
 }
 
+/* ── TRIAL POPUP MODAL ───────────────────────────────────────── */
+.trial-modal-backdrop {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.trial-modal {
+  background: white;
+  border-radius: 24px;
+  padding: 2.5rem 2rem;
+  max-width: 440px;
+  width: 100%;
+  position: relative;
+  text-align: center;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.22);
+  animation: celebPop 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards;
+}
+.trial-modal-close {
+  position: absolute; top: 14px; right: 16px;
+  background: var(--surface2); border: none; border-radius: 50%;
+  width: 30px; height: 30px; font-size: 0.85rem;
+  cursor: pointer; color: var(--text2); font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.trial-modal-close:hover { background: var(--border); }
+.trial-modal-icon { font-size: 3.5rem; margin-bottom: 0.75rem; }
+.trial-modal-title {
+  font-family: 'Nunito', sans-serif;
+  font-weight: 900; font-size: 1.5rem;
+  color: var(--text); margin-bottom: 1rem;
+}
+.trial-modal-body {
+  font-size: 0.95rem; color: var(--text2);
+  line-height: 1.7; margin-bottom: 1.5rem;
+}
+.trial-modal-body strong { color: var(--accent); }
+.trial-modal-actions { display: flex; flex-direction: column; gap: 10px; }
+.trial-modal-wa-btn {
+  display: flex !important; align-items: center; justify-content: center; gap: 10px;
+  background: #25D366 !important; font-size: 0.95rem !important;
+  padding: 13px 20px !important; border-radius: 12px !important;
+  text-decoration: none; color: white !important;
+}
+.trial-modal-wa-btn:hover { background: #1ebe5d !important; transform: translateY(-1px); }
+
 /* ── NAV PLANS BUTTON ────────────────────────────────────────── */
 .nav-btn--plans { color: var(--purple) !important; font-weight: 800 !important; }
 
