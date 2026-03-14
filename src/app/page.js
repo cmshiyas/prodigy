@@ -137,7 +137,7 @@ function RejectedScreen({ onSignOut }) {
 
 // ── TOKEN LIMITS EDITOR ───────────────────────────────────────
 
-function TokenLimitsEditor({ idToken }) {
+function TokenLimitsEditor({ idToken, onSignOut }) {
   const [limits, setLimits] = useState(null)
   const [saving, setSaving] = useState(null)
   const [saved, setSaved] = useState(null)
@@ -151,7 +151,7 @@ function TokenLimitsEditor({ idToken }) {
           const err = await r.json()
           if (err.error && (err.error.includes('Not authenticated') || err.error.includes('token') || err.error.includes('Token'))) {
             console.log('Admin API authentication failed - clearing session')
-            handleSignOut()
+            onSignOut()
             return null
           }
         }
@@ -179,7 +179,7 @@ function TokenLimitsEditor({ idToken }) {
         const err = await res.json()
         if (err.error && (err.error.includes('Not authenticated') || err.error.includes('token') || err.error.includes('Token'))) {
           console.log('Admin API authentication failed - clearing session')
-          handleSignOut()
+          onSignOut()
           return
         }
       }
@@ -235,7 +235,7 @@ function TokenLimitsEditor({ idToken }) {
 
 // ── ADMIN PANEL ───────────────────────────────────────────────
 
-function AdminPanel({ idToken }) {
+function AdminPanel({ idToken, onSignOut }) {
   const [adminView, setAdminView] = useState('users') // users | quizBank
   const [users, setUsers] = useState(null)
   const [filter, setFilter] = useState('all')
@@ -263,7 +263,7 @@ function AdminPanel({ idToken }) {
         const err = await res.json()
         if (err.error && (err.error.includes('Not authenticated') || err.error.includes('token') || err.error.includes('Token'))) {
           console.log('Admin API authentication failed - clearing session')
-          handleSignOut()
+          onSignOut()
           return
         }
       }
@@ -287,7 +287,7 @@ function AdminPanel({ idToken }) {
         const err = await res.json()
         if (err.error && (err.error.includes('Not authenticated') || err.error.includes('token') || err.error.includes('Token'))) {
           console.log('Admin API authentication failed - clearing session')
-          handleSignOut()
+          onSignOut()
           return
         }
       }
@@ -318,7 +318,7 @@ function AdminPanel({ idToken }) {
         const err = await res.json()
         if (err.error && (err.error.includes('Not authenticated') || err.error.includes('token') || err.error.includes('Token'))) {
           console.log('Admin API authentication failed - clearing session')
-          handleSignOut()
+          onSignOut()
           return
         }
       }
@@ -487,7 +487,7 @@ function AdminPanel({ idToken }) {
           )
         })}
       </div>
-      <TokenLimitsEditor idToken={idToken} />
+      <TokenLimitsEditor idToken={idToken} onSignOut={onSignOut} />
     </>
   ) : (
     <div style={{ padding: '20px 24px', borderTop: '1.5px solid var(--border)' }}>
@@ -1257,7 +1257,7 @@ Rules: exactly 5 options, correct is 0-4 index, difficulty is easy/medium/hard.`
       {/* ADMIN PANEL */}
       {showAdmin && (
         <div style={{ maxWidth: 1100, margin: '1.5rem auto', padding: '0 1.5rem' }}>
-          <AdminPanel idToken={session.idToken} />
+          <AdminPanel idToken={session.idToken} onSignOut={handleSignOut} />
         </div>
       )}
 
