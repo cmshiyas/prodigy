@@ -1007,7 +1007,7 @@ export default function App() {
     if (typeof window.google !== 'undefined') window.google.accounts.id.disableAutoSelect()
     window._googleInitDone = false
     setSession({ user: null, idToken: null, tokensUsedToday: 0 })
-    setScreen('auth')
+    setScreen('landing')
     setCurrentTopic(null)
     setQuestion(null)
     setShowProfileMenu(false)
