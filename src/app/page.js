@@ -236,7 +236,7 @@ function TokenLimitsEditor({ idToken, onSignOut }) {
 // ── ADMIN PANEL ───────────────────────────────────────────────
 
 function AdminPanel({ idToken, onSignOut }) {
-  const [adminView, setAdminView] = useState('users') // users | quizBank
+  const [adminView, setAdminView] = useState('users') // users | quizBank | analytics
   const [users, setUsers] = useState(null)
   const [filter, setFilter] = useState('all')
   const [loading, setLoading] = useState(true)
@@ -252,6 +252,9 @@ function AdminPanel({ idToken, onSignOut }) {
   const [uploadPdfExamType, setUploadPdfExamType] = useState('OC')
   const [uploadPdfTopicId, setUploadPdfTopicId] = useState('')
   const [uploadPdfStatus, setUploadPdfStatus] = useState('')
+
+  const [analytics, setAnalytics] = useState(null)
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false)
 
   const loadUsers = useCallback(async () => {
     setLoading(true)
@@ -301,10 +304,23 @@ function AdminPanel({ idToken, onSignOut }) {
     }
   }, [idToken])
 
+  const loadAnalytics = useCallback(async () => {
+    setLoadingAnalytics(true)
+    try {
+      const res = await fetch('/api/admin?action=analytics', { headers: { Authorization: 'Bearer ' + idToken } })
+      if (res.status === 403) { const e = await res.json(); if (e.error?.includes('Not')) { onSignOut(); return } }
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setAnalytics(data)
+    } catch (err) { alert('Failed to load analytics: ' + err.message) }
+    finally { setLoadingAnalytics(false) }
+  }, [idToken])
+
   useEffect(() => { loadUsers() }, [loadUsers])
 
   useEffect(() => {
     if (adminView === 'quizBank') loadQuizBank()
+    if (adminView === 'analytics') loadAnalytics()
   }, [adminView])
 
   const updateUser = async (userId, updates) => {
@@ -416,6 +432,7 @@ function AdminPanel({ idToken, onSignOut }) {
         <div style={{ display: 'flex', gap: 10 }}>
           <button className={`filter-btn${adminView === 'users' ? ' active' : ''}`} onClick={() => setAdminView('users')}>Users</button>
           <button className={`filter-btn${adminView === 'quizBank' ? ' active' : ''}`} onClick={() => setAdminView('quizBank')}>Quiz Bank</button>
+          <button className={`filter-btn${adminView === 'analytics' ? ' active' : ''}`} onClick={() => setAdminView('analytics')}>Analytics</button>
         </div>
       </div>
       {adminView === 'users' ? (
@@ -632,7 +649,111 @@ function AdminPanel({ idToken, onSignOut }) {
         <div style={{ color: 'var(--text2)' }}>No quiz bank data available.</div>
       )}
     </div>
-  )}
+  ) : adminView === 'analytics' ? (
+    <div style={{ padding: '20px 24px', borderTop: '1.5px solid var(--border)' }}>
+      <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1.05rem', marginBottom: 4 }}>Analytics</div>
+      <div style={{ fontSize: '0.82rem', color: 'var(--text2)', marginBottom: 16 }}>Platform activity over the last 30 days.</div>
+      {loadingAnalytics ? (
+        <div className="loading-card"><div className="spinner" /><div className="loading-text">Loading analytics...</div></div>
+      ) : analytics ? (
+        <>
+          {/* Overview cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+            {[
+              { label: 'Total Users', value: analytics.overview.totalUsers, color: '#1D4ED8' },
+              { label: 'Approved Users', value: analytics.overview.approvedUsers, color: '#059669' },
+              { label: 'Active (7d)', value: analytics.overview.activeUsers7d, color: '#7C3AED' },
+              { label: 'New Users (30d)', value: analytics.overview.newUsers30d, color: '#D97706' },
+              { label: 'Total Questions', value: analytics.overview.totalQuestions, color: '#0891B2' },
+              { label: 'Responses (30d)', value: analytics.overview.responses30d, color: '#be185d' },
+              { label: 'Correct Rate (30d)', value: analytics.overview.correctRate30d + '%', color: analytics.overview.correctRate30d >= 70 ? '#059669' : analytics.overview.correctRate30d >= 40 ? '#D97706' : '#DC2626' },
+            ].map(c => (
+              <div key={c.label} style={{ background: 'var(--surface)', borderRadius: 12, border: '1.5px solid var(--border)', padding: '14px 16px' }}>
+                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: c.color }}>{c.value}</div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text2)', marginTop: 2 }}>{c.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Daily activity table */}
+          <div style={{ background: 'var(--surface)', borderRadius: 12, border: '1.5px solid var(--border)', padding: 16, marginBottom: 20 }}>
+            <div style={{ fontWeight: 800, marginBottom: 12 }}>Daily Activity (last 30 days)</div>
+            {analytics.dailyActivity.length === 0 ? (
+              <div style={{ color: 'var(--text2)', fontSize: '0.9rem' }}>No activity yet.</div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                      {['Date', 'Responses', 'Correct', 'Correct %', 'Active Users'].map(h => (
+                        <th key={h} style={{ textAlign: 'left', padding: '6px 10px', fontWeight: 800, color: 'var(--text2)' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...analytics.dailyActivity].reverse().map(d => {
+                      const pct = d.responses > 0 ? Math.round((d.correct / d.responses) * 100) : 0
+                      return (
+                        <tr key={d.date} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td style={{ padding: '6px 10px', fontWeight: 600 }}>{d.date}</td>
+                          <td style={{ padding: '6px 10px' }}>{d.responses}</td>
+                          <td style={{ padding: '6px 10px', color: '#059669' }}>{d.correct}</td>
+                          <td style={{ padding: '6px 10px', fontWeight: 700, color: pct >= 70 ? '#059669' : pct >= 40 ? '#D97706' : '#DC2626' }}>{pct}%</td>
+                          <td style={{ padding: '6px 10px' }}>{d.activeUsers}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Active users + top token users side by side */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div style={{ background: 'var(--surface)', borderRadius: 12, border: '1.5px solid var(--border)', padding: 16 }}>
+              <div style={{ fontWeight: 800, marginBottom: 10 }}>Most Active Users (30d)</div>
+              {analytics.activeUsers.length === 0 ? (
+                <div style={{ color: 'var(--text2)', fontSize: '0.9rem' }}>No activity yet.</div>
+              ) : analytics.activeUsers.map((u, i) => {
+                const pct = u.responses > 0 ? Math.round((u.correct / u.responses) * 100) : 0
+                return (
+                  <div key={u.id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+                    <span style={{ fontWeight: 800, color: 'var(--text2)', fontSize: '0.8rem', width: 18 }}>#{i + 1}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name || u.email || 'Unknown'}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text2)' }}>{u.email}</div>
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{u.responses}</div>
+                      <div style={{ fontSize: '0.72rem', color: pct >= 70 ? '#059669' : pct >= 40 ? '#D97706' : '#DC2626', fontWeight: 700 }}>{pct}% correct</div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            <div style={{ background: 'var(--surface)', borderRadius: 12, border: '1.5px solid var(--border)', padding: 16 }}>
+              <div style={{ fontWeight: 800, marginBottom: 10 }}>Top Token Users (7d)</div>
+              {analytics.topTokenUsers.length === 0 ? (
+                <div style={{ color: 'var(--text2)', fontSize: '0.9rem' }}>No token usage yet.</div>
+              ) : analytics.topTokenUsers.map((u, i) => (
+                <div key={u.id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+                  <span style={{ fontWeight: 800, color: 'var(--text2)', fontSize: '0.8rem', width: 18 }}>#{i + 1}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name || u.email || 'Unknown'}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text2)' }}>{u.email}</div>
+                  </div>
+                  <div style={{ fontWeight: 800, fontSize: '0.9rem', flexShrink: 0 }}>{(u.tokens || 0).toLocaleString()}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      ) : (
+        <div style={{ color: 'var(--text2)' }}>No analytics data available.</div>
+      )}
+    </div>
+  ) : null}
   </div>
   )
 }

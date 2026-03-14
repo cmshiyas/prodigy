@@ -83,6 +83,82 @@ export async function GET(request) {
     return NextResponse.json({ topics, examBreakdown, users: userRanking, total: questions.length })
   }
 
+  if (action === 'analytics') {
+    const since30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+    const since7  = new Date(Date.now() -  7 * 24 * 60 * 60 * 1000).toISOString()
+
+    const [
+      { data: allUsers },
+      { data: allQuestions },
+      { data: responses30 },
+      { data: newUsers30 },
+      { data: tokenRows },
+    ] = await Promise.all([
+      supabase.from('users').select('id, name, email, status, tier, created_at'),
+      supabase.from('questions').select('id, exam_type, created_at'),
+      supabase.from('question_responses').select('user_id, is_correct, created_at').gte('created_at', since30),
+      supabase.from('users').select('id, created_at').gte('created_at', since30),
+      supabase.from('token_usage').select('user_id, date, tokens_used').gte('date', since7.split('T')[0]),
+    ])
+
+    // Daily activity for last 30 days
+    const dailyMap = {}
+    ;(responses30 || []).forEach(r => {
+      const day = r.created_at.split('T')[0]
+      if (!dailyMap[day]) dailyMap[day] = { date: day, responses: 0, correct: 0, activeUsers: new Set() }
+      dailyMap[day].responses++
+      if (r.is_correct) dailyMap[day].correct++
+      dailyMap[day].activeUsers.add(r.user_id)
+    })
+    const dailyActivity = Object.values(dailyMap)
+      .map(d => ({ date: d.date, responses: d.responses, correct: d.correct, activeUsers: d.activeUsers.size }))
+      .sort((a, b) => a.date.localeCompare(b.date))
+
+    // Per-user response counts (last 30 days)
+    const userResponseMap = {}
+    ;(responses30 || []).forEach(r => {
+      if (!userResponseMap[r.user_id]) userResponseMap[r.user_id] = { total: 0, correct: 0 }
+      userResponseMap[r.user_id].total++
+      if (r.is_correct) userResponseMap[r.user_id].correct++
+    })
+    const userMap = Object.fromEntries((allUsers || []).map(u => [u.id, u]))
+    const activeUsers = Object.entries(userResponseMap)
+      .map(([uid, s]) => ({ ...userMap[uid], responses: s.total, correct: s.correct }))
+      .sort((a, b) => b.responses - a.responses)
+      .slice(0, 20)
+
+    // Token usage last 7 days per user
+    const tokenMap = {}
+    ;(tokenRows || []).forEach(r => {
+      if (!tokenMap[r.user_id]) tokenMap[r.user_id] = 0
+      tokenMap[r.user_id] += r.tokens_used
+    })
+    const topTokenUsers = Object.entries(tokenMap)
+      .map(([uid, tokens]) => ({ ...userMap[uid], tokens }))
+      .sort((a, b) => b.tokens - a.tokens)
+      .slice(0, 10)
+
+    // Overview totals
+    const totalResponses = (responses30 || []).length
+    const totalCorrect = (responses30 || []).filter(r => r.is_correct).length
+    const activeUserCount7 = new Set((responses30 || []).filter(r => r.created_at >= since7).map(r => r.user_id)).size
+
+    return NextResponse.json({
+      overview: {
+        totalUsers: (allUsers || []).length,
+        approvedUsers: (allUsers || []).filter(u => u.status === 'approved').length,
+        totalQuestions: (allQuestions || []).length,
+        responses30d: totalResponses,
+        correctRate30d: totalResponses > 0 ? Math.round((totalCorrect / totalResponses) * 100) : 0,
+        activeUsers7d: activeUserCount7,
+        newUsers30d: (newUsers30 || []).length,
+      },
+      dailyActivity,
+      activeUsers,
+      topTokenUsers,
+    })
+  }
+
   return NextResponse.json({ error: 'Unknown action' }, { status: 404 })
 }
 
