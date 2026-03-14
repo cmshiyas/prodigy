@@ -413,14 +413,15 @@ function AdminPanel({ idToken, onSignOut }) {
     if (!users) return null
   }
 
+  const safeUsers = users || []
   const counts = {
-    all: users.length,
-    pending: users.filter(u => u.status === 'pending').length,
-    approved: users.filter(u => u.status === 'approved').length,
-    rejected: users.filter(u => u.status === 'rejected').length,
+    all: safeUsers.length,
+    pending: safeUsers.filter(u => u.status === 'pending').length,
+    approved: safeUsers.filter(u => u.status === 'approved').length,
+    rejected: safeUsers.filter(u => u.status === 'rejected').length,
   }
 
-  const filtered = filter === 'all' ? users : users.filter(u => u.status === filter)
+  const filtered = filter === 'all' ? safeUsers : safeUsers.filter(u => u.status === filter)
 
   return (
     <div className="admin-panel">
@@ -506,7 +507,7 @@ function AdminPanel({ idToken, onSignOut }) {
       </div>
       <TokenLimitsEditor idToken={idToken} onSignOut={onSignOut} />
     </>
-  ) : (
+  ) : adminView === 'quizBank' ? (
     <div style={{ padding: '20px 24px', borderTop: '1.5px solid var(--border)' }}>
       <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1rem', marginBottom: 4 }}>Quiz Bank</div>
       <div style={{ fontSize: '0.85rem', color: 'var(--text2)', marginBottom: 16 }}>Analytics for questions created by users (per topic + most active creators).</div>
