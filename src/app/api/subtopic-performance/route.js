@@ -24,7 +24,7 @@ export async function GET(request) {
 
     let query = supabase
       .from('question_responses')
-      .select('is_correct, questions!inner(topic_id, subtopic, exam_type)')
+      .select('is_correct, subtopic, questions!inner(topic_id, exam_type)')
       .eq('user_id', user.id)
 
     const examIds = EXAM_TYPES.map(item => item.id)
@@ -42,9 +42,11 @@ export async function GET(request) {
     const subtopicStats = {}
     const topicStats = {}
 
-    responses.forEach(r => {
-      const topic = r.questions.topic_id || 'unknown'
-      const subtopic = r.questions.subtopic || 'General'
+    ;(responses || []).forEach(r => {
+      if (!r.questions) return
+      const topic = r.questions.topic_id
+      const subtopic = r.subtopic
+      if (!topic || !subtopic) return
 
       if (!subtopicStats[topic]) subtopicStats[topic] = {}
       if (!subtopicStats[topic][subtopic]) subtopicStats[topic][subtopic] = { correct: 0, total: 0 }

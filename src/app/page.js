@@ -624,9 +624,12 @@ function Sidebar({ currentTopic, currentSubtopic, topics, topicStats, subtopicSt
                 <span style={{ flex: 1, lineHeight: 1.3 }}>{t.name}</span>
                 <span className="topic-count">{topicStats[t.id]?.total || 0}</span>
               </button>
-              {t.subtopics && t.subtopics.length > 0 && (
+              {(() => {
+                const statSubs = Object.keys(subtopicStats[t.id] || {})
+                const allSubs = [...new Set([...(t.subtopics || []), ...statSubs])]
+                return allSubs.length > 0 && (
                 <div style={{ paddingLeft: 12, display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 4 }}>
-                  {t.subtopics.map(sub => {
+                  {allSubs.map(sub => {
                     const stats = (subtopicStats[t.id] || {})[sub]
                     const pct = stats?.total > 0 ? Math.round((stats.correct / stats.total) * 100) : null
                     const dotColor = pct === null ? '#cbd5e1' : pct >= 70 ? '#22c55e' : pct >= 40 ? '#f59e0b' : '#ef4444'
@@ -653,7 +656,7 @@ function Sidebar({ currentTopic, currentSubtopic, topics, topicStats, subtopicSt
                     )
                   })}
                 </div>
-              )}
+              )})()}
             </div>
           ))}
         </div>
