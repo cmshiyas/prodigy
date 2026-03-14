@@ -921,24 +921,22 @@ const PLANS = [
   },
 ]
 
-const WA_UPGRADE_NUMBER = '61432302644'
-
 function PlansScreen({ user, idToken, onHome, onReferFriend, onTierUpgrade }) {
   const currentTier = user.tier || 'silver'
   const [showTrialModal, setShowTrialModal] = useState(true)
   const [promoCode, setPromoCode] = useState('')
-  const [promoStatus, setPromoStatus] = useState(null) // { type: 'success'|'error', message }
+  const [promoStatus, setPromoStatus] = useState(null)
   const [promoLoading, setPromoLoading] = useState(false)
+  const [checkoutLoading, setCheckoutLoading] = useState(null) // tier being loaded
 
   async function redeemPromo() {
     if (!promoCode.trim()) return
     setPromoLoading(true)
     setPromoStatus(null)
     try {
-      const token = idToken
       const res = await fetch('/api/promo', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
         body: JSON.stringify({ code: promoCode.trim() }),
       })
       const data = await res.json()
@@ -956,9 +954,21 @@ function PlansScreen({ user, idToken, onHome, onReferFriend, onTierUpgrade }) {
     }
   }
 
-  function upgradeUrl(plan) {
-    const msg = `Hi! I'm ${user.name} (${user.email}) and I'd like to upgrade to the ${plan.label} plan (${ plan.price}${plan.period || ''}). Please help me get set up!`
-    return `https://wa.me/${WA_UPGRADE_NUMBER}?text=${encodeURIComponent(msg)}`
+  async function startCheckout(tier) {
+    setCheckoutLoading(tier)
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+        body: JSON.stringify({ tier }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      window.location.href = data.url
+    } catch (err) {
+      alert('Could not start checkout: ' + err.message)
+      setCheckoutLoading(null)
+    }
   }
 
   return (
@@ -968,7 +978,7 @@ function PlansScreen({ user, idToken, onHome, onReferFriend, onTierUpgrade }) {
         <h2 className="plans-title">Plans &amp; Pricing</h2>
         <p className="plans-sub">
           You are currently on the <strong style={{ color: PLANS.find(p=>p.tier===currentTier)?.color }}>{TIER_LABELS[currentTier]}</strong> plan.
-          {currentTier !== 'platinum' && ' Invite friends to earn a free upgrade, or contact us to upgrade directly.'}
+          {currentTier !== 'platinum' && ' Invite friends to earn a free upgrade, or subscribe below.'}
         </p>
       </div>
 
@@ -1006,15 +1016,14 @@ function PlansScreen({ user, idToken, onHome, onReferFriend, onTierUpgrade }) {
               ) : isDowngrade ? (
                 <div className="plan-current-label" style={{ color: '#94a3b8' }}>Lower tier</div>
               ) : (
-                <a
-                  href={upgradeUrl(plan)}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
                   className={`btn btn-primary plan-upgrade-btn${plan.tier === 'platinum' ? ' plan-upgrade-btn--platinum' : ''}`}
                   style={plan.tier === 'gold' ? { background: '#F59E0B', borderColor: '#F59E0B', color: '#fff' } : {}}
+                  onClick={() => startCheckout(plan.tier)}
+                  disabled={checkoutLoading === plan.tier}
                 >
-                  Upgrade to {plan.label} via WhatsApp
-                </a>
+                  {checkoutLoading === plan.tier ? 'Redirecting...' : `Upgrade to ${plan.label}`}
+                </button>
               )}
             </div>
           )
@@ -1044,7 +1053,7 @@ function PlansScreen({ user, idToken, onHome, onReferFriend, onTierUpgrade }) {
       </div>
 
       <p className="plans-note">
-        Invite friends using your referral link and unlock free premium access — 3 friends gets you Gold, 5 friends gets you Platinum. No credit card needed, no automatic billing — you are in full control.
+        Invite friends using your referral link and unlock free premium access — 3 friends gets you Gold, 5 friends gets you Platinum. Subscriptions are billed monthly and can be cancelled anytime.
       </p>
       {showTrialModal && <TrialModal onClose={() => setShowTrialModal(false)} onReferFriend={onReferFriend} idToken={idToken} onTierUpgrade={onTierUpgrade} />}
     </div>
@@ -1290,6 +1299,24 @@ export default function App() {
         const url = new URL(window.location.href)
         url.searchParams.delete('ref')
         window.history.replaceState({}, '', url.toString())
+      }
+    }
+  }, [])
+
+  // Handle Stripe checkout return (?checkout=success|cancel)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const checkout = params.get('checkout')
+    const tier = params.get('tier')
+    if (checkout) {
+      const url = new URL(window.location.href)
+      url.searchParams.delete('checkout')
+      url.searchParams.delete('tier')
+      window.history.replaceState({}, '', url.toString())
+      if (checkout === 'success' && tier) {
+        setSession(s => s?.user ? { ...s, user: { ...s.user, tier } } : s)
+        setScreen('plans')
       }
     }
   }, [])
