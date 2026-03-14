@@ -730,7 +730,7 @@ function PlansScreen({ user, onHome, onReferFriend }) {
       </div>
 
       <p className="plans-note">
-        Upgrades are activated manually by the admin. Message us on WhatsApp and your plan will be upgraded within a few hours. No automatic billing — you are in full control.
+        Invite friends using your referral link and unlock free premium access — 3 friends gets you Gold, 5 friends gets you Platinum. No credit card needed, no automatic billing — you are in full control.
       </p>
       {showTrialModal && <TrialModal onClose={() => setShowTrialModal(false)} onReferFriend={onReferFriend} />}
     </div>
