@@ -1273,6 +1273,7 @@ export default function App() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       if (storedRefCode) localStorage.removeItem('oc-ref-code')
+      window.history.replaceState(null, '', window.location.pathname)
       setSession({ user: data.user, idToken, tokensUsedToday: data.tokensUsedToday || 0 })
       setScreen('app')
     } catch (err) {
