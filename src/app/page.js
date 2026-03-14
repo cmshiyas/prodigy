@@ -22,48 +22,164 @@ const initTopicStats = () => {
 function LandingScreen({ onSignIn }) {
   return (
     <div className="landing-screen">
-      <div className="landing-nav">
-        <div className="landing-logo">Exam Booster</div>
-        <button className="btn btn-primary" onClick={onSignIn}>Sign in</button>
-      </div>
-      <section className="landing-hero">
-        <div>
-          <p className="eyebrow">Practice Smarter for High-Stakes School Exams</p>
-          <h1>Consistent Practice with feedback builds mastery</h1>
-          <p className="landing-text">Track your progress, identify strengths, and improve weaker topics with clear feedback after every attempt.</p>
-          <div className="landing-cta-row">
-            <button className="btn btn-primary" onClick={onSignIn}>Get Started</button>
-            <button className="btn btn-secondary" onClick={onSignIn}>Sign in / Sign up</button>
+
+      {/* ── HEADER ── */}
+      <header className="lp-header">
+        <div className="lp-header-inner">
+          <div className="lp-logo">
+            <span className="lp-logo-icon">📘</span>
+            <span>Exam Booster</span>
+          </div>
+          <nav className="lp-nav-links">
+            <a href="#how-it-works">How it works</a>
+            <a href="#benefits">Benefits</a>
+            <a href="#features">Features</a>
+          </nav>
+          <button className="btn btn-primary" onClick={onSignIn}>Sign in</button>
+        </div>
+      </header>
+
+      {/* ── HERO ── */}
+      <section className="lp-hero">
+        <div className="lp-hero-text">
+          <p className="lp-eyebrow">AI-powered exam preparation for Australian students</p>
+          <h1 className="lp-h1">Build exam confidence<br/>one question at a time</h1>
+          <p className="lp-sub">Targeted practice questions for OC, Selective and NAPLAN exams — with instant feedback, subtopic tracking and streak rewards to keep kids motivated.</p>
+          <div className="lp-cta-row">
+            <button className="btn btn-primary lp-cta-btn" onClick={onSignIn}>Get Started Free</button>
+            <button className="btn btn-secondary lp-cta-btn" onClick={onSignIn}>Sign in</button>
           </div>
         </div>
-        <div className="hero-box">
-          <div className="hero-stat"><strong>3+</strong> Exam tracks</div>
-          <div className="hero-stat"><strong>1000+</strong> dynamic questions</div>
-          <div className="hero-stat"><strong>1-click</strong> generate + save</div>
+        <div className="lp-hero-stats">
+          <div className="lp-stat-card"><div className="lp-stat-num">3+</div><div className="lp-stat-label">Exam tracks</div></div>
+          <div className="lp-stat-card"><div className="lp-stat-num">1000+</div><div className="lp-stat-label">Practice questions</div></div>
+          <div className="lp-stat-card"><div className="lp-stat-num">100%</div><div className="lp-stat-label">Curriculum aligned</div></div>
+          <div className="lp-stat-card"><div className="lp-stat-num">Live</div><div className="lp-stat-label">Progress tracking</div></div>
         </div>
       </section>
-      <section className="landing-features-grid">
-        <div className="feature-card">
-          <h3>Exam-ready Practice</h3>
-          <p>Use topic-based questions for NAPLAN, OC, and Selective standards with immediate detailed explanations.</p>
-        </div>
-        <div className="feature-card">
-          <h3>Identify Strengths & Gaps</h3>
-          <p>See which topics you do well in and where to focus next, with built-in performance insights.</p>
-        </div>
-        <div className="feature-card">
-          <h3>Track Progress</h3>
-          <p>Monitor accuracy, improvement, and confidence growth over time.</p>
+
+      {/* ── HOW IT WORKS ── */}
+      <section className="lp-section" id="how-it-works">
+        <div className="lp-section-inner">
+          <div className="lp-section-label">How it works</div>
+          <h2 className="lp-section-h2">Up and practising in minutes</h2>
+          <div className="lp-steps">
+            {[
+              { n:'1', icon:'🔑', title:'Sign in with Google', desc:'Create your account in one click using your Google account. No passwords to remember.' },
+              { n:'2', icon:'🎯', title:'Pick a topic or subtopic', desc:'Choose from OC, Selective or NAPLAN tracks. Drill into a specific subtopic or let the app pick at random.' },
+              { n:'3', icon:'🤔', title:'Answer questions', desc:'Select your answer, then click Submit. Take your time — no accidental submissions.' },
+              { n:'4', icon:'💡', title:'Get instant feedback', desc:'See the correct answer with a step-by-step explanation so you understand why, not just what.' },
+              { n:'5', icon:'📈', title:'Track your progress', desc:'Your accuracy per topic and subtopic is saved permanently — pick up exactly where you left off.' },
+              { n:'6', icon:'🏆', title:'Earn streak rewards', desc:'Correct answer streaks unlock exciting animations to keep your child motivated and engaged.' },
+            ].map(s => (
+              <div className="lp-step" key={s.n}>
+                <div className="lp-step-num">{s.n}</div>
+                <div className="lp-step-icon">{s.icon}</div>
+                <h4 className="lp-step-title">{s.title}</h4>
+                <p className="lp-step-desc">{s.desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
-      <section className="landing-how">
-        <h2>How it works</h2>
-        <div className="step-grid">
-          <div className="step-card"><div className="step-num">1</div><div><h4>Sign in</h4><p>Register with Google and get approved in minutes.</p></div></div>
-          <div className="step-card"><div className="step-num">2</div><div><h4>Choose topic</h4><p>Select a subject and start a practice session.</p></div></div>
-          <div className="step-card"><div className="step-num">3</div><div><h4>Answer & improve</h4><p>Submit answers, track responses, and continue with fresh questions.</p></div></div>
+
+      {/* ── BENEFITS ── */}
+      <section className="lp-section lp-section-alt" id="benefits">
+        <div className="lp-section-inner">
+          <div className="lp-section-label">Why Exam Booster</div>
+          <h2 className="lp-section-h2">Benefits for students & parents</h2>
+          <div className="lp-benefits">
+            <div className="lp-benefit-col">
+              <div className="lp-benefit-heading">👦 For Students</div>
+              {[
+                { icon:'🎮', title:'Fun, game-like practice', desc:'Streak celebrations and points make revision feel like a challenge, not a chore.' },
+                { icon:'🧭', title:'Know exactly what to work on', desc:'Colour-coded subtopic scores show at a glance where you are strong and where to focus next.' },
+                { icon:'🔄', title:'Never see the same question twice', desc:'Each session serves a fresh unanswered question from the bank — you only repeat once every question is done.' },
+                { icon:'⚡', title:'Instant, clear explanations', desc:'Every answer comes with a step-by-step solution so you actually learn, not just memorise.' },
+              ].map(b => (
+                <div className="lp-benefit-item" key={b.title}>
+                  <span className="lp-benefit-icon">{b.icon}</span>
+                  <div><strong>{b.title}</strong><p>{b.desc}</p></div>
+                </div>
+              ))}
+            </div>
+            <div className="lp-benefit-col">
+              <div className="lp-benefit-heading">👨‍👩‍👧 For Parents</div>
+              {[
+                { icon:'📊', title:'Full visibility into progress', desc:'See exactly which topics and subtopics your child is struggling with — updated after every session.' },
+                { icon:'🕐', title:'Practice at any time', desc:'Available 24/7. Let your child practise for 10 minutes after school or an hour on weekends — no scheduling needed.' },
+                { icon:'✅', title:'Curriculum-aligned content', desc:'All questions are mapped to OC, Selective and NAPLAN standards so you can trust the material is relevant.' },
+                { icon:'🔒', title:'Safe and ad-free', desc:'No ads, no distractions. Approved accounts only — your child sees nothing but focused practice.' },
+              ].map(b => (
+                <div className="lp-benefit-item" key={b.title}>
+                  <span className="lp-benefit-icon">{b.icon}</span>
+                  <div><strong>{b.title}</strong><p>{b.desc}</p></div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
+
+      {/* ── FEATURES ── */}
+      <section className="lp-section" id="features">
+        <div className="lp-section-inner">
+          <div className="lp-section-label">Features</div>
+          <h2 className="lp-section-h2">Everything needed to excel</h2>
+          <div className="lp-features">
+            {[
+              { icon:'🤖', title:'AI-generated questions', desc:'Claude AI creates fresh questions tailored to the exact topic and difficulty level — never stale.' },
+              { icon:'📚', title:'Growing question bank', desc:'Admin-uploaded past papers and AI generation continuously expand the question pool.' },
+              { icon:'🗂️', title:'Topic & subtopic drill', desc:'Go broad across a topic or lock into one subtopic for focused, targeted practice.' },
+              { icon:'📉', title:'Weakness detection', desc:'Red/amber/green indicators reveal subtopics needing more attention at a single glance.' },
+              { icon:'🎯', title:'Select & Submit', desc:'Choose your answer, review it, then submit — preventing accidental wrong clicks.' },
+              { icon:'💾', title:'Persistent across sessions', desc:'Progress, streaks and stats are saved to the cloud. Pick up exactly where you left off.' },
+            ].map(f => (
+              <div className="lp-feature-card" key={f.title}>
+                <div className="lp-feature-icon">{f.icon}</div>
+                <h3 className="lp-feature-title">{f.title}</h3>
+                <p className="lp-feature-desc">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── CTA BANNER ── */}
+      <section className="lp-cta-banner">
+        <h2>Ready to boost your child's exam results?</h2>
+        <p>Join students already practising smarter with Exam Booster.</p>
+        <button className="btn btn-primary lp-cta-btn" onClick={onSignIn}>Get Started — it's free</button>
+      </section>
+
+      {/* ── FOOTER ── */}
+      <footer className="lp-footer">
+        <div className="lp-footer-inner">
+          <div className="lp-footer-brand">
+            <span className="lp-logo-icon">📘</span>
+            <strong>Exam Booster</strong>
+            <p>AI-powered practice for Australian school exams.</p>
+          </div>
+          <div className="lp-footer-links">
+            <div className="lp-footer-col">
+              <div className="lp-footer-heading">Product</div>
+              <a href="#how-it-works">How it works</a>
+              <a href="#benefits">Benefits</a>
+              <a href="#features">Features</a>
+            </div>
+            <div className="lp-footer-col">
+              <div className="lp-footer-heading">Exams</div>
+              <span>OC (Opportunity Class)</span>
+              <span>Selective School</span>
+              <span>NAPLAN</span>
+            </div>
+          </div>
+        </div>
+        <div className="lp-footer-bottom">
+          © {new Date().getFullYear()} Exam Booster. All rights reserved.
+        </div>
+      </footer>
+
     </div>
   )
 }
