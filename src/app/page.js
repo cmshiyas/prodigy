@@ -765,7 +765,7 @@ function Sidebar({ currentTopic, currentSubtopic, topics, topicStats, subtopicSt
   return (
     <div className="sidebar">
       <div className="sidebar-card">
-        <div className="sidebar-title">Topics</div>
+        <div className="sidebar-title">Choose a Topic or Subtopic to Practise</div>
         <div className="topic-list">
           {topics.map(t => (
             <div key={t.id}>
@@ -882,53 +882,6 @@ function HomeScreen({ user, examType, onExamTypeChange, tokensUsedToday, score, 
           <div className="stat-box"><div className="stat-num" style={{ color: 'var(--green)' }}>{totalCorrect}</div><div className="stat-label">Correct</div></div>
           <div className="stat-box"><div className="stat-num" style={{ color: 'var(--accent)' }}>{score}</div><div className="stat-label">Points</div></div>
         </div>
-      </div>
-      <div className="home-sub" style={{ marginBottom: 12, fontWeight: 700, fontSize: '0.9rem' }}>Choose a topic to practise:</div>
-      <div className="topics-overview">
-        {topicList.map(t => {
-          const stats = topicStats[t.id] || { correct: 0, total: 0 }
-          const pct = stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0
-          return (
-            <div key={t.id} className="topic-overview-card" onClick={() => onSelectTopic(t.id)}>
-              <div className="toc-icon" style={{ background: t.bg }}>{t.icon}</div>
-              <div>
-                <div className="toc-name">{t.name}</div>
-                <div className="toc-desc">{t.desc}</div>
-                {t.subtopics && t.subtopics.length > 0 && (
-                  <div style={{ marginTop: 8, fontSize: '0.78rem', color: '#475569' }}>
-                    <div style={{ fontWeight: 700, marginBottom: 4 }}>Subtopics</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '4px' }}>
-                      {t.subtopics.map((sub, idx) => {
-                        const stats = (subtopicStats[t.id] || {})[sub]
-                        const subPct = stats && stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0
-                        return (
-                          <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                            <button
-                              className="subtopic-chip"
-                              style={{ fontSize: '0.72rem', textAlign: 'left', padding: '4px 6px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, cursor: 'pointer' }}
-                              onClick={(e) => { e.stopPropagation(); onSelectTopic(t.id, sub) }}
-                            >
-                              {sub}
-                            </button>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <div style={{ width: 48, height: 6, borderRadius: 999, background: '#E2E8F0' }}>
-                                <div style={{ width: `${subPct}%`, height: '100%', borderRadius: 999, background: subPct >= 75 ? '#22C55E' : subPct >= 50 ? '#F59E0B' : '#EF4444' }} />
-                              </div>
-                              <span style={{ fontSize: '0.70rem', color: '#334155' }}>{stats ? `${subPct}%` : 'n/a'}</span>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
-                <div style={{ marginTop: 8, fontSize: '0.8rem', color: '#334155' }}>
-                  Strength: {stats.total > 0 ? `${pct}% (${stats.correct}/${stats.total})` : 'No practice yet'}
-                </div>
-              </div>
-            </div>
-          )
-        })}
       </div>
     </div>
   )
