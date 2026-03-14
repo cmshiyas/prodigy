@@ -323,6 +323,7 @@ function AdminPanel({ idToken, onSignOut }) {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {tabBtn('users', 'Users')}
           {tabBtn('quizBank', 'Quiz Bank')}
+          {tabBtn('questions', 'Questions')}
           {tabBtn('analytics', 'Analytics')}
           {tabBtn('review', 'Answer Review')}
           {tabBtn('promos', 'Promo Codes')}
@@ -574,6 +575,11 @@ function AdminPanel({ idToken, onSignOut }) {
             </>
           ) : <div style={{ color: '#7A5C3F' }}>No quiz bank data.</div>}
         </div>
+      )}
+
+      {/* Questions tab */}
+      {adminView === 'questions' && (
+        <QuestionBankReview idToken={idToken} onSignOut={onSignOut} />
       )}
 
       {/* Analytics tab */}
@@ -1001,6 +1007,303 @@ function PromoManager({ idToken, onSignOut }) {
             )
           })}
         </div>
+      )}
+    </div>
+  )
+}
+
+// ── QUESTION BANK REVIEW ───────────────────────────────────────
+
+function QuestionBankReview({ idToken, onSignOut }) {
+  const [examType, setExamType] = useState('OC')
+  const [topicId, setTopicId] = useState('')
+  const [search, setSearch] = useState('')
+  const [searchInput, setSearchInput] = useState('')
+  const [page, setPage] = useState(1)
+  const [questions, setQuestions] = useState(null)
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [editForm, setEditForm] = useState({})
+  const [saving, setSaving] = useState(false)
+  const [editError, setEditError] = useState('')
+  const [imageFile, setImageFile] = useState(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
+
+  const doLoad = async (p, et, tid, s) => {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams({ action: 'questions', page: p })
+      if (et) params.set('examType', et)
+      if (tid) params.set('topicId', tid)
+      if (s) params.set('search', s)
+      const res = await fetch(`/api/admin?${params}`, { headers: { Authorization: 'Bearer ' + idToken } })
+      if (res.status === 403) { const e = await res.json(); if (e.error?.includes('Not')) { onSignOut(); return } }
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setQuestions(data.questions || [])
+      setTotal(data.total || 0)
+    } catch (err) { alert('Failed to load questions: ' + err.message) }
+    finally { setLoading(false) }
+  }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { doLoad(1, examType, topicId, search); setPage(1) }, [examType, topicId, search])
+
+  const startEdit = (q) => {
+    setEditingId(q.id)
+    setEditError('')
+    setImageFile(null)
+    setEditForm({
+      question: q.question,
+      options: [...(q.options || [])],
+      correct: q.correct,
+      explanation: q.explanation || '',
+      difficulty: q.difficulty || 'medium',
+      subtopic: q.subtopic || '',
+      year_level: q.year_level || '',
+      image_url: q.image_url || '',
+    })
+  }
+
+  const cancelEdit = () => { setEditingId(null); setEditError(''); setImageFile(null) }
+
+  const doUploadImage = async () => {
+    if (!imageFile) return null
+    setUploadingImage(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', imageFile)
+      const res = await fetch('/api/admin?action=uploadImage', { method: 'POST', body: fd, headers: { Authorization: 'Bearer ' + idToken } })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      return data.url
+    } finally { setUploadingImage(false) }
+  }
+
+  const saveEdit = async () => {
+    if (!editForm.question?.trim()) { setEditError('Question text is required'); return }
+    setSaving(true); setEditError('')
+    try {
+      let imageUrl = editForm.image_url
+      if (imageFile) {
+        const url = await doUploadImage()
+        if (url) imageUrl = url
+      }
+      const res = await fetch('/api/admin?action=updateQuestion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+        body: JSON.stringify({
+          questionId: editingId,
+          question: editForm.question.trim(),
+          options: editForm.options,
+          correct: parseInt(editForm.correct),
+          explanation: editForm.explanation,
+          difficulty: editForm.difficulty,
+          subtopic: editForm.subtopic,
+          year_level: editForm.year_level,
+          image_url: imageUrl,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setEditingId(null)
+      setImageFile(null)
+      await doLoad(page, examType, topicId, search)
+    } catch (err) { setEditError(err.message) }
+    finally { setSaving(false) }
+  }
+
+  const deleteQuestion = async (qId, qText) => {
+    if (!confirm(`Delete this question?\n"${qText.slice(0, 100)}"\n\nThis cannot be undone.`)) return
+    try {
+      const res = await fetch('/api/admin?action=deleteQuestion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+        body: JSON.stringify({ questionId: qId }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error)
+      await doLoad(page, examType, topicId, search)
+    } catch (err) { alert('Failed: ' + err.message) }
+  }
+
+  const pageSize = 20
+  const totalPages = Math.ceil(total / pageSize)
+  const diffColors = { easy: '#059669', medium: '#D97706', hard: '#DC2626' }
+  const inputStyle = { padding: '6px 9px', borderRadius: 7, border: '1.5px solid #BAE6FD', fontFamily: 'Nunito', fontSize: '0.85rem', boxSizing: 'border-box' }
+
+  return (
+    <div style={{ padding: '20px 24px' }}>
+      <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1rem', marginBottom: 4 }}>Question Review</div>
+      <div style={{ fontSize: '0.82rem', color: '#7A5C3F', marginBottom: 16 }}>Browse, edit, delete, and add images to questions in the bank.</div>
+
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' }}>
+        <select value={examType} onChange={e => { setExamType(e.target.value); setTopicId('') }} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white' }}>
+          <option value="">All Exams</option>
+          {EXAM_TYPES.map(e => <option key={e.id} value={e.id}>{e.label}</option>)}
+        </select>
+        <select value={topicId} onChange={e => setTopicId(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white', minWidth: 160 }}>
+          <option value="">All Topics</option>
+          {(EXAM_TOPICS[examType] || []).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+        </select>
+        <input
+          value={searchInput}
+          onChange={e => setSearchInput(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') setSearch(searchInput) }}
+          placeholder="Search questions…"
+          style={{ padding: '7px 12px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white', minWidth: 220, fontFamily: 'Nunito' }}
+        />
+        <button onClick={() => setSearch(searchInput)} style={{ padding: '7px 14px', background: '#FF6B35', color: 'white', border: 'none', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 800, cursor: 'pointer' }}>Search</button>
+        {(search || topicId) && (
+          <button onClick={() => { setSearch(''); setSearchInput(''); setTopicId('') }} style={{ padding: '7px 14px', background: 'white', color: '#7A5C3F', border: '1.5px solid #E8D5C0', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 700, cursor: 'pointer' }}>Clear</button>
+        )}
+        <div style={{ marginLeft: 'auto', fontSize: '0.82rem', color: '#7A5C3F', fontWeight: 600 }}>{total} questions</div>
+      </div>
+
+      {loading ? (
+        <div style={{ padding: 40, textAlign: 'center', color: '#7A5C3F' }}>Loading questions...</div>
+      ) : !questions || questions.length === 0 ? (
+        <div style={{ color: '#94A3B8', padding: 20, textAlign: 'center' }}>No questions found.</div>
+      ) : (
+        <>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {questions.map(q => {
+              if (editingId === q.id) {
+                return (
+                  <div key={q.id} style={{ background: '#F0F9FF', border: '1.5px solid #BAE6FD', borderRadius: 12, padding: '16px 18px' }}>
+                    <div style={{ fontFamily: 'Nunito', fontWeight: 800, fontSize: '0.88rem', color: '#0369A1', marginBottom: 12 }}>
+                      Editing · <span style={{ fontWeight: 600, opacity: 0.7, fontSize: '0.78rem' }}>{q.exam_type} / {q.topic_id}</span>
+                    </div>
+
+                    {/* Question text */}
+                    <div style={{ marginBottom: 10 }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 3 }}>Question *</div>
+                      <textarea
+                        value={editForm.question}
+                        onChange={e => setEditForm(f => ({ ...f, question: e.target.value }))}
+                        rows={3}
+                        style={{ ...inputStyle, width: '100%', resize: 'vertical' }}
+                      />
+                    </div>
+
+                    {/* Options */}
+                    <div style={{ marginBottom: 10 }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 6 }}>Options — select radio for correct answer</div>
+                      {(editForm.options || []).map((opt, i) => (
+                        <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
+                          <input type="radio" checked={editForm.correct === i} onChange={() => setEditForm(f => ({ ...f, correct: i }))} />
+                          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#7A5C3F', width: 22 }}>{String.fromCharCode(65 + i)}.</span>
+                          <input
+                            value={opt}
+                            onChange={e => {
+                              const opts = [...editForm.options]
+                              opts[i] = e.target.value
+                              setEditForm(f => ({ ...f, options: opts }))
+                            }}
+                            style={{ ...inputStyle, flex: 1, border: `1.5px solid ${editForm.correct === i ? '#059669' : '#BAE6FD'}`, background: editForm.correct === i ? '#F0FDF4' : 'white' }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Explanation + meta fields */}
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                      <div style={{ flex: 2, minWidth: 200 }}>
+                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 3 }}>Explanation</div>
+                        <textarea value={editForm.explanation} onChange={e => setEditForm(f => ({ ...f, explanation: e.target.value }))} rows={2} style={{ ...inputStyle, width: '100%', resize: 'vertical' }} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 100 }}>
+                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 3 }}>Difficulty</div>
+                        <select value={editForm.difficulty} onChange={e => setEditForm(f => ({ ...f, difficulty: e.target.value }))} style={{ ...inputStyle, width: '100%', background: 'white' }}>
+                          <option value="easy">Easy</option>
+                          <option value="medium">Medium</option>
+                          <option value="hard">Hard</option>
+                        </select>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 100 }}>
+                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 3 }}>Subtopic</div>
+                        <input value={editForm.subtopic} onChange={e => setEditForm(f => ({ ...f, subtopic: e.target.value }))} style={{ ...inputStyle, width: '100%' }} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 80 }}>
+                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 3 }}>Year Level</div>
+                        <input value={editForm.year_level} placeholder="e.g. 4" onChange={e => setEditForm(f => ({ ...f, year_level: e.target.value }))} style={{ ...inputStyle, width: '100%' }} />
+                      </div>
+                    </div>
+
+                    {/* Image upload */}
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 6 }}>Image (optional — uploads to Supabase images bucket)</div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                        {editForm.image_url && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <img src={editForm.image_url} alt="current" style={{ height: 64, borderRadius: 8, border: '1.5px solid #BAE6FD', objectFit: 'cover' }} />
+                            <button onClick={() => setEditForm(f => ({ ...f, image_url: '' }))} style={{ padding: '3px 8px', fontSize: '0.75rem', borderRadius: 5, border: '1.5px solid #FECACA', background: '#FEF2F2', color: '#991B1B', cursor: 'pointer', fontFamily: 'Nunito', fontWeight: 700 }}>Remove</button>
+                          </div>
+                        )}
+                        <input type="file" accept="image/*" onChange={e => setImageFile(e.target.files?.[0] || null)} style={{ fontSize: '0.82rem' }} />
+                        {imageFile && <span style={{ fontSize: '0.78rem', color: '#0369A1', fontWeight: 600 }}>Ready: {imageFile.name}</span>}
+                      </div>
+                    </div>
+
+                    {editError && <div style={{ color: '#991B1B', fontSize: '0.82rem', fontWeight: 700, marginBottom: 8 }}>{editError}</div>}
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={saveEdit}
+                        disabled={saving || uploadingImage}
+                        style={{ padding: '7px 20px', background: '#0369A1', color: 'white', border: 'none', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 800, cursor: (saving || uploadingImage) ? 'not-allowed' : 'pointer', opacity: (saving || uploadingImage) ? 0.7 : 1 }}
+                      >{saving || uploadingImage ? 'Saving…' : 'Save Changes'}</button>
+                      <button onClick={cancelEdit} style={{ padding: '7px 16px', background: 'white', color: '#0369A1', border: '1.5px solid #BAE6FD', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
+                    </div>
+                  </div>
+                )
+              }
+
+              // Normal row
+              return (
+                <div key={q.id} style={{ background: 'white', border: '1.5px solid #E8D5C0', borderRadius: 10, padding: '12px 16px', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                  {q.image_url && (
+                    <img src={q.image_url} alt="" style={{ width: 56, height: 56, borderRadius: 8, objectFit: 'cover', flexShrink: 0, border: '1.5px solid #E8D5C0' }} />
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 600, marginBottom: 6, lineHeight: 1.4 }}>
+                      {q.question.length > 130 ? q.question.slice(0, 130) + '…' : q.question}
+                    </div>
+                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '1px 7px', borderRadius: 20, background: '#DBEAFE', color: '#1D4ED8' }}>{q.exam_type}</span>
+                      <span style={{ fontSize: '0.72rem', padding: '1px 7px', borderRadius: 20, background: '#F3F4F6', color: '#374151', fontWeight: 600 }}>{q.topic_id}</span>
+                      {q.subtopic && <span style={{ fontSize: '0.72rem', padding: '1px 7px', borderRadius: 20, background: '#F3F4F6', color: '#374151' }}>{q.subtopic}</span>}
+                      {q.difficulty && <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '1px 7px', borderRadius: 20, background: '#F9FAFB', color: diffColors[q.difficulty] || '#374151' }}>{q.difficulty}</span>}
+                      {q.year_level && <span style={{ fontSize: '0.72rem', padding: '1px 7px', borderRadius: 20, background: '#F3F4F6', color: '#374151' }}>Yr {q.year_level}</span>}
+                      {q.image_url && <span style={{ fontSize: '0.72rem', padding: '1px 7px', borderRadius: 20, background: '#ECFDF5', color: '#059669', fontWeight: 700 }}>📷 Image</span>}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                    <button onClick={() => startEdit(q)} style={{ padding: '5px 12px', fontSize: '0.78rem', borderRadius: 6, border: '1.5px solid #BAE6FD', background: '#F0F9FF', fontFamily: 'Nunito', fontWeight: 700, cursor: 'pointer', color: '#0369A1' }}>Edit</button>
+                    <button onClick={() => deleteQuestion(q.id, q.question)} style={{ padding: '5px 12px', fontSize: '0.78rem', borderRadius: 6, border: '1.5px solid #FECACA', background: '#FEF2F2', fontFamily: 'Nunito', fontWeight: 700, cursor: 'pointer', color: '#991B1B' }}>Delete</button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 20, alignItems: 'center' }}>
+              <button
+                onClick={() => { const p = Math.max(1, page - 1); setPage(p); doLoad(p, examType, topicId, search) }}
+                disabled={page === 1}
+                style={{ padding: '6px 14px', borderRadius: 7, border: '1.5px solid #E8D5C0', background: 'white', cursor: page === 1 ? 'not-allowed' : 'pointer', opacity: page === 1 ? 0.5 : 1, fontFamily: 'Nunito', fontWeight: 700 }}
+              >← Prev</button>
+              <span style={{ fontSize: '0.85rem', color: '#7A5C3F', fontWeight: 600 }}>Page {page} of {totalPages}</span>
+              <button
+                onClick={() => { const p = Math.min(totalPages, page + 1); setPage(p); doLoad(p, examType, topicId, search) }}
+                disabled={page === totalPages}
+                style={{ padding: '6px 14px', borderRadius: 7, border: '1.5px solid #E8D5C0', background: 'white', cursor: page === totalPages ? 'not-allowed' : 'pointer', opacity: page === totalPages ? 0.5 : 1, fontFamily: 'Nunito', fontWeight: 700 }}
+              >Next →</button>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

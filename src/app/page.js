@@ -1292,6 +1292,11 @@ function QuestionView({ question, questionNumber, topicStats, examType, onAnswer
         )}
         <div className="question-body">
           <div className="question-text">{question.question}</div>
+          {question.image_url && (
+            <div className="question-image-wrap">
+              <img src={question.image_url} alt="Question diagram" className="question-image" />
+            </div>
+          )}
           {question.visual && (
             <div className="question-visual">
               <pre style={{ fontFamily: 'inherit', whiteSpace: 'pre-wrap', fontSize: '0.9rem' }}>{question.visual}</pre>

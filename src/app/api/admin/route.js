@@ -205,6 +205,30 @@ export async function GET(request) {
     return NextResponse.json({ responses: result })
   }
 
+  if (action === 'questions') {
+    const url = new URL(request.url)
+    const examType = url.searchParams.get('examType') || ''
+    const topicId  = url.searchParams.get('topicId')  || ''
+    const search   = url.searchParams.get('search')   || ''
+    const page     = Math.max(1, parseInt(url.searchParams.get('page') || '1') || 1)
+    const pageSize = 20
+    const offset   = (page - 1) * pageSize
+
+    let query = supabase
+      .from('questions')
+      .select('id, topic_id, exam_type, subtopic, year_level, difficulty, question, options, correct, explanation, visual, image_url, created_at', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(offset, offset + pageSize - 1)
+
+    if (examType) query = query.eq('exam_type', examType)
+    if (topicId)  query = query.eq('topic_id', topicId)
+    if (search)   query = query.ilike('question', `%${search}%`)
+
+    const { data, error, count } = await query
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ questions: data, total: count || 0, page, pageSize })
+  }
+
   return NextResponse.json({ error: 'Unknown action' }, { status: 404 })
 }
 
@@ -279,6 +303,50 @@ export async function POST(request) {
     const { error } = await supabase.from('promo_codes').delete().eq('id', promoId)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true })
+  }
+
+  if (action === 'updateQuestion') {
+    const { questionId, question, options, correct, explanation, difficulty, subtopic, year_level, image_url } = await request.json()
+    if (!questionId) return NextResponse.json({ error: 'questionId required' }, { status: 400 })
+    const { data, error } = await supabase.from('questions').update({
+      question,
+      options,
+      correct: parseInt(correct),
+      explanation,
+      difficulty,
+      subtopic: subtopic || null,
+      year_level: year_level || null,
+      image_url: image_url || null,
+    }).eq('id', questionId).select().single()
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ question: data })
+  }
+
+  if (action === 'deleteQuestion') {
+    const { questionId } = await request.json()
+    if (!questionId) return NextResponse.json({ error: 'questionId required' }, { status: 400 })
+    const { error } = await supabase.from('questions').delete().eq('id', questionId)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ ok: true })
+  }
+
+  if (action === 'uploadImage') {
+    const formData = await request.formData()
+    const file = formData.get('file')
+    if (!file || !(file instanceof Blob)) return NextResponse.json({ error: 'Missing file' }, { status: 400 })
+
+    const ext = (file.name || 'image').split('.').pop().toLowerCase()
+    const fileName = `questions/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    const buffer = Buffer.from(await file.arrayBuffer())
+
+    const { error: uploadError } = await supabase.storage
+      .from('images')
+      .upload(fileName, buffer, { contentType: file.type, upsert: false })
+
+    if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 })
+
+    const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(fileName)
+    return NextResponse.json({ url: publicUrl })
   }
 
   if (action === 'uploadPdf') {
