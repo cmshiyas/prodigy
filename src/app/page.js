@@ -547,43 +547,58 @@ function AdminPanel({ idToken, onSignOut }) {
             ))}
           </div>
 
-          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontWeight: 700 }}>Topic:</span>
-              <select value={quizBankTopicFilter} onChange={e => setQuizBankTopicFilter(e.target.value)} style={{ padding: '6px 10px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'white', fontSize: '0.9rem' }}>
-                <option value="all">All</option>
-                {quizBank.topics.map(t => (
-                  <option key={t.topicId} value={t.topicId}>{t.topicId}</option>
-                ))}
-              </select>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontWeight: 700 }}>Sort creators:</span>
-              <select value={quizBankUserSort} onChange={e => setQuizBankUserSort(e.target.value)} style={{ padding: '6px 10px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'white', fontSize: '0.9rem' }}>
-                <option value="countDesc">Most questions</option>
-                <option value="countAsc">Fewest questions</option>
-                <option value="nameAsc">Name A→Z</option>
-                <option value="nameDesc">Name Z→A</option>
-              </select>
-            </div>
+          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' }}>
+            <span style={{ fontWeight: 700 }}>Sort creators:</span>
+            <select value={quizBankUserSort} onChange={e => setQuizBankUserSort(e.target.value)} style={{ padding: '6px 10px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'white', fontSize: '0.9rem' }}>
+              <option value="countDesc">Most questions</option>
+              <option value="countAsc">Fewest questions</option>
+              <option value="nameAsc">Name A→Z</option>
+              <option value="nameDesc">Name Z→A</option>
+            </select>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
             <div style={{ background: 'var(--surface)', borderRadius: 12, border: '1.5px solid var(--border)', padding: 16 }}>
-              <div style={{ fontWeight: 800, marginBottom: 10 }}>Questions per Topic</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+                <div style={{ fontWeight: 800 }}>Questions per Topic</div>
+                <select value={quizBankTopicFilter} onChange={e => setQuizBankTopicFilter(e.target.value)} style={{ padding: '5px 8px', borderRadius: 7, border: '1.5px solid var(--border)', background: 'white', fontSize: '0.82rem', fontWeight: 600 }}>
+                  <option value="all">All Exams</option>
+                  {(quizBank.examBreakdown || []).map(e => (
+                    <option key={e.examType} value={e.examType}>{e.examType} Track</option>
+                  ))}
+                </select>
+              </div>
               {quizBank.topics.length === 0 ? (
                 <div style={{ color: 'var(--text2)' }}>No questions yet.</div>
               ) : (
-                <div style={{ display: 'grid', gap: 10 }}>
+                <div style={{ display: 'grid', gap: 8 }}>
                   {quizBank.topics
-                    .filter(t => quizBankTopicFilter === 'all' || t.topicId === quizBankTopicFilter)
-                    .sort((a, b) => b.count - a.count)
-                    .map(t => (
-                      <div key={t.topicId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                        <span>{t.topicId}</span>
-                        <span style={{ fontWeight: 700 }}>{t.count}</span>
-                      </div>
-                    ))}
+                    .filter(t => quizBankTopicFilter === 'all' || (t.byExam || {})[quizBankTopicFilter] > 0)
+                    .sort((a, b) => {
+                      const aCount = quizBankTopicFilter === 'all' ? a.count : ((a.byExam || {})[quizBankTopicFilter] || 0)
+                      const bCount = quizBankTopicFilter === 'all' ? b.count : ((b.byExam || {})[quizBankTopicFilter] || 0)
+                      return bCount - aCount
+                    })
+                    .map(t => {
+                      const examEntries = quizBankTopicFilter === 'all'
+                        ? Object.entries(t.byExam || {})
+                        : [[quizBankTopicFilter, (t.byExam || {})[quizBankTopicFilter] || 0]]
+                      return (
+                        <div key={t.topicId} style={{ borderBottom: '1px solid var(--border)', paddingBottom: 6 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', fontWeight: 700, marginBottom: 2 }}>
+                            <span>{t.topicId}</span>
+                            <span>{quizBankTopicFilter === 'all' ? t.count : ((t.byExam || {})[quizBankTopicFilter] || 0)}</span>
+                          </div>
+                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            {examEntries.map(([exam, cnt]) => (
+                              <span key={exam} style={{ fontSize: '0.72rem', background: '#DBEAFE', color: '#1D4ED8', borderRadius: 999, padding: '1px 7px', fontWeight: 700 }}>
+                                {exam}: {cnt}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })}
                 </div>
               )}
             </div>

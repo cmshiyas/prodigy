@@ -47,20 +47,25 @@ export async function GET(request) {
 
     if (usersError) return NextResponse.json({ error: usersError.message }, { status: 500 })
 
-    const topicCounts = {}
+    const topicExamCounts = {}
     const examCounts = {}
     const userCounts = {}
 
     questions.forEach(q => {
-      topicCounts[q.topic_id] = (topicCounts[q.topic_id] || 0) + 1
       const exam = q.exam_type || 'Unknown'
+      if (!topicExamCounts[q.topic_id]) topicExamCounts[q.topic_id] = {}
+      topicExamCounts[q.topic_id][exam] = (topicExamCounts[q.topic_id][exam] || 0) + 1
       examCounts[exam] = (examCounts[exam] || 0) + 1
       if (q.created_by) {
         userCounts[q.created_by] = (userCounts[q.created_by] || 0) + 1
       }
     })
 
-    const topics = Object.entries(topicCounts).map(([topicId, count]) => ({ topicId, count }))
+    const topics = Object.entries(topicExamCounts).map(([topicId, byExam]) => ({
+      topicId,
+      count: Object.values(byExam).reduce((s, n) => s + n, 0),
+      byExam,
+    }))
     const examBreakdown = Object.entries(examCounts)
       .map(([examType, count]) => ({ examType, count }))
       .sort((a, b) => b.count - a.count)
