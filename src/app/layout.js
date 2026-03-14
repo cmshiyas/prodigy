@@ -26,12 +26,21 @@ export const metadata = {
     title: 'Self Paced Learning — Practice. Consistency. Feedback.',
     description: 'Self-paced exam mastery for Australian students. Build confidence through consistent practice and instant feedback across NAPLAN, OC, and Selective school topics.',
     locale: 'en_AU',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Self Paced Learning',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Self Paced Learning — Practice. Consistency. Feedback.',
     description: 'Self-paced exam mastery for Australian students. Build confidence through consistent practice and instant feedback across NAPLAN, OC, and Selective school topics.',
     creator: '@selfpacedlearn',
+    images: ['/og-image.png'],
   },
   robots: {
     index: true,
