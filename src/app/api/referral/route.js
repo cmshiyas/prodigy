@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { verifyGoogleToken } from '@/lib/google'
 import { getSupabase } from '@/lib/supabase'
+import { getReferralConfig } from '@/lib/referralConfig'
 
 export async function GET(request) {
   try {
@@ -13,10 +14,19 @@ export async function GET(request) {
       .from('users').select('id, referral_code').eq('email', payload.email).single()
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-    const { count } = await supabase
-      .from('users').select('id', { count: 'exact', head: true }).eq('referred_by', user.id)
+    const [{ count }, config] = await Promise.all([
+      supabase.from('users').select('id', { count: 'exact', head: true }).eq('referred_by', user.id),
+      getReferralConfig(supabase),
+    ])
 
-    return NextResponse.json({ referral_code: user.referral_code, referral_count: count || 0 })
+    return NextResponse.json({
+      referral_code: user.referral_code,
+      referral_count: count || 0,
+      goldCount: config.goldCount,
+      platinumCount: config.platinumCount,
+      goldBenefit: config.goldBenefit,
+      platinumBenefit: config.platinumBenefit,
+    })
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 })
   }

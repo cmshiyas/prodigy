@@ -51,7 +51,11 @@ function WhatsAppButton({ user }) {
 
 // ── TRIAL POPUP ───────────────────────────────────────────────
 
-function TrialModal({ onClose, onReferFriend, idToken, onTierUpgrade }) {
+function TrialModal({ onClose, onReferFriend, idToken, onTierUpgrade, referralConfig = {} }) {
+  const goldCount       = referralConfig.goldCount       || 3
+  const platinumCount   = referralConfig.platinumCount   || 5
+  const goldBenefit     = referralConfig.goldBenefit     || 'Free Gold access — permanently'
+  const platinumBenefit = referralConfig.platinumBenefit || 'Free Platinum access — permanently'
   const [promoCode, setPromoCode] = useState('')
   const [promoStatus, setPromoStatus] = useState(null)
   const [promoLoading, setPromoLoading] = useState(false)
@@ -94,15 +98,15 @@ function TrialModal({ onClose, onReferFriend, idToken, onTierUpgrade }) {
           <div className="trial-referral-tier">
             <span className="trial-referral-tier-icon" style={{ background: '#FEF3C7', color: '#F59E0B' }}>🥇</span>
             <div>
-              <strong style={{ color: '#F59E0B' }}>Invite 3 friends</strong>
-              <div className="trial-referral-tier-desc">1 month Gold — free</div>
+              <strong style={{ color: '#F59E0B' }}>Invite {goldCount} friends</strong>
+              <div className="trial-referral-tier-desc">{goldBenefit}</div>
             </div>
           </div>
           <div className="trial-referral-tier">
             <span className="trial-referral-tier-icon" style={{ background: '#EDE9FE', color: '#7C3AED' }}>💜</span>
             <div>
-              <strong style={{ color: '#7C3AED' }}>Invite 5 friends</strong>
-              <div className="trial-referral-tier-desc">1 month Platinum — free</div>
+              <strong style={{ color: '#7C3AED' }}>Invite {platinumCount} friends</strong>
+              <div className="trial-referral-tier-desc">{platinumBenefit}</div>
             </div>
           </div>
         </div>
@@ -301,7 +305,7 @@ function FeedbackIcon() {
   )
 }
 
-function LandingScreen({ onSignIn }) {
+function LandingScreen({ onSignIn, referralConfig = {} }) {
   const [showTrialModal, setShowTrialModal] = useState(false)
   return (
     <div className="landing-screen">
@@ -594,7 +598,7 @@ function LandingScreen({ onSignIn }) {
       </footer>
 
       <WhatsAppButton />
-      {showTrialModal && <TrialModal onClose={() => setShowTrialModal(false)} />}
+      {showTrialModal && <TrialModal onClose={() => setShowTrialModal(false)} referralConfig={referralConfig} />}
     </div>
   )
 }
@@ -675,11 +679,16 @@ const STREAK_CONFIG = {
   4: { emoji: '🏆', heading: 'LEGENDARY!', sub: '15+ correct streak — absolute legend!', color: '#059669', bg: 'linear-gradient(135deg,#D1FAE5,#6EE7B7)' },
 }
 
-function ReferralModal({ user, referralCount, onClose }) {
+function ReferralModal({ user, referralCount, referralConfig = {}, onClose }) {
   const [copied, setCopied] = useState(false)
   const referralLink = typeof window !== 'undefined'
     ? `${window.location.origin}?ref=${user.referral_code}`
     : `https://www.selfpaced.com.au?ref=${user.referral_code}`
+
+  const goldCount       = referralConfig.goldCount       || 3
+  const platinumCount   = referralConfig.platinumCount   || 5
+  const goldBenefit     = referralConfig.goldBenefit     || 'Free Gold access — permanently'
+  const platinumBenefit = referralConfig.platinumBenefit || 'Free Platinum access — permanently'
 
   function handleCopy() {
     navigator.clipboard.writeText(referralLink).then(() => {
@@ -700,6 +709,26 @@ function ReferralModal({ user, referralCount, onClose }) {
         <div className="referral-modal-stat">
           <div className="referral-modal-stat-num">{referralCount}</div>
           <div className="referral-modal-stat-label">friend{referralCount !== 1 ? 's' : ''} referred<br/>so far</div>
+        </div>
+        <div className="trial-referral-tiers" style={{ marginBottom: 12 }}>
+          <div className="trial-referral-tier">
+            <span className="trial-referral-tier-icon" style={{ background: referralCount >= goldCount ? '#FEF3C7' : '#F3F4F6', color: referralCount >= goldCount ? '#F59E0B' : '#9CA3AF' }}>🥇</span>
+            <div>
+              <strong style={{ color: referralCount >= goldCount ? '#F59E0B' : '#6B7280' }}>
+                {referralCount >= goldCount ? '✓ ' : ''}{goldCount} friends → Gold
+              </strong>
+              <div className="trial-referral-tier-desc">{goldBenefit}</div>
+            </div>
+          </div>
+          <div className="trial-referral-tier">
+            <span className="trial-referral-tier-icon" style={{ background: referralCount >= platinumCount ? '#EDE9FE' : '#F3F4F6', color: referralCount >= platinumCount ? '#7C3AED' : '#9CA3AF' }}>💜</span>
+            <div>
+              <strong style={{ color: referralCount >= platinumCount ? '#7C3AED' : '#6B7280' }}>
+                {referralCount >= platinumCount ? '✓ ' : ''}{platinumCount} friends → Platinum
+              </strong>
+              <div className="trial-referral-tier-desc">{platinumBenefit}</div>
+            </div>
+          </div>
         </div>
         <div className="referral-link-row">
           <input className="referral-link-input" readOnly value={referralLink} />
@@ -921,8 +950,12 @@ const PLANS = [
   },
 ]
 
-function PlansScreen({ user, idToken, onHome, onReferFriend, onTierUpgrade }) {
-  const currentTier = user.tier || 'silver'
+function PlansScreen({ user, idToken, onHome, onReferFriend, onTierUpgrade, referralConfig = {} }) {
+  const currentTier     = user.tier || 'silver'
+  const goldCount       = referralConfig.goldCount       || 3
+  const platinumCount   = referralConfig.platinumCount   || 5
+  const goldBenefit     = referralConfig.goldBenefit     || 'Free Gold access — permanently'
+  const platinumBenefit = referralConfig.platinumBenefit || 'Free Platinum access — permanently'
   const [showTrialModal, setShowTrialModal] = useState(true)
   const [promoCode, setPromoCode] = useState('')
   const [promoStatus, setPromoStatus] = useState(null)
@@ -1053,9 +1086,9 @@ function PlansScreen({ user, idToken, onHome, onReferFriend, onTierUpgrade }) {
       </div>
 
       <p className="plans-note">
-        Invite friends using your referral link and unlock free premium access — 3 friends gets you Gold, 5 friends gets you Platinum. Subscriptions are billed monthly and can be cancelled anytime.
+        Invite friends using your referral link and unlock free premium access — {goldCount} friends gets you Gold ({goldBenefit}), {platinumCount} friends gets you Platinum ({platinumBenefit}). Subscriptions are billed monthly and can be cancelled anytime.
       </p>
-      {showTrialModal && <TrialModal onClose={() => setShowTrialModal(false)} onReferFriend={onReferFriend} idToken={idToken} onTierUpgrade={onTierUpgrade} />}
+      {showTrialModal && <TrialModal onClose={() => setShowTrialModal(false)} onReferFriend={onReferFriend} idToken={idToken} onTierUpgrade={onTierUpgrade} referralConfig={referralConfig} />}
     </div>
   )
 }
@@ -1389,6 +1422,7 @@ export default function App() {
   const [balloonPopped, setBalloonPopped] = useState(false)
   const [showReferralModal, setShowReferralModal] = useState(false)
   const [referralCount, setReferralCount] = useState(0)
+  const [referralConfig, setReferralConfig] = useState({ goldCount: 3, platinumCount: 5, goldBenefit: 'Free Gold access — permanently', platinumBenefit: 'Free Platinum access — permanently' })
 
   const baseTopics = EXAM_TOPICS[examType] || EXAM_TOPICS.OC
   const currentTopics = baseTopics.map(t => ({ ...t, subtopics: dynamicSubtopics[t.id] || [] }))
@@ -1441,6 +1475,14 @@ export default function App() {
     }
   }, [])
 
+  // Fetch public config at mount (no auth needed — drives landing page referral display)
+  useEffect(() => {
+    fetch('/api/public-config')
+      .then(r => r.json())
+      .then(data => { if (data.goldCount) setReferralConfig(data) })
+      .catch(() => {})
+  }, [])
+
   // Reset yearLevel when examType changes
   useEffect(() => {
     const levels = EXAM_YEAR_LEVELS[examType] || []
@@ -1452,7 +1494,15 @@ export default function App() {
     if (!session?.idToken) return
     fetch('/api/referral', { headers: { Authorization: 'Bearer ' + session.idToken } })
       .then(r => r.json())
-      .then(data => { if (data.referral_count !== undefined) setReferralCount(data.referral_count) })
+      .then(data => {
+        if (data.referral_count !== undefined) setReferralCount(data.referral_count)
+        if (data.goldCount) setReferralConfig({
+          goldCount: data.goldCount,
+          platinumCount: data.platinumCount,
+          goldBenefit: data.goldBenefit,
+          platinumBenefit: data.platinumBenefit,
+        })
+      })
       .catch(() => {})
   }, [session?.idToken])
 
@@ -1779,7 +1829,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
   }
 
   // ── RENDER SCREENS ──────────────────────────────────────────
-  if (screen === 'landing') return <LandingScreen onSignIn={() => setScreen('auth')} />
+  if (screen === 'landing') return <LandingScreen onSignIn={() => setScreen('auth')} referralConfig={referralConfig} />
   if (screen === 'auth') return <AuthScreen />
   if (screen === 'pending') return <PendingScreen email={session.user?.email} onSignOut={handleSignOut} />
   if (screen === 'rejected') return <RejectedScreen onSignOut={handleSignOut} />
@@ -1800,6 +1850,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
           onHome={() => setScreen('app')}
           onReferFriend={() => setShowReferralModal(true)}
           onTierUpgrade={newTier => setSession(s => ({ ...s, user: { ...s.user, tier: newTier } }))}
+          referralConfig={referralConfig}
         />
       </div>
       <WhatsAppButton user={session.user} />
@@ -1876,7 +1927,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
 
       <StreakCelebration celebration={celebration} />
       {showReferralModal && session.user?.referral_code && (
-        <ReferralModal user={session.user} referralCount={referralCount} onClose={() => setShowReferralModal(false)} />
+        <ReferralModal user={session.user} referralCount={referralCount} referralConfig={referralConfig} onClose={() => setShowReferralModal(false)} />
       )}
 
       {/* MAIN LAYOUT */}

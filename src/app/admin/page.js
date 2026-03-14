@@ -7,6 +7,111 @@ const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
 
 // ── TOKEN LIMITS EDITOR ────────────────────────────────────────
 
+// ── REFERRAL CONFIG EDITOR ─────────────────────────────────────
+
+function ReferralConfigEditor({ idToken, onSignOut }) {
+  const FIELDS = [
+    { key: 'referral_gold_count',       label: 'Referrals for Gold',        type: 'number', hint: 'How many friends a user must invite to earn Gold' },
+    { key: 'referral_platinum_count',   label: 'Referrals for Platinum',     type: 'number', hint: 'How many friends a user must invite to earn Platinum' },
+    { key: 'referral_gold_benefit',     label: 'Gold benefit description',   type: 'text',   hint: 'Short text shown to users (e.g. "Free Gold access — permanently")' },
+    { key: 'referral_platinum_benefit', label: 'Platinum benefit description',type: 'text',  hint: 'Short text shown to users (e.g. "Free Platinum access — permanently")' },
+  ]
+  const DEFAULTS = {
+    referral_gold_count:       '3',
+    referral_platinum_count:   '5',
+    referral_gold_benefit:     'Free Gold access — permanently',
+    referral_platinum_benefit: 'Free Platinum access — permanently',
+  }
+
+  const [values, setValues] = useState(null)
+  const [saving, setSaving] = useState(null)
+  const [saved, setSaved]   = useState(null)
+
+  useEffect(() => {
+    fetch('/api/admin?action=config', { headers: { Authorization: 'Bearer ' + idToken } })
+      .then(r => r.json())
+      .then(data => {
+        if (!data?.config) return
+        const map = {}
+        data.config.forEach(({ key, value }) => { map[key] = value })
+        const merged = {}
+        FIELDS.forEach(f => { merged[f.key] = map[f.key] ?? DEFAULTS[f.key] })
+        setValues(merged)
+      })
+  }, [idToken]) // eslint-disable-line
+
+  const save = async (key) => {
+    setSaving(key)
+    try {
+      const res = await fetch('/api/admin?action=config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+        body: JSON.stringify({ key, value: values[key] }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error)
+      setSaved(key); setTimeout(() => setSaved(null), 2000)
+    } catch (err) { alert('Failed: ' + err.message) }
+    finally { setSaving(null) }
+  }
+
+  if (!values) return <div style={{ padding: 24, color: '#64748b' }}>Loading referral config...</div>
+
+  const goldCount     = parseInt(values.referral_gold_count)     || 3
+  const platinumCount = parseInt(values.referral_platinum_count) || 5
+
+  return (
+    <div style={{ padding: '20px 24px', borderTop: '1.5px solid #E8D5C0' }}>
+      <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1rem', marginBottom: 4 }}>Referral Program Config</div>
+      <div style={{ fontSize: '0.8rem', color: '#7A5C3F', marginBottom: 16 }}>Configure thresholds and benefit text shown to users on the website.</div>
+
+      {/* Live preview */}
+      <div style={{ background: '#F0FDF4', border: '1.5px solid #BBF7D0', borderRadius: 12, padding: '12px 16px', marginBottom: 18, fontSize: '0.85rem' }}>
+        <div style={{ fontWeight: 800, color: '#166534', marginBottom: 8 }}>Preview (how it appears on site)</div>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ background: '#FEF3C7', color: '#F59E0B', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}>🥇</span>
+            <div>
+              <div style={{ fontWeight: 700, color: '#F59E0B' }}>Invite {goldCount} friends</div>
+              <div style={{ color: '#6B7280', fontSize: '0.8rem' }}>{values.referral_gold_benefit}</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ background: '#EDE9FE', color: '#7C3AED', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}>💜</span>
+            <div>
+              <div style={{ fontWeight: 700, color: '#7C3AED' }}>Invite {platinumCount} friends</div>
+              <div style={{ color: '#6B7280', fontSize: '0.8rem' }}>{values.referral_platinum_benefit}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {FIELDS.map(({ key, label, type, hint }) => (
+          <div key={key} style={{ background: '#FFF3E6', borderRadius: 10, padding: '12px 16px', border: '1.5px solid #E8D5C0' }}>
+            <div style={{ fontWeight: 800, fontSize: '0.85rem', marginBottom: 2 }}>{label}</div>
+            <div style={{ fontSize: '0.75rem', color: '#7A5C3F', marginBottom: 8 }}>{hint}</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                type={type}
+                value={values[key]}
+                onChange={e => setValues(v => ({ ...v, [key]: e.target.value }))}
+                style={{ flex: 1, padding: '6px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', fontFamily: 'Nunito', fontWeight: 700, fontSize: '0.9rem', background: 'white' }}
+              />
+              <button
+                style={{ padding: '6px 14px', fontSize: '0.8rem', background: '#FF6B35', color: 'white', border: 'none', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 800, cursor: 'pointer' }}
+                onClick={() => save(key)}
+                disabled={saving === key}
+              >{saving === key ? '...' : saved === key ? '✓' : 'Save'}</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── TOKEN LIMITS EDITOR ────────────────────────────────────────
+
 function TokenLimitsEditor({ idToken, onSignOut }) {
   const [limits, setLimits] = useState(null)
   const [saving, setSaving] = useState(null)
@@ -340,6 +445,7 @@ function AdminPanel({ idToken, onSignOut }) {
           {tabBtn('analytics', 'Analytics')}
           {tabBtn('review', 'Answer Review')}
           {tabBtn('promos', 'Promo Codes')}
+          {tabBtn('referral', 'Referral')}
         </div>
       </div>
 
@@ -766,6 +872,11 @@ function AdminPanel({ idToken, onSignOut }) {
       {/* Promo Codes tab */}
       {adminView === 'promos' && (
         <PromoManager idToken={idToken} onSignOut={onSignOut} />
+      )}
+
+      {/* Referral tab */}
+      {adminView === 'referral' && (
+        <ReferralConfigEditor idToken={idToken} onSignOut={onSignOut} />
       )}
     </div>
   )

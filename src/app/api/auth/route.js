@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { verifyGoogleToken } from '@/lib/google'
 import { getSupabase } from '@/lib/supabase'
 import { ADMIN_EMAIL } from '@/lib/constants'
+import { getReferralConfig } from '@/lib/referralConfig'
 import { randomBytes } from 'crypto'
 
 function generateReferralCode() {
@@ -82,9 +83,11 @@ async function checkAndUpgradeReferrer(supabase, referrer) {
   const { count } = await supabase
     .from('users').select('id', { count: 'exact', head: true }).eq('referred_by', referrer.id)
 
+  const { goldCount, platinumCount } = await getReferralConfig(supabase)
+
   let newTier = null
-  if (count >= 5) newTier = 'platinum'
-  else if (count >= 3 && referrer.tier !== 'platinum') newTier = 'gold'
+  if (count >= platinumCount) newTier = 'platinum'
+  else if (count >= goldCount && referrer.tier !== 'platinum') newTier = 'gold'
 
   if (newTier && newTier !== referrer.tier) {
     await supabase.from('users').update({ tier: newTier, updated_at: new Date().toISOString() }).eq('id', referrer.id)
@@ -105,9 +108,10 @@ async function respond(supabase, user) {
   if (user.promo_expires_at && new Date(user.promo_expires_at) < new Date() && user.tier !== 'admin') {
     const { count: refCount } = await supabase
       .from('users').select('id', { count: 'exact', head: true }).eq('referred_by', user.id)
+    const { goldCount, platinumCount } = await getReferralConfig(supabase)
     let revertTier = 'silver'
-    if ((refCount || 0) >= 5) revertTier = 'platinum'
-    else if ((refCount || 0) >= 3) revertTier = 'gold'
+    if ((refCount || 0) >= platinumCount) revertTier = 'platinum'
+    else if ((refCount || 0) >= goldCount) revertTier = 'gold'
     const { data: reverted } = await supabase
       .from('users').update({ tier: revertTier, promo_expires_at: null, updated_at: new Date().toISOString() })
       .eq('id', user.id).select().single()

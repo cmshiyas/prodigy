@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { getSupabase } from '@/lib/supabase'
+import { getReferralConfig } from '@/lib/referralConfig'
 
 export async function POST(request) {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
@@ -49,9 +50,10 @@ export async function POST(request) {
       if (user) {
         const { count: refCount } = await supabase
           .from('users').select('id', { count: 'exact', head: true }).eq('referred_by', user.id)
+        const { goldCount, platinumCount } = await getReferralConfig(supabase)
         let revertTier = 'silver'
-        if ((refCount || 0) >= 5) revertTier = 'platinum'
-        else if ((refCount || 0) >= 3) revertTier = 'gold'
+        if ((refCount || 0) >= platinumCount) revertTier = 'platinum'
+        else if ((refCount || 0) >= goldCount) revertTier = 'gold'
         await supabase.from('users').update({
           tier: revertTier,
           stripe_subscription_id: null,
@@ -66,9 +68,10 @@ export async function POST(request) {
     if (user) {
       const { count: refCount } = await supabase
         .from('users').select('id', { count: 'exact', head: true }).eq('referred_by', user.id)
+      const { goldCount, platinumCount } = await getReferralConfig(supabase)
       let revertTier = 'silver'
-      if ((refCount || 0) >= 5) revertTier = 'platinum'
-      else if ((refCount || 0) >= 3) revertTier = 'gold'
+      if ((refCount || 0) >= platinumCount) revertTier = 'platinum'
+      else if ((refCount || 0) >= goldCount) revertTier = 'gold'
       await supabase.from('users').update({
         tier: revertTier,
         stripe_subscription_id: null,
