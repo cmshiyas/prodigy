@@ -82,7 +82,9 @@ export async function POST(request) {
       questionQuery = questionQuery.eq('subtopic', resolvedSubtopic)
     }
 
-    if (yearLevel) {
+    // Only filter by year_level for multi-year-level exams (NAPLAN, Selective)
+    // OC only has Year 4 and existing questions may have year_level = null
+    if (yearLevel && exam !== 'OC') {
       questionQuery = questionQuery.eq('year_level', yearLevel)
     }
 

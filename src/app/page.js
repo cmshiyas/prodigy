@@ -1595,7 +1595,8 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
           topicId,
           subtopic,
           examType,
-          yearLevel,
+          // Only send yearLevel for multi-year-level exams (NAPLAN, Selective)
+          yearLevel: (EXAM_YEAR_LEVELS[examType]?.length > 1) ? yearLevel : undefined,
           model: 'claude-sonnet-4-20250514',
           max_tokens: 1000,
           messages: [{ role: 'user', content: prompt }]
