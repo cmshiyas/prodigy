@@ -7,7 +7,7 @@ export default function robots() {
         disallow: ['/api/', '/admin'],
       },
     ],
-    sitemap: 'https://exambooster.com.au/sitemap.xml',
-    host: 'https://exambooster.com.au',
+    sitemap: 'https://www.selfpaced.com.au/sitemap.xml',
+    host: 'https://www.selfpaced.com.au',
   }
 }

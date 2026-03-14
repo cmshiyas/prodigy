@@ -1,5 +1,5 @@
 export default function sitemap() {
-  const base = 'https://exambooster.com.au'
+  const base = 'https://www.selfpaced.com.au'
   return [
     {
       url: base,

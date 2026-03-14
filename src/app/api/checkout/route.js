@@ -28,7 +28,7 @@ export async function POST(request) {
     if (!priceId) return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
 
     const stripe = getStripe()
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://exambooster.com.au'
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.selfpaced.com.au'
 
     // Reuse existing Stripe customer if we have one
     let customerId = user.stripe_customer_id

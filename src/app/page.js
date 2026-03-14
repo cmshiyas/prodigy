@@ -679,7 +679,7 @@ function ReferralModal({ user, referralCount, onClose }) {
   const [copied, setCopied] = useState(false)
   const referralLink = typeof window !== 'undefined'
     ? `${window.location.origin}?ref=${user.referral_code}`
-    : `https://exambooster.com.au?ref=${user.referral_code}`
+    : `https://www.selfpaced.com.au?ref=${user.referral_code}`
 
   function handleCopy() {
     navigator.clipboard.writeText(referralLink).then(() => {

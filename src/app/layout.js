@@ -2,7 +2,7 @@ import './globals.css'
 import { Analytics } from '@vercel/analytics/react'
 
 export const metadata = {
-  metadataBase: new URL('https://exambooster.com.au'),
+  metadataBase: new URL('https://www.selfpaced.com.au'),
   title: {
     default: 'Self Paced Learning — Practice. Consistency. Feedback.',
     template: '%s | Self Paced Learning',
@@ -21,7 +21,7 @@ export const metadata = {
   publisher: 'Self Paced Learning',
   openGraph: {
     type: 'website',
-    url: 'https://exambooster.com.au',
+    url: 'https://www.selfpaced.com.au',
     siteName: 'Self Paced Learning',
     title: 'Self Paced Learning — Practice. Consistency. Feedback.',
     description: 'Self-paced exam mastery for Australian students. Build confidence through consistent practice and instant feedback across NAPLAN, OC, and Selective school topics.',
@@ -54,7 +54,7 @@ export const metadata = {
     },
   },
   alternates: {
-    canonical: 'https://exambooster.com.au',
+    canonical: 'https://www.selfpaced.com.au',
   },
 }
 
