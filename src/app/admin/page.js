@@ -759,6 +759,10 @@ function PromoManager({ idToken, onSignOut }) {
   const [form, setForm] = useState({ code: '', tier: 'gold', duration_days: '', max_uses: '', expires_at: '' })
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState('')
+  const [editingId, setEditingId] = useState(null)
+  const [editForm, setEditForm] = useState({})
+  const [saving, setSaving] = useState(false)
+  const [editError, setEditError] = useState('')
 
   const loadPromos = async () => {
     setLoading(true)
@@ -796,6 +800,46 @@ function PromoManager({ idToken, onSignOut }) {
     finally { setCreating(false) }
   }
 
+  const startEdit = (p) => {
+    setEditingId(p.id)
+    setEditError('')
+    setEditForm({
+      code: p.code,
+      tier: p.tier,
+      duration_days: p.duration_days ?? '',
+      max_uses: p.max_uses ?? '',
+      expires_at: p.expires_at ? p.expires_at.split('T')[0] : '',
+      is_active: p.is_active,
+    })
+  }
+
+  const cancelEdit = () => { setEditingId(null); setEditError('') }
+
+  const saveEdit = async () => {
+    if (!editForm.code.trim() || !editForm.tier) { setEditError('Code and tier are required'); return }
+    setSaving(true); setEditError('')
+    try {
+      const res = await fetch('/api/admin?action=updatePromo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+        body: JSON.stringify({
+          promoId: editingId,
+          code: editForm.code.trim(),
+          tier: editForm.tier,
+          duration_days: editForm.duration_days ? parseInt(editForm.duration_days) : null,
+          max_uses: editForm.max_uses ? parseInt(editForm.max_uses) : null,
+          expires_at: editForm.expires_at || null,
+          is_active: editForm.is_active,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setEditingId(null)
+      await loadPromos()
+    } catch (err) { setEditError(err.message) }
+    finally { setSaving(false) }
+  }
+
   const togglePromo = async (promoId, isActive) => {
     try {
       const res = await fetch('/api/admin?action=togglePromo', {
@@ -820,6 +864,8 @@ function PromoManager({ idToken, onSignOut }) {
       await loadPromos()
     } catch (err) { alert('Failed: ' + err.message) }
   }
+
+  const fieldStyle = { width: '100%', padding: '6px 9px', borderRadius: 7, border: '1.5px solid #C4B5FD', fontFamily: 'Nunito', fontWeight: 700, fontSize: '0.85rem', boxSizing: 'border-box', background: 'white' }
 
   const inp = (label, key, type = 'text', placeholder = '') => (
     <div style={{ flex: 1, minWidth: 100 }}>
@@ -876,27 +922,84 @@ function PromoManager({ idToken, onSignOut }) {
         <div style={{ color: '#94A3B8', fontSize: '0.9rem', padding: '20px 0' }}>No promo codes yet.</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {promos.map(p => (
-            <div key={p.id} style={{ background: p.is_active ? 'white' : '#F8F8F8', border: `1.5px solid ${p.is_active ? '#E8D5C0' : '#D1D5DB'}`, borderRadius: 10, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', opacity: p.is_active ? 1 : 0.65 }}>
-              <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1.05rem', letterSpacing: '0.06em', color: '#2D1B0E', minWidth: 110 }}>{p.code}</div>
-              <span style={{ padding: '2px 10px', borderRadius: 20, background: p.tier === 'platinum' ? '#EDE9FE' : '#FEF3C7', color: tierColors[p.tier] || '#555', fontSize: '0.8rem', fontWeight: 800 }}>{p.tier}</span>
-              <div style={{ fontSize: '0.8rem', color: '#7A5C3F', flex: 1 }}>
-                {p.duration_days ? `${p.duration_days}d` : 'Permanent'} · {p.max_uses ? `${p.uses_count}/${p.max_uses} uses` : `${p.uses_count} uses`}
-                {p.expires_at && ` · Exp ${new Date(p.expires_at).toLocaleDateString('en-AU')}`}
+          {promos.map(p => {
+            if (editingId === p.id) {
+              // ── Inline edit row ──
+              return (
+                <div key={p.id} style={{ background: '#F5F3FF', border: '1.5px solid #C4B5FD', borderRadius: 10, padding: '14px 16px' }}>
+                  <div style={{ fontFamily: 'Nunito', fontWeight: 800, fontSize: '0.85rem', color: '#5B21B6', marginBottom: 10 }}>Editing: {p.code}</div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                    <div style={{ flex: 1, minWidth: 100 }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 3 }}>Code *</div>
+                      <input value={editForm.code} onChange={e => setEditForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} style={fieldStyle} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 100 }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 3 }}>Tier *</div>
+                      <select value={editForm.tier} onChange={e => setEditForm(f => ({ ...f, tier: e.target.value }))} style={fieldStyle}>
+                        <option value="gold">Gold</option>
+                        <option value="platinum">Platinum</option>
+                      </select>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 100 }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 3 }}>Duration (days)</div>
+                      <input type="number" placeholder="blank = forever" value={editForm.duration_days} onChange={e => setEditForm(f => ({ ...f, duration_days: e.target.value }))} style={fieldStyle} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 100 }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 3 }}>Max Uses</div>
+                      <input type="number" placeholder="blank = unlimited" value={editForm.max_uses} onChange={e => setEditForm(f => ({ ...f, max_uses: e.target.value }))} style={fieldStyle} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 100 }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 3 }}>Expires At</div>
+                      <input type="date" value={editForm.expires_at} onChange={e => setEditForm(f => ({ ...f, expires_at: e.target.value }))} style={fieldStyle} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 100 }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 3 }}>Status</div>
+                      <select value={editForm.is_active ? 'true' : 'false'} onChange={e => setEditForm(f => ({ ...f, is_active: e.target.value === 'true' }))} style={fieldStyle}>
+                        <option value="true">Active</option>
+                        <option value="false">Inactive</option>
+                      </select>
+                    </div>
+                  </div>
+                  {editError && <div style={{ color: '#991B1B', fontSize: '0.82rem', fontWeight: 700, marginBottom: 8 }}>{editError}</div>}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={saveEdit} disabled={saving} style={{ padding: '6px 18px', background: '#7C3AED', color: 'white', border: 'none', borderRadius: 7, fontFamily: 'Nunito', fontWeight: 800, fontSize: '0.85rem', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
+                      {saving ? 'Saving...' : 'Save'}
+                    </button>
+                    <button onClick={cancelEdit} style={{ padding: '6px 16px', background: 'white', color: '#5B21B6', border: '1.5px solid #C4B5FD', borderRadius: 7, fontFamily: 'Nunito', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )
+            }
+
+            // ── Normal row ──
+            return (
+              <div key={p.id} style={{ background: p.is_active ? 'white' : '#F8F8F8', border: `1.5px solid ${p.is_active ? '#E8D5C0' : '#D1D5DB'}`, borderRadius: 10, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', opacity: p.is_active ? 1 : 0.65 }}>
+                <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1.05rem', letterSpacing: '0.06em', color: '#2D1B0E', minWidth: 110 }}>{p.code}</div>
+                <span style={{ padding: '2px 10px', borderRadius: 20, background: p.tier === 'platinum' ? '#EDE9FE' : '#FEF3C7', color: tierColors[p.tier] || '#555', fontSize: '0.8rem', fontWeight: 800 }}>{p.tier}</span>
+                <div style={{ fontSize: '0.8rem', color: '#7A5C3F', flex: 1 }}>
+                  {p.duration_days ? `${p.duration_days}d` : 'Permanent'} · {p.max_uses ? `${p.uses_count}/${p.max_uses} uses` : `${p.uses_count} uses`}
+                  {p.expires_at && ` · Exp ${new Date(p.expires_at).toLocaleDateString('en-AU')}`}
+                </div>
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, padding: '2px 8px', borderRadius: 8, background: p.is_active ? '#DCFCE7' : '#FEE2E2', color: p.is_active ? '#166534' : '#991B1B' }}>{p.is_active ? 'Active' : 'Inactive'}</span>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    onClick={() => startEdit(p)}
+                    style={{ padding: '4px 12px', fontSize: '0.78rem', borderRadius: 6, border: '1.5px solid #C4B5FD', background: '#F5F3FF', fontFamily: 'Nunito', fontWeight: 700, cursor: 'pointer', color: '#5B21B6' }}
+                  >Edit</button>
+                  <button
+                    onClick={() => togglePromo(p.id, !p.is_active)}
+                    style={{ padding: '4px 12px', fontSize: '0.78rem', borderRadius: 6, border: '1.5px solid #E8D5C0', background: 'white', fontFamily: 'Nunito', fontWeight: 700, cursor: 'pointer', color: '#2D1B0E' }}
+                  >{p.is_active ? 'Deactivate' : 'Activate'}</button>
+                  <button
+                    onClick={() => deletePromo(p.id, p.code)}
+                    style={{ padding: '4px 12px', fontSize: '0.78rem', borderRadius: 6, border: '1.5px solid #FECACA', background: '#FEF2F2', fontFamily: 'Nunito', fontWeight: 700, cursor: 'pointer', color: '#991B1B' }}
+                  >Delete</button>
+                </div>
               </div>
-              <span style={{ fontSize: '0.78rem', fontWeight: 700, padding: '2px 8px', borderRadius: 8, background: p.is_active ? '#DCFCE7' : '#FEE2E2', color: p.is_active ? '#166534' : '#991B1B' }}>{p.is_active ? 'Active' : 'Inactive'}</span>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button
-                  onClick={() => togglePromo(p.id, !p.is_active)}
-                  style={{ padding: '4px 12px', fontSize: '0.78rem', borderRadius: 6, border: '1.5px solid #E8D5C0', background: 'white', fontFamily: 'Nunito', fontWeight: 700, cursor: 'pointer', color: '#2D1B0E' }}
-                >{p.is_active ? 'Deactivate' : 'Activate'}</button>
-                <button
-                  onClick={() => deletePromo(p.id, p.code)}
-                  style={{ padding: '4px 12px', fontSize: '0.78rem', borderRadius: 6, border: '1.5px solid #FECACA', background: '#FEF2F2', fontFamily: 'Nunito', fontWeight: 700, cursor: 'pointer', color: '#991B1B' }}
-                >Delete</button>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

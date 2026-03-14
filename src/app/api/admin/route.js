@@ -257,6 +257,22 @@ export async function POST(request) {
     return NextResponse.json({ promo: data })
   }
 
+  if (action === 'updatePromo') {
+    const { promoId, code, tier, duration_days, max_uses, expires_at, is_active } = await request.json()
+    if (!promoId) return NextResponse.json({ error: 'promoId required' }, { status: 400 })
+    if (!code || !tier) return NextResponse.json({ error: 'code and tier are required' }, { status: 400 })
+    const { data, error } = await supabase.from('promo_codes').update({
+      code: code.toUpperCase().trim(),
+      tier,
+      duration_days: duration_days || null,
+      max_uses: max_uses || null,
+      expires_at: expires_at || null,
+      is_active: is_active ?? true,
+    }).eq('id', promoId).select().single()
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ promo: data })
+  }
+
   if (action === 'deletePromo') {
     const { promoId } = await request.json()
     if (!promoId) return NextResponse.json({ error: 'promoId required' }, { status: 400 })
