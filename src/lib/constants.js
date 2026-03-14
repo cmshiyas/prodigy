@@ -7,6 +7,13 @@ export const TOKEN_LIMITS = {
   silver:   5000,
 }
 
+export const QUESTION_LIMITS = {
+  admin:    999999,
+  platinum: 999999,
+  gold:     40,
+  silver:   10,
+}
+
 export const TIER_LABELS = {
   silver: 'Silver', gold: 'Gold', platinum: 'Platinum', admin: 'Admin',
 }

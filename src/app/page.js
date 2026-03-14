@@ -1343,6 +1343,14 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
         }),
       })
 
+      if (res.status === 429) {
+        const err = await res.json().catch(() => ({}))
+        if (err.error === 'QUESTION_LIMIT') {
+          setQuestionError('QUESTION_LIMIT:' + err.message + '|' + (err.tier || 'silver') + '|' + (err.limit || 10))
+          return
+        }
+      }
+
       if (res.status === 403) {
         const err = await res.json()
         if (err.error === 'PENDING') { setScreen('pending'); return }
@@ -1638,7 +1646,37 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
             {!loadingQuestion && questionError && (
               <div className="question-card">
                 <div className="question-body">
-                  {questionError.startsWith('NO_QUESTIONS:') ? (
+                  {questionError.startsWith('QUESTION_LIMIT:') ? (
+                    (() => {
+                      const [, msg, tier, limit] = questionError.split('|')[0].replace('QUESTION_LIMIT:', '').split('|')
+                      const parts = questionError.replace('QUESTION_LIMIT:', '').split('|')
+                      const tierName = (parts[1] || 'silver').charAt(0).toUpperCase() + (parts[1] || 'silver').slice(1)
+                      const limitNum = parts[2] || '10'
+                      const isGold = (parts[1] || '') === 'gold'
+                      return (
+                        <div style={{ textAlign: 'center', padding: '28px 0 8px' }}>
+                          <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>🎯</div>
+                          <div style={{ fontWeight: 800, fontSize: '1.1rem', marginBottom: 8, color: '#2D1B0E' }}>Daily Limit Reached</div>
+                          <div style={{ color: '#7A5C3F', fontSize: '0.92rem', lineHeight: 1.6, maxWidth: 360, margin: '0 auto 20px' }}>
+                            You've completed your <strong>{limitNum} questions</strong> for today on the <strong>{tierName}</strong> plan. Come back tomorrow — or upgrade for more daily practice!
+                          </div>
+                          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+                            {!isGold && (
+                              <button className="btn btn-primary" onClick={() => { saveQuizAttempt(); resetQuizSession(); setScreen('plans') }}>
+                                Upgrade Plan ↑
+                              </button>
+                            )}
+                            {isGold && (
+                              <button className="btn btn-primary" style={{ background: '#7C3AED' }} onClick={() => { saveQuizAttempt(); resetQuizSession(); setScreen('plans') }}>
+                                Upgrade to Platinum ↑
+                              </button>
+                            )}
+                            <button className="btn btn-secondary" onClick={() => { saveQuizAttempt(); resetQuizSession(); setScreen('app') }}>Back to Home</button>
+                          </div>
+                        </div>
+                      )
+                    })()
+                  ) : questionError.startsWith('NO_QUESTIONS:') ? (
                     <>
                       <div style={{ textAlign: 'center', padding: '24px 0 8px' }}>
                         <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>📭</div>
