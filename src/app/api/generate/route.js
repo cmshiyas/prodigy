@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { verifyGoogleToken } from '@/lib/google'
 import { getSupabase } from '@/lib/supabase'
-import { getTokenLimits } from '@/lib/tokenLimits'
 import { EXAM_TYPES } from '@/lib/constants'
+
+// Users only receive questions that are already in the database.
+// AI generation is an admin-only operation (see /api/admin?action=generateQuestions).
 
 export async function POST(request) {
   const authHeader = request.headers.get('authorization')
@@ -29,14 +31,10 @@ export async function POST(request) {
       return NextResponse.json({ error: 'topicId is required' }, { status: 400 })
     }
 
-    // Bug fix #1: Never fall back to the first subtopic when none is selected.
-    // Doing so collapsed the entire topic's question pool to a single subtopic,
-    // causing heavy repetition. Use null so we query across all subtopics.
+    // Use the exact subtopic when specified; null means all subtopics for the topic
     const resolvedSubtopic = subtopic || null
 
-    // Bug fix #2: Scope attempted IDs to this specific topic + exam only.
-    // Previously we fetched ALL attempted question IDs (every topic, every exam)
-    // making the exclusion list huge, hitting URL limits, and silently breaking.
+    // Fetch question IDs the user has already answered for this specific topic + exam
     const { data: attemptedResponses, error: attemptedError } = await supabase
       .from('question_responses')
       .select('question_id, questions!inner(topic_id, exam_type)')
@@ -46,15 +44,13 @@ export async function POST(request) {
 
     if (attemptedError) {
       console.error('Failed to fetch attempted responses:', attemptedError)
-      // Non-fatal: proceed without exclusion rather than blocking the user
     }
 
-    // Deduplicate — upsert means one row per (user, question) but be safe
     const attemptedIds = [...new Set(
       (attemptedResponses || []).map(r => r.question_id).filter(Boolean)
     )]
 
-    // Build the candidate pool query
+    // Query unanswered questions from the bank
     let questionQuery = supabase
       .from('questions')
       .select('*')
@@ -66,8 +62,6 @@ export async function POST(request) {
       questionQuery = questionQuery.eq('subtopic', resolvedSubtopic)
     }
 
-    // Bug fix #3: PostgREST NOT IN requires bare UUIDs — no quotes.
-    // Quoted UUIDs ('uuid') cause the filter to silently no-op on many Postgres versions.
     if (attemptedIds.length > 0) {
       questionQuery = questionQuery.not('id', 'in', `(${attemptedIds.join(',')})`)
     }
@@ -76,119 +70,46 @@ export async function POST(request) {
 
     if (questionError) {
       console.error('Failed to fetch questions:', questionError)
+      return NextResponse.json({ error: 'Failed to fetch questions' }, { status: 500 })
     }
 
-    // Pick a random unanswered question from the pool
-    const existingQuestion = unansweredQuestions?.length > 0
-      ? unansweredQuestions[Math.floor(Math.random() * unansweredQuestions.length)]
-      : null
+    if (!unansweredQuestions || unansweredQuestions.length === 0) {
+      // Check if ANY questions exist for this topic (answered or not) to give the right message
+      const { count } = await supabase
+        .from('questions')
+        .select('id', { count: 'exact', head: true })
+        .eq('topic_id', topicId)
+        .eq('exam_type', exam)
 
-    if (existingQuestion) {
+      if ((count || 0) === 0) {
+        return NextResponse.json({
+          error: 'NO_QUESTIONS',
+          message: 'No questions available for this topic yet. The admin is working on adding more — check back soon!',
+        }, { status: 404 })
+      }
+
+      // Questions exist but this user has answered them all
       return NextResponse.json({
-        id: existingQuestion.id,
-        question: existingQuestion.question,
-        visual: existingQuestion.visual,
-        options: existingQuestion.options,
-        correct: existingQuestion.correct,
-        explanation: existingQuestion.explanation,
-        difficulty: existingQuestion.difficulty,
-        topicId: existingQuestion.topic_id,
-        subtopic: existingQuestion.subtopic || null,
-        _usage: { tokensUsedToday: 0, limit: 1000, tier: user.tier, remaining: 1000 }
-      })
+        error: 'NO_QUESTIONS',
+        message: "You've answered all available questions for this topic! More are being added regularly — check back soon.",
+      }, { status: 404 })
     }
 
-    // All available questions for this topic have been answered — generate a new one
-    const today = new Date().toISOString().split('T')[0]
-    const { data: usage } = await supabase
-      .from('token_usage').select('tokens_used').eq('user_id', user.id).eq('date', today).single()
+    // Pick a random unanswered question
+    const question = unansweredQuestions[Math.floor(Math.random() * unansweredQuestions.length)]
 
-    const tokensUsedToday = usage?.tokens_used || 0
-    const TOKEN_LIMITS = await getTokenLimits()
-    const limit = TOKEN_LIMITS[user.tier] || TOKEN_LIMITS.silver
-
-    if (tokensUsedToday >= limit) {
-      return NextResponse.json({
-        error: 'TOKEN_LIMIT',
-        message: `Daily limit reached for ${user.tier} tier (${limit.toLocaleString()} tokens/day). Resets at midnight.`,
-        tokensUsed: tokensUsedToday, limit,
-      }, { status: 429 })
-    }
-
-    if (!process.env.ANTHROPIC_API_KEY) throw new Error('Missing ANTHROPIC_API_KEY')
-
-    // Remove topicId/examType/subtopic from body before sending to Claude
-    const { topicId: _, examType: __, subtopic: ___, ...claudeBody } = body
-
-    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify(claudeBody),
-    })
-
-    const data = await anthropicRes.json()
-
-    if (!anthropicRes.ok) {
-      throw new Error(data.error?.message || 'Claude API error')
-    }
-
-    // Parse the generated question
-    const text = data.content.map(b => b.text || '').join('').trim()
-    const q = JSON.parse(text.replace(/```json|```/g, '').trim())
-
-    // Server-side shuffle: track correct answer by content, shuffle, re-find index
-    const correctContent = q.options[q.correct]
-    const shuffled = [...q.options].sort(() => Math.random() - 0.5)
-    const newCorrect = shuffled.indexOf(correctContent)
-    q.options = shuffled
-    q.correct = newCorrect
-
-    // Store the new question
-    const { data: storedQuestion, error: storeError } = await supabase
-      .from('questions')
-      .insert({
-        topic_id: topicId,
-        exam_type: exam,
-        subtopic: resolvedSubtopic,
-        created_by: user.id,
-        question: q.question,
-        visual: q.visual || null,
-        options: q.options,
-        correct: q.correct,
-        explanation: q.explanation,
-        difficulty: q.difficulty
-      })
-      .select()
-      .single()
-
-    if (storeError) {
-      console.error('Failed to store question:', storeError)
-    }
-
-    const tokensUsed = (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0) || 500
-    const newTotal = tokensUsedToday + tokensUsed
-
-    if (usage) {
-      await supabase.from('token_usage').update({ tokens_used: newTotal, updated_at: new Date().toISOString() }).eq('user_id', user.id).eq('date', today)
-    } else {
-      await supabase.from('token_usage').insert({ user_id: user.id, date: today, tokens_used: tokensUsed })
-    }
-
-    // Bug fix #4: Only return an id if the question was actually stored.
-    // Without an id the client can't record the response, meaning the question
-    // is never marked as answered and will appear again next session.
     return NextResponse.json({
-      id: storedQuestion?.id ?? null,
-      question: q.question,
-      visual: q.visual,
-      options: q.options,
-      correct: q.correct,
-      explanation: q.explanation,
-      difficulty: q.difficulty,
-      topicId: topicId,
-      subtopic: resolvedSubtopic,
-      _usage: { tokensUsedToday: newTotal, limit, tier: user.tier, remaining: Math.max(0, limit - newTotal) }
-    }, { status: anthropicRes.status })
+      id: question.id,
+      question: question.question,
+      visual: question.visual,
+      options: question.options,
+      correct: question.correct,
+      explanation: question.explanation,
+      difficulty: question.difficulty,
+      topicId: question.topic_id,
+      subtopic: question.subtopic || null,
+      _usage: { tokensUsedToday: 0, limit: 99999, tier: user.tier, remaining: 99999 },
+    })
 
   } catch (err) {
     console.error('Generate error:', err.message)

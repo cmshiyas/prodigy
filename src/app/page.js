@@ -1078,6 +1078,14 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
         }
       }
 
+      if (res.status === 404) {
+        const err = await res.json().catch(() => ({}))
+        if (err.error === 'NO_QUESTIONS') {
+          setQuestionError('NO_QUESTIONS:' + (err.message || 'No questions available for this topic yet.'))
+          return
+        }
+      }
+
       if (res.status === 500) {
         const err = await res.json().catch(() => ({ error: 'Server error' }))
         // Check if it's a token-related error
@@ -1357,11 +1365,28 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
             {!loadingQuestion && questionError && (
               <div className="question-card">
                 <div className="question-body">
-                  <div className="error-box">{questionError}</div>
-                  <div style={{ marginTop: 16, display: 'flex', gap: 10 }}>
-                    <button className="btn btn-primary" onClick={() => generateQuestion(currentTopic)}>Try Again</button>
-                    <button className="btn btn-secondary" onClick={() => { saveQuizAttempt(); resetQuizSession(); setScreen('app') }}>Back to Home</button>
-                  </div>
+                  {questionError.startsWith('NO_QUESTIONS:') ? (
+                    <>
+                      <div style={{ textAlign: 'center', padding: '24px 0 8px' }}>
+                        <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>📭</div>
+                        <div style={{ fontWeight: 800, fontSize: '1.1rem', marginBottom: 8, color: '#2D1B0E' }}>No Questions Available</div>
+                        <div style={{ color: '#7A5C3F', fontSize: '0.92rem', lineHeight: 1.5, maxWidth: 360, margin: '0 auto' }}>
+                          {questionError.replace('NO_QUESTIONS:', '')}
+                        </div>
+                      </div>
+                      <div style={{ marginTop: 20, display: 'flex', gap: 10, justifyContent: 'center' }}>
+                        <button className="btn btn-secondary" onClick={() => { saveQuizAttempt(); resetQuizSession(); setScreen('app') }}>Back to Home</button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="error-box">{questionError}</div>
+                      <div style={{ marginTop: 16, display: 'flex', gap: 10 }}>
+                        <button className="btn btn-primary" onClick={() => generateQuestion(currentTopic)}>Try Again</button>
+                        <button className="btn btn-secondary" onClick={() => { saveQuizAttempt(); resetQuizSession(); setScreen('app') }}>Back to Home</button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}

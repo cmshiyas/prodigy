@@ -387,6 +387,116 @@ ${trimmed}`
     })
   }
 
+  if (action === 'generateQuestions') {
+    const { examType, topicId, subtopic, count = 10 } = await request.json()
+    const validExamIds = EXAM_TYPES.map(item => item.id)
+    if (!validExamIds.includes(examType)) {
+      return NextResponse.json({ error: 'Invalid exam type' }, { status: 400 })
+    }
+    const topicDef = (EXAM_TOPICS[examType] || []).find(t => t.id === topicId)
+    if (!topicDef) {
+      return NextResponse.json({ error: 'Invalid topicId for this exam type' }, { status: 400 })
+    }
+    const n = Math.min(50, Math.max(1, parseInt(count) || 10))
+
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return NextResponse.json({ error: 'Missing ANTHROPIC_API_KEY' }, { status: 500 })
+    }
+
+    // Fetch existing questions for deduplication
+    const { data: existingQs } = await supabase
+      .from('questions')
+      .select('question')
+      .eq('topic_id', topicId)
+      .eq('exam_type', examType)
+    const existingTexts = new Set((existingQs || []).map(q => q.question.trim().toLowerCase()))
+
+    const subtopicLine = subtopic
+      ? `Subtopic: ${subtopic} — every question must specifically test this subtopic.`
+      : `Cover a variety of subtopics within the topic: ${topicDef.subtopics?.join(', ') || topicDef.name}.`
+
+    const prompt = `You are an expert ${examType} exam question writer for Australian Year 4-6 students.
+
+Topic: ${topicDef.name}
+${subtopicLine}
+
+Generate exactly ${n} unique, high-quality multiple-choice questions. Vary difficulty: 40% easy, 40% medium, 20% hard. Ensure every question is distinct — no duplicates or near-duplicates.
+
+IMPORTANT: For each question, solve it yourself first, then place the correct answer at a RANDOM index (0–4). Do NOT always use index 0.
+
+Respond with ONLY valid JSON (no markdown, no prose):
+{"questions":[{"question":"...","visual":"optional text table or empty string","options":["A","B","C","D","E"],"correct":<0-based index>,"explanation":"step-by-step solution","difficulty":"easy|medium|hard","subtopic":"subtopic name"}]}`
+
+    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 8000,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    })
+
+    if (!anthropicRes.ok) {
+      const err = await anthropicRes.text()
+      return NextResponse.json({ error: 'Claude API failed: ' + err }, { status: 500 })
+    }
+
+    const anthropicData = await anthropicRes.json()
+    const textOutput = anthropicData.content?.map(b => b.text || '').join('') || ''
+
+    let parsed
+    try {
+      parsed = JSON.parse(textOutput.replace(/```json|```/g, '').trim())
+    } catch (err) {
+      return NextResponse.json({ error: 'Failed to parse AI output: ' + err.message }, { status: 500 })
+    }
+
+    const questions = Array.isArray(parsed.questions) ? parsed.questions : []
+    const inserted = []
+    const errors = []
+
+    for (const [idx, q] of questions.entries()) {
+      if (!q.question || !Array.isArray(q.options) || q.options.length < 2 || typeof q.correct !== 'number') {
+        errors.push({ idx, error: 'Invalid question format' }); continue
+      }
+      if (existingTexts.has(q.question.trim().toLowerCase())) {
+        errors.push({ idx, error: 'Duplicate question skipped' }); continue
+      }
+
+      // Server-side shuffle to avoid LLM position bias
+      const correctContent = q.options[q.correct]
+      const shuffled = [...q.options].sort(() => Math.random() - 0.5)
+      const newCorrect = shuffled.indexOf(correctContent)
+
+      const { error: insertError } = await supabase.from('questions').insert({
+        topic_id: topicId,
+        exam_type: examType,
+        subtopic: subtopic || q.subtopic || null,
+        created_by: null,
+        question: q.question.trim(),
+        visual: q.visual || null,
+        options: shuffled,
+        correct: newCorrect,
+        explanation: q.explanation || '',
+        difficulty: ['easy', 'medium', 'hard'].includes(q.difficulty) ? q.difficulty : 'medium',
+      })
+
+      if (insertError) {
+        errors.push({ idx, error: insertError.message })
+      } else {
+        inserted.push(idx)
+        existingTexts.add(q.question.trim().toLowerCase())
+      }
+    }
+
+    return NextResponse.json({ generated: inserted.length, errors })
+  }
+
   if (action === 'uploadQuestions') {
     const { examType, questions } = await request.json()
     const validExamIds = EXAM_TYPES.map(item => item.id)

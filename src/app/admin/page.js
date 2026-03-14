@@ -119,6 +119,13 @@ function AdminPanel({ idToken, onSignOut }) {
   const [uploadPdfTopicId, setUploadPdfTopicId] = useState('')
   const [uploadPdfStatus, setUploadPdfStatus] = useState('')
 
+  const [genExamType, setGenExamType] = useState('OC')
+  const [genTopicId, setGenTopicId] = useState('')
+  const [genSubtopic, setGenSubtopic] = useState('')
+  const [genCount, setGenCount] = useState(10)
+  const [genStatus, setGenStatus] = useState('')
+  const [genLoading, setGenLoading] = useState(false)
+
   const [analytics, setAnalytics] = useState(null)
   const [loadingAnalytics, setLoadingAnalytics] = useState(false)
 
@@ -246,6 +253,31 @@ function AdminPanel({ idToken, onSignOut }) {
       document.getElementById('pdf-upload-input').value = ''
       loadQuizBank()
     } catch (err) { setUploadPdfStatus('PDF upload failed: ' + err.message) }
+  }
+
+  const generateQuestions = async () => {
+    if (!genTopicId) { setGenStatus('Please select a topic first.'); return }
+    const count = Math.max(1, Math.min(50, parseInt(genCount) || 10))
+    setGenLoading(true)
+    setGenStatus('Generating questions with AI...')
+    try {
+      const body = { examType: genExamType, topicId: genTopicId, count }
+      if (genSubtopic) body.subtopic = genSubtopic
+      const res = await fetch('/api/admin?action=generateQuestions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+        body: JSON.stringify(body),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Generation failed')
+      const errCount = data.errors?.length || 0
+      setGenStatus(`✓ Generated and saved ${data.generated} questions.${errCount > 0 ? ` (${errCount} failed)` : ''}`)
+      loadQuizBank()
+    } catch (err) {
+      setGenStatus('Error: ' + err.message)
+    } finally {
+      setGenLoading(false)
+    }
   }
 
   if (adminView === 'users' && loading) {
@@ -399,6 +431,61 @@ function AdminPanel({ idToken, onSignOut }) {
               <button style={{ padding: '7px 12px', background: '#FF6B35', color: 'white', border: 'none', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 800, cursor: 'pointer' }} onClick={uploadPdf}>Upload PDF</button>
             </div>
             {uploadPdfStatus && <div style={{ fontSize: '0.8rem', color: uploadPdfStatus.startsWith('PDF upload failed') ? '#EF4444' : '#10B981' }}>{uploadPdfStatus}</div>}
+          </div>
+
+          <div style={{ padding: 14, borderRadius: 10, border: '1px solid #C4B5FD', background: '#F5F3FF', marginBottom: 16 }}>
+            <div style={{ fontWeight: 700, marginBottom: 2, color: '#5B21B6' }}>AI Question Generator</div>
+            <div style={{ fontSize: '0.8rem', color: '#7C3AED', marginBottom: 10 }}>Generate questions using Claude AI and add them directly to the question bank.</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
+              <select
+                value={genExamType}
+                onChange={e => { setGenExamType(e.target.value); setGenTopicId(''); setGenSubtopic('') }}
+                style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #C4B5FD', background: 'white' }}
+              >
+                {EXAM_TYPES.map(e => <option key={e.id} value={e.id}>{e.label}</option>)}
+              </select>
+              <select
+                value={genTopicId}
+                onChange={e => { setGenTopicId(e.target.value); setGenSubtopic('') }}
+                style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #C4B5FD', background: 'white', minWidth: 160 }}
+              >
+                <option value="">— Select topic —</option>
+                {(EXAM_TOPICS[genExamType] || []).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+              {genTopicId && (EXAM_TOPICS[genExamType] || []).find(t => t.id === genTopicId)?.subtopics?.length > 0 && (
+                <select
+                  value={genSubtopic}
+                  onChange={e => setGenSubtopic(e.target.value)}
+                  style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #C4B5FD', background: 'white' }}
+                >
+                  <option value="">All subtopics</option>
+                  {(EXAM_TOPICS[genExamType] || []).find(t => t.id === genTopicId)?.subtopics.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              )}
+              <input
+                type="number"
+                min={1}
+                max={50}
+                value={genCount}
+                onChange={e => setGenCount(e.target.value)}
+                style={{ width: 70, padding: '7px 10px', borderRadius: 8, border: '1.5px solid #C4B5FD', background: 'white', fontFamily: 'Nunito', fontWeight: 700 }}
+                title="Number of questions (1–50)"
+              />
+              <button
+                onClick={generateQuestions}
+                disabled={genLoading || !genTopicId}
+                style={{ padding: '7px 14px', background: genLoading || !genTopicId ? '#C4B5FD' : '#7C3AED', color: 'white', border: 'none', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 800, cursor: genLoading || !genTopicId ? 'not-allowed' : 'pointer' }}
+              >
+                {genLoading ? 'Generating...' : 'Generate & Add to Bank'}
+              </button>
+            </div>
+            {genStatus && (
+              <div style={{ fontSize: '0.82rem', color: genStatus.startsWith('Error') ? '#DC2626' : genStatus.startsWith('✓') ? '#059669' : '#5B21B6', fontWeight: 600 }}>
+                {genStatus}
+              </div>
+            )}
           </div>
 
           <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1.05rem', marginBottom: 4, marginTop: 8 }}>Question Bank Overview</div>
