@@ -2,15 +2,8 @@ import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { getSupabase } from '@/lib/supabase'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
-
-// Tier mapped from Stripe Price IDs
-const PRICE_TIER_MAP = {
-  [process.env.STRIPE_PRICE_GOLD]:     'gold',
-  [process.env.STRIPE_PRICE_PLATINUM]: 'platinum',
-}
-
 export async function POST(request) {
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
   const body = await request.text()
   const sig  = request.headers.get('stripe-signature')
 
@@ -88,7 +81,6 @@ export async function POST(request) {
   if (event.type === 'invoice.payment_failed') {
     const invoice = event.data.object
     console.warn(`Stripe: payment failed for customer ${invoice.customer}`)
-    // Optionally notify user — for now just log
   }
 
   return NextResponse.json({ received: true })

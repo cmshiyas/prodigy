@@ -3,12 +3,8 @@ import Stripe from 'stripe'
 import { verifyGoogleToken } from '@/lib/google'
 import { getSupabase } from '@/lib/supabase'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
-
-// Map tier → Stripe Price ID (set these in .env.local)
-const PRICE_IDS = {
-  gold:     process.env.STRIPE_PRICE_GOLD,
-  platinum: process.env.STRIPE_PRICE_PLATINUM,
+function getStripe() {
+  return new Stripe(process.env.STRIPE_SECRET_KEY)
 }
 
 export async function POST(request) {
@@ -27,9 +23,11 @@ export async function POST(request) {
     if (userErr || !user) return NextResponse.json({ error: 'User not found' }, { status: 401 })
 
     const { tier } = await request.json()
+    const PRICE_IDS = { gold: process.env.STRIPE_PRICE_GOLD, platinum: process.env.STRIPE_PRICE_PLATINUM }
     const priceId = PRICE_IDS[tier]
     if (!priceId) return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
 
+    const stripe = getStripe()
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://exambooster.com.au'
 
     // Reuse existing Stripe customer if we have one
