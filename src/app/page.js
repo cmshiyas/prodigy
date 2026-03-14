@@ -526,10 +526,27 @@ function AdminPanel({ idToken, onSignOut }) {
         {uploadPdfStatus && <div style={{ fontSize: '0.8rem', color: uploadPdfStatus.startsWith('PDF upload failed') ? '#EF4444' : '#10B981' }}>{uploadPdfStatus}</div>}
       </div>
 
+      <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1.05rem', marginBottom: 4, marginTop: 8 }}>Question Bank Overview</div>
+      <div style={{ fontSize: '0.82rem', color: 'var(--text2)', marginBottom: 14 }}>Total questions loaded in the bank, broken down by exam track and topic.</div>
+
       {loadingQuizBank ? (
         <div className="loading-card"><div className="spinner" /><div className="loading-text">Loading quiz bank data...</div></div>
       ) : quizBank ? (
         <>
+          {/* Exam type summary cards */}
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
+            <div style={{ background: 'var(--surface)', borderRadius: 12, border: '1.5px solid var(--border)', padding: '14px 20px', minWidth: 120, textAlign: 'center' }}>
+              <div style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--accent)' }}>{quizBank.total || 0}</div>
+              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text2)', marginTop: 2 }}>Total Questions</div>
+            </div>
+            {(quizBank.examBreakdown || []).map(e => (
+              <div key={e.examType} style={{ background: 'var(--surface)', borderRadius: 12, border: '1.5px solid var(--border)', padding: '14px 20px', minWidth: 120, textAlign: 'center' }}>
+                <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#1D4ED8' }}>{e.count}</div>
+                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text2)', marginTop: 2 }}>{e.examType} Track</div>
+              </div>
+            ))}
+          </div>
+
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontWeight: 700 }}>Topic:</span>

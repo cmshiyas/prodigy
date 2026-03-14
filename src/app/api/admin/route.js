@@ -34,10 +34,10 @@ export async function GET(request) {
   }
 
   if (action === 'quizBank') {
-    // Fetch question stats per topic and per creator
+    // Fetch question stats per topic, exam type, and creator
     const { data: questions, error: questionsError } = await supabase
       .from('questions')
-      .select('id, topic_id, created_by')
+      .select('id, topic_id, exam_type, created_by')
 
     if (questionsError) return NextResponse.json({ error: questionsError.message }, { status: 500 })
 
@@ -48,16 +48,22 @@ export async function GET(request) {
     if (usersError) return NextResponse.json({ error: usersError.message }, { status: 500 })
 
     const topicCounts = {}
+    const examCounts = {}
     const userCounts = {}
 
     questions.forEach(q => {
       topicCounts[q.topic_id] = (topicCounts[q.topic_id] || 0) + 1
+      const exam = q.exam_type || 'Unknown'
+      examCounts[exam] = (examCounts[exam] || 0) + 1
       if (q.created_by) {
         userCounts[q.created_by] = (userCounts[q.created_by] || 0) + 1
       }
     })
 
     const topics = Object.entries(topicCounts).map(([topicId, count]) => ({ topicId, count }))
+    const examBreakdown = Object.entries(examCounts)
+      .map(([examType, count]) => ({ examType, count }))
+      .sort((a, b) => b.count - a.count)
     const userMap = Object.fromEntries(users.map(u => [u.id, u]))
 
     const userRanking = Object.entries(userCounts)
@@ -69,7 +75,7 @@ export async function GET(request) {
       }))
       .sort((a, b) => b.count - a.count)
 
-    return NextResponse.json({ topics, users: userRanking })
+    return NextResponse.json({ topics, examBreakdown, users: userRanking, total: questions.length })
   }
 
   return NextResponse.json({ error: 'Unknown action' }, { status: 404 })
