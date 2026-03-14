@@ -29,9 +29,8 @@ const initTopicStats = () => {
 const WA_NUMBER = '61432302644'
 
 function WhatsAppButton({ user }) {
-  const message = user
-    ? `Hi! I'm ${user.name} (${user.email}). I have a question about Self Paced Learning.`
-    : `Hi! I have a question about Self Paced Learning.`
+  if (user) return null
+  const message = `Hi! I have a question about Self Paced Learning.`
   const url = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(message)}`
   return (
     <a
