@@ -50,10 +50,11 @@ export async function POST(request) {
       // Brand new user (auto-approved)
       // Look up referrer if a referral code was provided
       let referredBy = null
+      let referrer = null
       if (referralCode) {
-        const { data: referrer } = await supabase
-          .from('users').select('id').eq('referral_code', referralCode).single()
-        if (referrer) referredBy = referrer.id
+        const { data: referrerData } = await supabase
+          .from('users').select('id, tier').eq('referral_code', referralCode).single()
+        if (referrerData) { referredBy = referrerData.id; referrer = referrerData }
       }
       const { data, error } = await supabase
         .from('users')
@@ -61,6 +62,9 @@ export async function POST(request) {
         .select().single()
       if (error) throw new Error('DB insert failed: ' + error.message)
       user = data
+
+      // Auto-upgrade referrer if they've hit a threshold
+      if (referrer) await checkAndUpgradeReferrer(supabase, referrer)
     }
 
     return respond(supabase, user)
@@ -68,6 +72,23 @@ export async function POST(request) {
   } catch (err) {
     console.error('Auth error:', err.message)
     return NextResponse.json({ error: err.message }, { status: 500 })
+  }
+}
+
+async function checkAndUpgradeReferrer(supabase, referrer) {
+  // Don't touch admins or users already on platinum
+  if (referrer.tier === 'admin' || referrer.tier === 'platinum') return
+
+  const { count } = await supabase
+    .from('users').select('id', { count: 'exact', head: true }).eq('referred_by', referrer.id)
+
+  let newTier = null
+  if (count >= 5) newTier = 'platinum'
+  else if (count >= 3 && referrer.tier !== 'platinum') newTier = 'gold'
+
+  if (newTier && newTier !== referrer.tier) {
+    await supabase.from('users').update({ tier: newTier, updated_at: new Date().toISOString() }).eq('id', referrer.id)
+    console.log(`Referral reward: upgraded user ${referrer.id} to ${newTier} (${count} referrals)`)
   }
 }
 
