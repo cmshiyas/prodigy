@@ -26,26 +26,76 @@ const initTopicStats = () => {
 
 // ── WHATSAPP CHAT BUTTON ──────────────────────────────────────
 
-const WA_NUMBER = '61432302644'
+// ── FEEDBACK BUTTON ───────────────────────────────────────────
+function FeedbackButton({ user, idToken }) {
+  const [open, setOpen] = useState(false)
+  const [message, setMessage] = useState('')
+  const [status, setStatus] = useState(null) // null | 'sending' | 'sent' | 'error'
 
-function WhatsAppButton({ user }) {
-  if (user) return null
-  const message = `Hi! I have a question about Self Paced Learning.`
-  const url = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(message)}`
+  async function submit() {
+    if (!message.trim()) return
+    setStatus('sending')
+    try {
+      const headers = { 'Content-Type': 'application/json' }
+      if (idToken) headers['Authorization'] = 'Bearer ' + idToken
+      const res = await fetch('/api/feedback', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ message: message.trim() }),
+      })
+      if (!res.ok) throw new Error()
+      setStatus('sent')
+      setMessage('')
+      setTimeout(() => { setOpen(false); setStatus(null) }, 2500)
+    } catch {
+      setStatus('error')
+    }
+  }
+
   return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="wa-btn"
-      aria-label="Chat with us on WhatsApp"
-    >
-      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="wa-icon">
-        <circle cx="16" cy="16" r="16" fill="#25D366"/>
-        <path d="M23.5 8.5A10.45 10.45 0 0016 5.5C10.2 5.5 5.5 10.2 5.5 16c0 1.84.48 3.63 1.38 5.2L5.5 26.5l5.42-1.42A10.46 10.46 0 0016 26.5c5.8 0 10.5-4.7 10.5-10.5 0-2.8-1.09-5.44-3-7.5zm-7.5 16.1c-1.56 0-3.08-.42-4.4-1.2l-.32-.19-3.22.85.86-3.14-.2-.33A8.56 8.56 0 017.44 16c0-4.73 3.84-8.56 8.56-8.56 2.28 0 4.44.89 6.05 2.51A8.52 8.52 0 0124.57 16c0 4.73-3.84 8.6-8.57 8.6zm4.7-6.42c-.26-.13-1.53-.75-1.77-.84-.24-.09-.41-.13-.58.13-.17.26-.66.84-.8 1.01-.15.17-.3.19-.55.06-.26-.13-1.08-.4-2.06-1.27-.76-.68-1.28-1.52-1.43-1.77-.15-.26-.02-.4.11-.53.12-.11.26-.3.39-.44.13-.14.17-.24.26-.4.09-.17.04-.31-.02-.44-.06-.13-.58-1.4-.8-1.92-.2-.5-.42-.43-.58-.44h-.5c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1s.9 2.43 1.02 2.6c.13.17 1.77 2.7 4.28 3.79.6.26 1.07.41 1.43.53.6.19 1.15.16 1.58.1.48-.07 1.53-.63 1.74-1.23.22-.6.22-1.11.15-1.23-.07-.12-.24-.18-.5-.31z" fill="white"/>
-      </svg>
-      <span className="wa-label">Chat with us</span>
-    </a>
+    <>
+      <button className="feedback-fab" onClick={() => { setOpen(true); setStatus(null) }} aria-label="Send feedback">
+        💬 <span className="feedback-fab-label">Feedback</span>
+      </button>
+
+      {open && (
+        <div className="feedback-backdrop" onClick={e => { if (e.target === e.currentTarget) setOpen(false) }}>
+          <div className="feedback-panel">
+            <button className="feedback-close" onClick={() => setOpen(false)}>✕</button>
+            <div className="feedback-beta-badge">🚀 Beta</div>
+            <div className="feedback-title">Help us improve</div>
+            <div className="feedback-desc">
+              We're in <strong>beta</strong> — your feedback shapes the product! Share bugs, ideas, or anything on your mind. We read every message.
+            </div>
+
+            {status === 'sent' ? (
+              <div className="feedback-success">✅ Thank you! We really appreciate it.</div>
+            ) : (
+              <>
+                <textarea
+                  className="feedback-textarea"
+                  placeholder="What could be better? Found a bug? Have a feature idea?"
+                  value={message}
+                  onChange={e => setMessage(e.target.value)}
+                  rows={5}
+                  autoFocus
+                />
+                {status === 'error' && (
+                  <div className="feedback-error">Something went wrong — please try again.</div>
+                )}
+                <button
+                  className="btn btn-primary feedback-submit"
+                  onClick={submit}
+                  disabled={!message.trim() || status === 'sending'}
+                >
+                  {status === 'sending' ? 'Sending…' : 'Send Feedback'}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -597,7 +647,7 @@ function LandingScreen({ onSignIn, referralConfig = {} }) {
         </div>
       </footer>
 
-      <WhatsAppButton />
+      <FeedbackButton />
       {showTrialModal && <TrialModal onClose={() => setShowTrialModal(false)} referralConfig={referralConfig} />}
     </div>
   )
@@ -679,8 +729,9 @@ const STREAK_CONFIG = {
   4: { emoji: '🏆', heading: 'LEGENDARY!', sub: '15+ correct streak — absolute legend!', color: '#059669', bg: 'linear-gradient(135deg,#D1FAE5,#6EE7B7)' },
 }
 
-function ReferralModal({ user, referralCount, referralConfig = {}, onClose }) {
+function ReferralModal({ user, idToken, referralConfig = {}, onClose }) {
   const [copied, setCopied] = useState(false)
+  const [referralCount, setReferralCount] = useState(null)
   const referralLink = typeof window !== 'undefined'
     ? `${window.location.origin}?ref=${user.referral_code}`
     : `https://www.selfpaced.com.au?ref=${user.referral_code}`
@@ -689,6 +740,14 @@ function ReferralModal({ user, referralCount, referralConfig = {}, onClose }) {
   const platinumCount   = referralConfig.platinumCount   || 5
   const goldBenefit     = referralConfig.goldBenefit     || 'Free Gold access — permanently'
   const platinumBenefit = referralConfig.platinumBenefit || 'Free Platinum access — permanently'
+
+  useEffect(() => {
+    if (!idToken) return
+    fetch('/api/referral', { headers: { Authorization: 'Bearer ' + idToken } })
+      .then(r => r.json())
+      .then(data => { if (data.referral_count !== undefined) setReferralCount(data.referral_count) })
+      .catch(() => setReferralCount(0))
+  }, [idToken])
 
   function handleCopy() {
     navigator.clipboard.writeText(referralLink).then(() => {
@@ -707,7 +766,7 @@ function ReferralModal({ user, referralCount, referralConfig = {}, onClose }) {
           Share your link — when a friend signs up, you both help grow the community!
         </div>
         <div className="referral-modal-stat">
-          <div className="referral-modal-stat-num">{referralCount}</div>
+          <div className="referral-modal-stat-num">{referralCount === null ? '…' : referralCount}</div>
           <div className="referral-modal-stat-label">friend{referralCount !== 1 ? 's' : ''} referred<br/>so far</div>
         </div>
         <div className="trial-referral-tiers" style={{ marginBottom: 12 }}>
@@ -1853,7 +1912,10 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
           referralConfig={referralConfig}
         />
       </div>
-      <WhatsAppButton user={session.user} />
+      <FeedbackButton user={session.user} idToken={session.idToken} />
+      {showReferralModal && session.user?.referral_code && (
+        <ReferralModal user={session.user} idToken={session.idToken} referralConfig={referralConfig} onClose={() => setShowReferralModal(false)} />
+      )}
     </div>
   )
 
@@ -1927,7 +1989,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
 
       <StreakCelebration celebration={celebration} />
       {showReferralModal && session.user?.referral_code && (
-        <ReferralModal user={session.user} referralCount={referralCount} referralConfig={referralConfig} onClose={() => setShowReferralModal(false)} />
+        <ReferralModal user={session.user} idToken={session.idToken} referralConfig={referralConfig} onClose={() => setShowReferralModal(false)} />
       )}
 
       {/* MAIN LAYOUT */}
@@ -2055,7 +2117,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
             <BalloonPopOverlay visible={balloonPopped} />
           </div>
         </div>
-      <WhatsAppButton user={user} />
+      <FeedbackButton user={user} idToken={session.idToken} />
     </div>
   )
 }

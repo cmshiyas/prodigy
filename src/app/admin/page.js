@@ -446,6 +446,7 @@ function AdminPanel({ idToken, onSignOut }) {
           {tabBtn('review', 'Answer Review')}
           {tabBtn('promos', 'Promo Codes')}
           {tabBtn('referral', 'Referral')}
+          {tabBtn('feedback', 'Feedback')}
         </div>
       </div>
 
@@ -877,6 +878,97 @@ function AdminPanel({ idToken, onSignOut }) {
       {/* Referral tab */}
       {adminView === 'referral' && (
         <ReferralConfigEditor idToken={idToken} onSignOut={onSignOut} />
+      )}
+
+      {/* Feedback tab */}
+      {adminView === 'feedback' && (
+        <FeedbackViewer idToken={idToken} />
+      )}
+    </div>
+  )
+}
+
+// ── FEEDBACK VIEWER ────────────────────────────────────────────
+
+function FeedbackViewer({ idToken }) {
+  const [feedbacks, setFeedbacks] = useState(null)
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [loading, setLoading] = useState(true)
+  const pageSize = 30
+
+  const load = async (p = 1) => {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/admin?action=feedbacks&page=${p}`, {
+        headers: { Authorization: 'Bearer ' + idToken },
+      })
+      const data = await res.json()
+      setFeedbacks(data.feedbacks || [])
+      setTotal(data.total || 0)
+      setPage(p)
+    } catch { setFeedbacks([]) }
+    finally { setLoading(false) }
+  }
+
+  useEffect(() => { load(1) }, []) // eslint-disable-line
+
+  const totalPages = Math.ceil(total / pageSize)
+
+  return (
+    <div style={{ padding: '20px 24px' }}>
+      <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1.05rem', marginBottom: 4 }}>
+        Beta Feedback
+      </div>
+      <div style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: 16 }}>
+        {total} submission{total !== 1 ? 's' : ''} received
+      </div>
+
+      {loading ? (
+        <div style={{ color: '#94a3b8', textAlign: 'center', padding: 40 }}>Loading…</div>
+      ) : feedbacks.length === 0 ? (
+        <div style={{ color: '#94a3b8', textAlign: 'center', padding: 40 }}>No feedback yet.</div>
+      ) : (
+        <>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {feedbacks.map(fb => (
+              <div key={fb.id} style={{ border: '1.5px solid #e2e8f0', borderRadius: 12, padding: '14px 16px', background: '#f8fafc' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
+                  <div>
+                    <span style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.9rem' }}>
+                      {fb.user_name || 'Anonymous'}
+                    </span>
+                    {fb.user_email && (
+                      <span style={{ color: '#64748b', fontSize: '0.8rem', marginLeft: 8 }}>{fb.user_email}</span>
+                    )}
+                  </div>
+                  <span style={{ color: '#94a3b8', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
+                    {new Date(fb.created_at).toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+                <div style={{ color: '#334155', fontSize: '0.92rem', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
+                  {fb.message}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 20 }}>
+              <button
+                onClick={() => load(page - 1)} disabled={page <= 1}
+                style={{ padding: '6px 16px', borderRadius: 8, border: '1.5px solid #e2e8f0', background: 'white', cursor: 'pointer', fontFamily: 'Nunito', fontWeight: 700 }}
+              >← Prev</button>
+              <span style={{ padding: '6px 12px', color: '#64748b', fontSize: '0.88rem' }}>
+                {page} / {totalPages}
+              </span>
+              <button
+                onClick={() => load(page + 1)} disabled={page >= totalPages}
+                style={{ padding: '6px 16px', borderRadius: 8, border: '1.5px solid #e2e8f0', background: 'white', cursor: 'pointer', fontFamily: 'Nunito', fontWeight: 700 }}
+              >Next →</button>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

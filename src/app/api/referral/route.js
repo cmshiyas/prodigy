@@ -3,6 +3,8 @@ import { verifyGoogleToken } from '@/lib/google'
 import { getSupabase } from '@/lib/supabase'
 import { getReferralConfig } from '@/lib/referralConfig'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request) {
   try {
     const authHeader = request.headers.get('authorization')

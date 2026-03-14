@@ -205,6 +205,19 @@ export async function GET(request) {
     return NextResponse.json({ responses: result })
   }
 
+  if (action === 'feedbacks') {
+    const page     = Math.max(1, parseInt(new URL(request.url).searchParams.get('page') || '1') || 1)
+    const pageSize = 30
+    const offset   = (page - 1) * pageSize
+    const { data, error, count } = await supabase
+      .from('feedback')
+      .select('id, user_name, user_email, message, created_at', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(offset, offset + pageSize - 1)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ feedbacks: data, total: count || 0, page, pageSize })
+  }
+
   if (action === 'duplicates') {
     // Fetch all questions (lean select) and find duplicates by normalised text
     const { data: allQs, error } = await supabase

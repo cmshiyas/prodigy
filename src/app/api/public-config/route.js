@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { getSupabase } from '@/lib/supabase'
 import { getReferralConfig } from '@/lib/referralConfig'
 
+export const dynamic = 'force-dynamic'
+
 // Public — no auth required. Returns UI-facing config values.
 export async function GET() {
   try {
