@@ -1162,9 +1162,78 @@ function HomeScreen({ user, examType, onExamTypeChange, yearLevel, onYearLevelCh
   )
 }
 
+// ── BALLOON PROGRESS BAR ──────────────────────────────────────
+
+function BalloonProgressBar({ progress }) {
+  const TOTAL = 10
+  const blockColors = ['#06B6D4','#06B6D4','#3B82F6','#3B82F6','#8B5CF6','#8B5CF6','#EC4899','#EC4899','#F59E0B','#FF6B35']
+
+  return (
+    <div className="balloon-bar-wrap">
+      <div className={`balloon-svg-wrap${progress === 10 ? ' balloon-pop' : ''}`}>
+        <svg width="48" height="60" viewBox="0 0 48 60" fill="none">
+          <ellipse cx="24" cy="26" rx="20" ry="24" fill={progress >= 8 ? '#FF6B35' : progress >= 5 ? '#F59E0B' : '#4ADE80'} />
+          <ellipse cx="17" cy="16" rx="5" ry="7" fill="white" opacity="0.3" />
+          <path d="M22 50 Q24 54 26 50" stroke="#888" strokeWidth="1.5" fill="none"/>
+          <path d="M24 52 Q20 56 24 60" stroke="#aaa" strokeWidth="1.2" strokeDasharray="2 2" />
+        </svg>
+        {progress >= 7 && <div className="balloon-shimmer" />}
+      </div>
+
+      <div className="balloon-blocks">
+        {Array.from({ length: TOTAL }).map((_, i) => {
+          const blockIndex = TOTAL - 1 - i
+          const filled = blockIndex < progress
+          return (
+            <div
+              key={blockIndex}
+              className={`balloon-block${filled ? ' balloon-block--filled' : ''}${filled && blockIndex === progress - 1 ? ' balloon-block--new' : ''}`}
+              style={filled ? { background: blockColors[blockIndex], boxShadow: `0 0 8px ${blockColors[blockIndex]}88` } : {}}
+            />
+          )
+        })}
+      </div>
+
+      <div className="balloon-label">{progress}/10</div>
+    </div>
+  )
+}
+
+// ── BALLOON POP OVERLAY ────────────────────────────────────────
+
+function BalloonPopOverlay({ visible }) {
+  if (!visible) return null
+  const confetti = Array.from({ length: 24 }, (_, i) => {
+    const angle = (i / 24) * 360
+    const dist = 120 + Math.random() * 80
+    const dx = Math.round(Math.cos((angle * Math.PI) / 180) * dist)
+    const dy = Math.round(Math.sin((angle * Math.PI) / 180) * dist)
+    const colors = ['#FF6B35','#F59E0B','#4ADE80','#3B82F6','#EC4899','#8B5CF6','#06B6D4']
+    const color = colors[i % colors.length]
+    const shapes = ['●', '■', '▲', '★', '♦']
+    return { dx, dy, color, shape: shapes[i % shapes.length] }
+  })
+  const words = ['AMAZING! 🎉', 'PERFECT! 🔥', 'LEGEND! 🏆', '10 STREAK! 🎊']
+  const word = words[Math.floor(Math.random() * words.length)]
+
+  return (
+    <div className="balloon-pop-overlay">
+      <div className="balloon-pop-graffiti">{word}</div>
+      <div className="balloon-pop-sub">10 correct in a row! 🎈💥</div>
+      {confetti.map((c, i) => (
+        <span
+          key={i}
+          className="balloon-confetti"
+          style={{ '--dx': `${c.dx}px`, '--dy': `${c.dy}px`, color: c.color, animationDelay: `${i * 0.03}s` }}
+        >{c.shape}</span>
+      ))}
+    </div>
+  )
+}
+
 // ── QUESTION VIEW ─────────────────────────────────────────────
 
-function QuestionView({ question, questionNumber, topicStats, examType, onAnswer, onNext, onHome, currentTopics, subtopics, currentSubtopic, onSubtopicChange }) {
+function QuestionView({ question, questionNumber, topicStats, examType, onAnswer, onNext, onHome, currentTopics, subtopics, currentSubtopic, onSubtopicChange, barProgress }) {
   const [answered, setAnswered] = useState(false)
   const [selectedIdx, setSelectedIdx] = useState(null)
   const topic = currentTopics.find(t => t.id === question.topicId) || { name: 'Topic' }
@@ -1192,6 +1261,8 @@ function QuestionView({ question, questionNumber, topicStats, examType, onAnswer
 
   return (
     <>
+      <div className="question-view-wrap">
+      <div className="question-view-main">
       <div className="question-card">
         <div className="question-header">
           <span className="question-num">Question {questionNumber}</span>
@@ -1263,6 +1334,9 @@ function QuestionView({ question, questionNumber, topicStats, examType, onAnswer
           </div>
         </div>
       </div>
+      </div>
+      <BalloonProgressBar progress={barProgress || 0} />
+      </div>
     </>
   )
 }
@@ -1306,6 +1380,8 @@ export default function App() {
   const [quizTopicsAttempted, setQuizTopicsAttempted] = useState(new Set())
   const [correctStreak, setCorrectStreak] = useState(0)
   const [celebration, setCelebration] = useState(null) // { streak, level }
+  const [barProgress, setBarProgress] = useState(0)
+  const [balloonPopped, setBalloonPopped] = useState(false)
   const [showReferralModal, setShowReferralModal] = useState(false)
   const [referralCount, setReferralCount] = useState(0)
 
@@ -1602,6 +1678,14 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
     } else {
       setCorrectStreak(0)
     }
+    setBarProgress(prev => {
+      const next = isCorrect ? Math.min(10, prev + 1) : Math.max(0, prev - 1)
+      if (next === 10) {
+        setBalloonPopped(true)
+        setTimeout(() => { setBalloonPopped(false); setBarProgress(0) }, 3200)
+      }
+      return next
+    })
     setTopicStats(prev => ({
       ...prev,
       [question.topicId]: {
@@ -1680,6 +1764,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
     setQuizSessionStartTime(null)
     setQuizTopicsAttempted(new Set())
     setScore(0)
+    setBarProgress(0)
     setTotalAnswered(0)
     setTopicStats(initTopicStats)
     setCurrentTopic(null)
@@ -1907,8 +1992,10 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
                 onAnswer={handleAnswer}
                 onNext={() => generateQuestion(currentTopic, currentSubtopic)}
                 onHome={() => { saveQuizAttempt(); resetQuizSession(); setScreen('app') }}
+                barProgress={barProgress}
               />
             )}
+            <BalloonPopOverlay visible={balloonPopped} />
           </div>
         </div>
       <WhatsAppButton user={user} />

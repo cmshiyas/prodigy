@@ -701,3 +701,36 @@ header { background: var(--accent); padding: 0 2rem; display: flex; align-items:
   .wa-btn { padding: 12px; border-radius: 50%; }
   .wa-label { display: none; }
 }
+
+/* ── BALLOON PROGRESS BAR ─────────────────────────────────── */
+.question-view-wrap { display: flex; gap: 16px; align-items: flex-start; }
+.question-view-main { flex: 1; min-width: 0; }
+.balloon-bar-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 56px; flex-shrink: 0; position: sticky; top: 100px; }
+.balloon-svg-wrap { position: relative; animation: balloonBob 2.4s ease-in-out infinite; }
+.balloon-svg-wrap.balloon-pop { animation: balloonPopAnim 0.5s ease-out forwards; }
+.balloon-shimmer { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle at 40% 30%, rgba(255,255,255,0.6) 0%, transparent 60%); pointer-events: none; animation: shimmerPulse 0.8s ease-in-out infinite alternate; }
+.balloon-blocks { display: flex; flex-direction: column; gap: 4px; width: 36px; }
+.balloon-block { width: 36px; height: 28px; border-radius: 6px; background: #E2E8F0; border: 1.5px solid #CBD5E1; transition: background 0.2s; }
+.balloon-block--filled { border-color: transparent; transition: background 0.25s, box-shadow 0.25s; }
+.balloon-block--new { animation: blockBounceIn 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+.balloon-label { font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 0.75rem; color: var(--text2); }
+@keyframes balloonBob { 0%,100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-10px) rotate(4deg); } }
+@keyframes balloonPopAnim { 0% { transform: scale(1); opacity: 1; } 40% { transform: scale(1.6); opacity: 0.8; } 100% { transform: scale(0.1); opacity: 0; } }
+@keyframes shimmerPulse { from { opacity: 0.4; } to { opacity: 0.9; } }
+@keyframes blockBounceIn { 0% { transform: scaleY(0); opacity: 0; } 60% { transform: scaleY(1.2); } 100% { transform: scaleY(1); opacity: 1; } }
+
+/* ── BALLOON POP OVERLAY ──────────────────────────────────── */
+.balloon-pop-overlay { position: fixed; inset: 0; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+.balloon-pop-graffiti { font-family: 'Nunito', sans-serif; font-weight: 900; font-size: clamp(2rem, 8vw, 4rem); color: #FF6B35; text-shadow: 4px 4px 0 #1E1B4B, -2px -2px 0 #7C3AED; letter-spacing: -0.02em; animation: graffitiSlam 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards; transform-origin: center; }
+.balloon-pop-sub { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 1.1rem; color: white; text-shadow: 2px 2px 6px rgba(0,0,0,0.5); margin-top: 8px; animation: graffitiSlam 0.6s 0.2s cubic-bezier(0.34,1.56,0.64,1) both; }
+.balloon-confetti { position: absolute; top: 50%; left: 50%; font-size: 1.1rem; font-weight: 900; animation: confettiShoot 1.2s ease-out forwards; }
+@keyframes graffitiSlam { 0% { transform: scale(0) rotate(-15deg); opacity: 0; } 60% { transform: scale(1.15) rotate(5deg); opacity: 1; } 80% { transform: scale(0.97) rotate(-1deg); } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
+@keyframes confettiShoot { 0% { transform: translate(-50%,-50%) scale(1); opacity: 1; } 100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.4) rotate(720deg); opacity: 0; } }
+
+@media (max-width: 640px) {
+  .question-view-wrap { flex-direction: column-reverse; }
+  .balloon-bar-wrap { flex-direction: row; width: 100%; justify-content: center; position: static; }
+  .balloon-blocks { flex-direction: row; width: auto; height: 36px; }
+  .balloon-block { width: 28px; height: 36px; }
+  .balloon-svg-wrap { transform: rotate(90deg); }
+}
