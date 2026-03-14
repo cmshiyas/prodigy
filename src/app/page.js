@@ -760,6 +760,56 @@ function AdminPanel({ idToken, onSignOut }) {
 }
 
 
+// ── STREAK CELEBRATION ────────────────────────────────────────
+
+const STREAK_CONFIG = {
+  1: { emoji: '🎉', heading: 'Nice work!', sub: '3 in a row — keep it up!', color: '#F59E0B', bg: 'linear-gradient(135deg,#FEF3C7,#FDE68A)' },
+  2: { emoji: '🔥', heading: "You're on fire!", sub: '6 correct in a row — amazing!', color: '#EF4444', bg: 'linear-gradient(135deg,#FEE2E2,#FCA5A5)' },
+  3: { emoji: '🚀', heading: 'Unstoppable!', sub: '9 in a row — you\'re a superstar!', color: '#7C3AED', bg: 'linear-gradient(135deg,#EDE9FE,#C4B5FD)' },
+  4: { emoji: '🏆', heading: 'LEGENDARY!', sub: '15+ correct streak — absolute legend!', color: '#059669', bg: 'linear-gradient(135deg,#D1FAE5,#6EE7B7)' },
+}
+
+function StreakCelebration({ celebration }) {
+  if (!celebration) return null
+  const cfg = STREAK_CONFIG[celebration.level] || STREAK_CONFIG[1]
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      pointerEvents: 'none',
+    }}>
+      {/* Confetti dots */}
+      {Array.from({ length: 18 }).map((_, i) => (
+        <div key={i} style={{
+          position: 'absolute',
+          left: `${5 + (i * 5.5) % 90}%`,
+          top: '-20px',
+          width: 10 + (i % 3) * 4,
+          height: 10 + (i % 3) * 4,
+          borderRadius: i % 2 === 0 ? '50%' : 3,
+          background: ['#F59E0B','#EF4444','#3B82F6','#10B981','#8B5CF6','#EC4899'][i % 6],
+          animation: `confettiFall ${1.2 + (i % 5) * 0.3}s ease-in ${(i % 4) * 0.1}s forwards`,
+        }} />
+      ))}
+      {/* Main card */}
+      <div style={{
+        background: cfg.bg,
+        borderRadius: 24,
+        padding: '36px 48px',
+        textAlign: 'center',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+        animation: 'celebPop 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards',
+        maxWidth: 340,
+      }}>
+        <div style={{ fontSize: '4rem', animation: 'wiggle 0.6s ease-in-out infinite alternate', display: 'inline-block' }}>{cfg.emoji}</div>
+        <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1.8rem', color: cfg.color, marginTop: 8 }}>{cfg.heading}</div>
+        <div style={{ fontWeight: 700, fontSize: '1rem', color: '#374151', marginTop: 4 }}>{cfg.sub}</div>
+        <div style={{ marginTop: 12, fontWeight: 800, fontSize: '1.1rem', color: cfg.color }}>{celebration.streak} correct in a row!</div>
+      </div>
+    </div>
+  )
+}
+
 // ── SIDEBAR ───────────────────────────────────────────────────
 
 function Sidebar({ currentTopic, currentSubtopic, topics, topicStats, subtopicStats, totalAnswered, onSelectTopic }) {
@@ -1028,6 +1078,8 @@ export default function App() {
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [quizSessionStartTime, setQuizSessionStartTime] = useState(null)
   const [quizTopicsAttempted, setQuizTopicsAttempted] = useState(new Set())
+  const [correctStreak, setCorrectStreak] = useState(0)
+  const [celebration, setCelebration] = useState(null) // { streak, level }
 
   const baseTopics = EXAM_TOPICS[examType] || EXAM_TOPICS.OC
   const currentTopics = baseTopics.map(t => ({ ...t, subtopics: dynamicSubtopics[t.id] || [] }))
@@ -1240,6 +1292,17 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
     setTotalAnswered(n => n + 1)
     if (isCorrect) {
       setScore(s => s + (question.difficulty === 'hard' ? 3 : question.difficulty === 'medium' ? 2 : 1))
+      setCorrectStreak(prev => {
+        const next = prev + 1
+        if (next % 3 === 0) {
+          const level = next >= 15 ? 4 : next >= 9 ? 3 : next >= 6 ? 2 : 1
+          setCelebration({ streak: next, level })
+          setTimeout(() => setCelebration(null), 3500)
+        }
+        return next
+      })
+    } else {
+      setCorrectStreak(0)
     }
     setTopicStats(prev => ({
       ...prev,
@@ -1382,6 +1445,8 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
           <AdminPanel idToken={session.idToken} onSignOut={handleSignOut} />
         </div>
       )}
+
+      <StreakCelebration celebration={celebration} />
 
       {/* MAIN LAYOUT */}
       {!showAdmin && (
