@@ -1108,7 +1108,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
       // The API now returns the question data directly
       setQuestion(data)
     } catch (err) {
-      setQuestionError(err.message || 'Could not generate question. Please try again.')
+      setQuestionError(err.message || 'Could not load question. Please try again.')
     } finally {
       setLoadingQuestion(false)
     }
@@ -1357,7 +1357,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
             {loadingQuestion && (
               <div className="loading-card">
                 <div className="spinner" />
-                <div className="loading-text">Generating a {currentTopics.find(t => t.id === currentTopic)?.name} question...</div>
+                <div className="loading-text">Loading your next {currentTopics.find(t => t.id === currentTopic)?.name} question...</div>
               </div>
             )}
 
