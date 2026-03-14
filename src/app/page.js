@@ -400,762 +400,6 @@ function RejectedScreen({ onSignOut }) {
 }
 
 
-// ── TOKEN LIMITS EDITOR ───────────────────────────────────────
-
-function TokenLimitsEditor({ idToken, onSignOut }) {
-  const [limits, setLimits] = useState(null)
-  const [saving, setSaving] = useState(null)
-  const [saved, setSaved] = useState(null)
-
-  useEffect(() => {
-    fetch('/api/admin?action=config', {
-      headers: { Authorization: 'Bearer ' + idToken }
-    })
-      .then(async r => {
-        if (r.status === 403) {
-          const err = await r.json()
-          if (err.error && (err.error.includes('Not authenticated') || err.error.includes('token') || err.error.includes('Token'))) {
-            console.log('Admin API authentication failed - clearing session')
-            onSignOut()
-            return null
-          }
-        }
-        return r.json()
-      })
-      .then(data => {
-        if (!data) return // Already handled auth error
-        const map = {}
-        data.config.forEach(({ key, value }) => {
-          map[key.replace('token_limit_', '')] = value
-        })
-        setLimits(map)
-      })
-  }, [idToken])
-
-  const save = async (tier, value) => {
-    setSaving(tier)
-    try {
-      const res = await fetch('/api/admin?action=config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
-        body: JSON.stringify({ key: 'token_limit_' + tier, value }),
-      })
-      if (res.status === 403) {
-        const err = await res.json()
-        if (err.error && (err.error.includes('Not authenticated') || err.error.includes('token') || err.error.includes('Token'))) {
-          console.log('Admin API authentication failed - clearing session')
-          onSignOut()
-          return
-        }
-      }
-      if (!res.ok) throw new Error((await res.json()).error)
-      setSaved(tier)
-      setTimeout(() => setSaved(null), 2000)
-    } catch (err) {
-      alert('Failed: ' + err.message)
-    } finally {
-      setSaving(null)
-    }
-  }
-
-  if (!limits) return <div className="loading-text">Loading config...</div>
-
-  const tiers = [
-    { key: 'silver',   label: 'Silver',   color: '#94A3B8' },
-    { key: 'gold',     label: 'Gold',     color: '#F59E0B' },
-    { key: 'platinum', label: 'Platinum', color: '#8B5CF6' },
-    { key: 'admin',    label: 'Admin',    color: '#EF4444' },
-  ]
-
-  return (
-    <div style={{ padding: '20px 24px', borderTop: '1.5px solid var(--border)' }}>
-      <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1rem', marginBottom: 4 }}>Token Limits</div>
-      <div style={{ fontSize: '0.8rem', color: 'var(--text2)', marginBottom: 16 }}>Daily token limits per tier — changes take effect immediately, no redeployment needed.</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-        {tiers.map(({ key, label, color }) => (
-          <div key={key} style={{ background: 'var(--surface2)', borderRadius: 10, padding: '12px 16px', border: '1.5px solid var(--border)' }}>
-            <div style={{ fontWeight: 800, fontSize: '0.85rem', color, marginBottom: 8 }}>{label}</div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <input
-                type="number"
-                value={limits[key] || ''}
-                onChange={e => setLimits(l => ({ ...l, [key]: e.target.value }))}
-                style={{ flex: 1, padding: '6px 10px', borderRadius: 8, border: '1.5px solid var(--border)', fontFamily: 'Nunito', fontWeight: 700, fontSize: '0.9rem', background: 'white' }}
-              />
-              <button
-                className="btn btn-primary"
-                style={{ padding: '6px 14px', fontSize: '0.8rem' }}
-                onClick={() => save(key, limits[key])}
-                disabled={saving === key}
-              >
-                {saving === key ? '...' : saved === key ? '✓' : 'Save'}
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// ── ADMIN PANEL ───────────────────────────────────────────────
-
-function AdminPanel({ idToken, onSignOut }) {
-  const [adminView, setAdminView] = useState('users') // users | quizBank | analytics
-  const [users, setUsers] = useState(null)
-  const [filter, setFilter] = useState('all')
-  const [loading, setLoading] = useState(true)
-
-  const [quizBank, setQuizBank] = useState(null)
-  const [loadingQuizBank, setLoadingQuizBank] = useState(false)
-  const [quizBankTopicFilter, setQuizBankTopicFilter] = useState('all')
-  const [quizBankUserSort, setQuizBankUserSort] = useState('countDesc')
-  const [uploadFile, setUploadFile] = useState(null)
-  const [uploadExamType, setUploadExamType] = useState('OC')
-  const [uploadStatus, setUploadStatus] = useState('')
-  const [uploadPdfFile, setUploadPdfFile] = useState(null)
-  const [uploadPdfExamType, setUploadPdfExamType] = useState('OC')
-  const [uploadPdfTopicId, setUploadPdfTopicId] = useState('')
-  const [uploadPdfStatus, setUploadPdfStatus] = useState('')
-
-  const [analytics, setAnalytics] = useState(null)
-  const [loadingAnalytics, setLoadingAnalytics] = useState(false)
-
-  const [reviewUserId, setReviewUserId] = useState('')
-  const [reviewResponses, setReviewResponses] = useState(null)
-  const [loadingReview, setLoadingReview] = useState(false)
-  const [reviewFilter, setReviewFilter] = useState('all') // all | correct | wrong
-
-  const loadUsers = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await fetch('/api/admin?action=users', {
-        headers: { Authorization: 'Bearer ' + idToken },
-      })
-      if (res.status === 403) {
-        const err = await res.json()
-        if (err.error && (err.error.includes('Not authenticated') || err.error.includes('token') || err.error.includes('Token'))) {
-          console.log('Admin API authentication failed - clearing session')
-          onSignOut()
-          return
-        }
-      }
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      setUsers(data.users)
-    } catch (err) {
-      alert('Failed to load users: ' + err.message)
-    } finally {
-      setLoading(false)
-    }
-  }, [idToken])
-
-  const loadQuizBank = useCallback(async () => {
-    setLoadingQuizBank(true)
-    try {
-      const res = await fetch('/api/admin?action=quizBank', {
-        headers: { Authorization: 'Bearer ' + idToken },
-      })
-      if (res.status === 403) {
-        const err = await res.json()
-        if (err.error && (err.error.includes('Not authenticated') || err.error.includes('token') || err.error.includes('Token'))) {
-          console.log('Admin API authentication failed - clearing session')
-          onSignOut()
-          return
-        }
-      }
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      setQuizBank(data)
-    } catch (err) {
-      alert('Failed to load quiz bank data: ' + err.message)
-    } finally {
-      setLoadingQuizBank(false)
-    }
-  }, [idToken])
-
-  const loadAnalytics = useCallback(async () => {
-    setLoadingAnalytics(true)
-    try {
-      const res = await fetch('/api/admin?action=analytics', { headers: { Authorization: 'Bearer ' + idToken } })
-      if (res.status === 403) { const e = await res.json(); if (e.error?.includes('Not')) { onSignOut(); return } }
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      setAnalytics(data)
-    } catch (err) { alert('Failed to load analytics: ' + err.message) }
-    finally { setLoadingAnalytics(false) }
-  }, [idToken])
-
-  const loadReview = useCallback(async (uid) => {
-    if (!uid) return
-    setLoadingReview(true)
-    setReviewResponses(null)
-    try {
-      const res = await fetch(`/api/admin?action=userResponses&userId=${encodeURIComponent(uid)}`, {
-        headers: { Authorization: 'Bearer ' + idToken }
-      })
-      if (res.status === 403) { const e = await res.json(); if (e.error?.includes('Not')) { onSignOut(); return } }
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      setReviewResponses(data.responses)
-    } catch (err) { alert('Failed to load responses: ' + err.message) }
-    finally { setLoadingReview(false) }
-  }, [idToken])
-
-  useEffect(() => { loadUsers() }, [loadUsers])
-
-  useEffect(() => {
-    if (adminView === 'quizBank') loadQuizBank()
-    if (adminView === 'analytics') loadAnalytics()
-    if (adminView === 'review') { setReviewUserId(''); setReviewResponses(null) }
-  }, [adminView])
-
-  const updateUser = async (userId, updates) => {
-    try {
-      const res = await fetch('/api/admin?action=update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
-        body: JSON.stringify({ userId, ...updates }),
-      })
-      if (res.status === 403) {
-        const err = await res.json()
-        if (err.error && (err.error.includes('Not authenticated') || err.error.includes('token') || err.error.includes('Token'))) {
-          console.log('Admin API authentication failed - clearing session')
-          onSignOut()
-          return
-        }
-      }
-      if (!res.ok) throw new Error((await res.json()).error)
-      await loadUsers()
-    } catch (err) { alert('Failed: ' + err.message) }
-  }
-
-  const uploadQuestions = async () => {
-    if (!uploadFile) {
-      setUploadStatus('Please choose a JSON file first.')
-      return
-    }
-
-    setUploadStatus('Reading file and uploading...')
-    try {
-      const text = await uploadFile.text()
-      const questionData = JSON.parse(text)
-      if (!Array.isArray(questionData)) {
-        throw new Error('Upload file must be a JSON array of questions.')
-      }
-
-      const res = await fetch('/api/admin?action=uploadQuestions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
-        body: JSON.stringify({ examType: uploadExamType, questions: questionData }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Upload failed')
-
-      const errCount = data.errors?.length || 0
-      setUploadStatus(`Uploaded ${data.inserted || 0} questions. ${errCount > 0 ? `${errCount} records failed.` : 'Done.'}`)
-      setUploadFile(null)
-      document.getElementById('question-upload-input').value = ''
-      loadQuizBank()
-    } catch (err) {
-      setUploadStatus('Upload error: ' + err.message)
-    }
-  }
-
-  const uploadPdf = async () => {
-    if (!uploadPdfFile) {
-      setUploadPdfStatus('Please select a PDF file first.')
-      return
-    }
-
-    setUploadPdfStatus('Sending PDF for extraction...')
-    try {
-      const formData = new FormData()
-      formData.append('examType', uploadPdfExamType)
-      if (uploadPdfTopicId) formData.append('topicId', uploadPdfTopicId)
-      formData.append('file', uploadPdfFile)
-
-      const res = await fetch('/api/admin?action=uploadPdf', {
-        method: 'POST',
-        body: formData,
-        headers: { Authorization: 'Bearer ' + idToken },
-      })
-
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Upload failed')
-
-      const errors = data.errors?.length || 0
-      const topics = (data.topics || []).map(t => t.name).join(', ') || 'n/a'
-      setUploadPdfStatus(`Extracted topics: ${topics}. Inserted: ${data.inserted || 0}. Skipped (duplicates): ${data.skipped || 0}. Errors: ${errors}.`)
-      setUploadPdfFile(null)
-      document.getElementById('pdf-upload-input').value = ''
-      loadQuizBank()
-    } catch (err) {
-      setUploadPdfStatus('PDF upload failed: ' + err.message)
-    }
-  }
-
-  if (adminView === 'users') {
-    if (loading) return <div className="loading-card"><div className="spinner" /><div className="loading-text">Loading users...</div></div>
-    if (!users) return null
-  }
-
-  const safeUsers = users || []
-  const counts = {
-    all: safeUsers.length,
-    pending: safeUsers.filter(u => u.status === 'pending').length,
-    approved: safeUsers.filter(u => u.status === 'approved').length,
-    rejected: safeUsers.filter(u => u.status === 'rejected').length,
-  }
-
-  const filtered = filter === 'all' ? safeUsers : safeUsers.filter(u => u.status === filter)
-
-  return (
-    <div className="admin-panel">
-      <div className="admin-header">
-        <div>
-          <div className="admin-title">Admin Panel</div>
-          <div className="admin-sub">Manage user access and token limits</div>
-        </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button className={`filter-btn${adminView === 'users' ? ' active' : ''}`} onClick={() => setAdminView('users')}>Users</button>
-          <button className={`filter-btn${adminView === 'quizBank' ? ' active' : ''}`} onClick={() => setAdminView('quizBank')}>Quiz Bank</button>
-          <button className={`filter-btn${adminView === 'analytics' ? ' active' : ''}`} onClick={() => setAdminView('analytics')}>Analytics</button>
-          <button className={`filter-btn${adminView === 'review' ? ' active' : ''}`} onClick={() => setAdminView('review')}>Answer Review</button>
-        </div>
-      </div>
-      {adminView === 'users' ? (
-        <>
-          <div className="admin-stats">
-        <div className="admin-stat"><div className="admin-stat-num">{counts.all}</div><div className="admin-stat-label">Total Users</div></div>
-        <div className="admin-stat"><div className="admin-stat-num" style={{ color: '#F59E0B' }}>{counts.pending}</div><div className="admin-stat-label">Pending</div></div>
-        <div className="admin-stat"><div className="admin-stat-num" style={{ color: '#52C41A' }}>{counts.approved}</div><div className="admin-stat-label">Approved</div></div>
-        <div className="admin-stat"><div className="admin-stat-num" style={{ color: '#EF4444' }}>{counts.rejected}</div><div className="admin-stat-label">Rejected</div></div>
-      </div>
-      <div className="admin-filters">
-        {['all', 'pending', 'approved', 'rejected'].map(f => (
-          <button key={f} className={`filter-btn${filter === f ? ' active' : ''}`} onClick={() => setFilter(f)}>
-            {f.charAt(0).toUpperCase() + f.slice(1)} ({counts[f]})
-          </button>
-        ))}
-      </div>
-      <div className="users-table">
-        <div className="user-row header-row">
-          <div>User</div><div>Email</div><div>Status / Tier</div><div>Tokens Today</div><div>Actions</div>
-        </div>
-        {filtered.length === 0 ? (
-          <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text2)', fontWeight: 600 }}>No users in this category.</div>
-        ) : filtered.map(u => {
-          const isAdmin = u.email === ADMIN_EMAIL
-          const limit = TOKEN_LIMITS[u.tier] || 5000
-          const pct = Math.min(100, Math.round(((u.tokensToday || 0) / limit) * 100))
-          const initials = (u.name || '?').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-          const barColor = pct > 80 ? '#EF4444' : pct > 50 ? '#F59E0B' : '#52C41A'
-          return (
-            <div className="user-row" key={u.id}>
-              <div className="user-info">
-                {u.picture
-                  ? <img src={u.picture} className="user-mini-avatar" alt="" />
-                  : <div className="user-mini-initials">{initials}</div>}
-                <div>
-                  <div className="user-name">{u.name || 'Unknown'}</div>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text2)' }}>{new Date(u.created_at).toLocaleDateString()}</div>
-                </div>
-              </div>
-              <div style={{ fontSize: '0.82rem', wordBreak: 'break-all' }}>{u.email}</div>
-              <div>
-                <span className={`status-chip status-${isAdmin ? 'admin' : u.status}`}>{isAdmin ? 'Admin' : u.status}</span>
-                {!isAdmin && (
-                  <select
-                    className="tier-select"
-                    style={{ marginTop: 4, display: 'block' }}
-                    value={u.tier}
-                    onChange={e => updateUser(u.id, { tier: e.target.value })}
-                  >
-                    <option value="silver">Silver</option>
-                    <option value="gold">Gold</option>
-                    <option value="platinum">Platinum</option>
-                  </select>
-                )}
-              </div>
-              <div>
-                <div className="token-usage-small">{(u.tokensToday || 0).toLocaleString()} / {limit.toLocaleString()}</div>
-                <div className="token-bar-mini">
-                  <div className="token-bar-mini-fill" style={{ width: pct + '%', background: barColor }} />
-                </div>
-              </div>
-              <div className="action-btns">
-                {!isAdmin && u.status !== 'approved' && <button className="action-btn btn-approve" onClick={() => updateUser(u.id, { status: 'approved' })}>Approve</button>}
-                {!isAdmin && u.status !== 'rejected' && <button className="action-btn btn-reject" onClick={() => updateUser(u.id, { status: 'rejected' })}>Reject</button>}
-                {isAdmin && <span style={{ fontSize: '0.75rem', color: 'var(--text2)' }}>You</span>}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-      <TokenLimitsEditor idToken={idToken} onSignOut={onSignOut} />
-    </>
-  ) : adminView === 'quizBank' ? (
-    <div style={{ padding: '20px 24px', borderTop: '1.5px solid var(--border)' }}>
-      <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1rem', marginBottom: 4 }}>Quiz Bank</div>
-      <div style={{ fontSize: '0.85rem', color: 'var(--text2)', marginBottom: 16 }}>Analytics for questions created by users (per topic + most active creators).</div>
-      <div style={{ padding: 14, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface2)', marginBottom: 16 }}>
-        <div style={{ fontWeight: 700, marginBottom: 6 }}>Bulk upload sample questions</div>
-        <div style={{ fontSize: '0.82rem', color: 'var(--text2)', marginBottom: 8 }}>
-          Upload a JSON file containing an array of questions. Each question should include topicId, question, options (array), correct (index 0-based), explanation, difficulty (easy|medium|hard), and optional visual.
-        </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
-          <select value={uploadExamType} onChange={e => setUploadExamType(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'white' }}>
-            {EXAM_TYPES.map(e => <option key={e.id} value={e.id}>{e.label}</option>)}
-          </select>
-          <input id="question-upload-input" type="file" accept="application/json" onChange={e => setUploadFile(e.target.files?.[0] || null)} style={{ padding: '6px 8px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'white' }} />
-          <button className="btn btn-primary" style={{ padding: '7px 12px' }} onClick={uploadQuestions}>Upload sample questions</button>
-        </div>
-        {uploadStatus && <div style={{ fontSize: '0.8rem', color: uploadStatus.startsWith('Upload error') ? '#EF4444' : '#10B981' }}>{uploadStatus}</div>}
-      </div>
-      <div style={{ padding: 14, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface2)', marginBottom: 16 }}>
-        <div style={{ fontWeight: 700, marginBottom: 6 }}>Upload sample PDF for AI topic extraction</div>
-        <div style={{ fontSize: '0.82rem', color: 'var(--text2)', marginBottom: 8 }}>
-          Upload a PDF file with sample questions; the AI will extract core topics/components and generate question entries.
-        </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
-          <select value={uploadPdfExamType} onChange={e => { setUploadPdfExamType(e.target.value); setUploadPdfTopicId('') }} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'white' }}>
-            {EXAM_TYPES.map(e => <option key={e.id} value={e.id}>{e.label}</option>)}
-          </select>
-          <select value={uploadPdfTopicId} onChange={e => setUploadPdfTopicId(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'white' }}>
-            <option value="">Auto-detect topic</option>
-            {(EXAM_TOPICS[uploadPdfExamType] || []).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
-          <input id="pdf-upload-input" type="file" accept="application/pdf" onChange={e => setUploadPdfFile(e.target.files?.[0] || null)} style={{ padding: '6px 8px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'white' }} />
-          <button className="btn btn-primary" style={{ padding: '7px 12px' }} onClick={uploadPdf}>Upload PDF and extract topics</button>
-        </div>
-        {uploadPdfStatus && <div style={{ fontSize: '0.8rem', color: uploadPdfStatus.startsWith('PDF upload failed') ? '#EF4444' : '#10B981' }}>{uploadPdfStatus}</div>}
-      </div>
-
-      <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1.05rem', marginBottom: 4, marginTop: 8 }}>Question Bank Overview</div>
-      <div style={{ fontSize: '0.82rem', color: 'var(--text2)', marginBottom: 14 }}>Total questions loaded in the bank, broken down by exam track and topic.</div>
-
-      {loadingQuizBank ? (
-        <div className="loading-card"><div className="spinner" /><div className="loading-text">Loading quiz bank data...</div></div>
-      ) : quizBank ? (
-        <>
-          {/* Exam type summary cards */}
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
-            <div style={{ background: 'var(--surface)', borderRadius: 12, border: '1.5px solid var(--border)', padding: '14px 20px', minWidth: 120, textAlign: 'center' }}>
-              <div style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--accent)' }}>{quizBank.total || 0}</div>
-              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text2)', marginTop: 2 }}>Total Questions</div>
-            </div>
-            {(quizBank.examBreakdown || []).map(e => (
-              <div key={e.examType} style={{ background: 'var(--surface)', borderRadius: 12, border: '1.5px solid var(--border)', padding: '14px 20px', minWidth: 120, textAlign: 'center' }}>
-                <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#1D4ED8' }}>{e.count}</div>
-                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text2)', marginTop: 2 }}>{e.examType} Track</div>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' }}>
-            <span style={{ fontWeight: 700 }}>Sort creators:</span>
-            <select value={quizBankUserSort} onChange={e => setQuizBankUserSort(e.target.value)} style={{ padding: '6px 10px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'white', fontSize: '0.9rem' }}>
-              <option value="countDesc">Most questions</option>
-              <option value="countAsc">Fewest questions</option>
-              <option value="nameAsc">Name A→Z</option>
-              <option value="nameDesc">Name Z→A</option>
-            </select>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
-            <div style={{ background: 'var(--surface)', borderRadius: 12, border: '1.5px solid var(--border)', padding: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-                <div style={{ fontWeight: 800 }}>Questions per Topic</div>
-                <select value={quizBankTopicFilter} onChange={e => setQuizBankTopicFilter(e.target.value)} style={{ padding: '5px 8px', borderRadius: 7, border: '1.5px solid var(--border)', background: 'white', fontSize: '0.82rem', fontWeight: 600 }}>
-                  <option value="all">All Exams</option>
-                  {(quizBank.examBreakdown || []).map(e => (
-                    <option key={e.examType} value={e.examType}>{e.examType} Track</option>
-                  ))}
-                </select>
-              </div>
-              {quizBank.topics.length === 0 ? (
-                <div style={{ color: 'var(--text2)' }}>No questions yet.</div>
-              ) : (
-                <div style={{ display: 'grid', gap: 8 }}>
-                  {quizBank.topics
-                    .filter(t => quizBankTopicFilter === 'all' || (t.byExam || {})[quizBankTopicFilter] > 0)
-                    .sort((a, b) => {
-                      const aCount = quizBankTopicFilter === 'all' ? a.count : ((a.byExam || {})[quizBankTopicFilter] || 0)
-                      const bCount = quizBankTopicFilter === 'all' ? b.count : ((b.byExam || {})[quizBankTopicFilter] || 0)
-                      return bCount - aCount
-                    })
-                    .map(t => {
-                      const examEntries = quizBankTopicFilter === 'all'
-                        ? Object.entries(t.byExam || {})
-                        : [[quizBankTopicFilter, (t.byExam || {})[quizBankTopicFilter] || 0]]
-                      return (
-                        <div key={t.topicId} style={{ borderBottom: '1px solid var(--border)', paddingBottom: 6 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', fontWeight: 700, marginBottom: 2 }}>
-                            <span>{t.topicId}</span>
-                            <span>{quizBankTopicFilter === 'all' ? t.count : ((t.byExam || {})[quizBankTopicFilter] || 0)}</span>
-                          </div>
-                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                            {examEntries.map(([exam, cnt]) => (
-                              <span key={exam} style={{ fontSize: '0.72rem', background: '#DBEAFE', color: '#1D4ED8', borderRadius: 999, padding: '1px 7px', fontWeight: 700 }}>
-                                {exam}: {cnt}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )
-                    })}
-                </div>
-              )}
-            </div>
-            <div style={{ background: 'var(--surface)', borderRadius: 12, border: '1.5px solid var(--border)', padding: 16 }}>
-              <div style={{ fontWeight: 800, marginBottom: 10 }}>Top Creators</div>
-              {quizBank.users.length === 0 ? (
-                <div style={{ color: 'var(--text2)' }}>No creators found.</div>
-              ) : (
-                <div style={{ display: 'grid', gap: 10 }}>
-                  {quizBank.users
-                    .slice()
-                    .sort((a, b) => {
-                      if (quizBankUserSort === 'countDesc') return b.count - a.count
-                      if (quizBankUserSort === 'countAsc') return a.count - b.count
-                      if (quizBankUserSort === 'nameAsc') return (a.name || a.email || '').localeCompare(b.name || b.email || '')
-                      if (quizBankUserSort === 'nameDesc') return (b.name || b.email || '').localeCompare(a.name || a.email || '')
-                      return 0
-                    })
-                    .map(u => (
-                      <div key={u.userId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                        <span>{u.name || u.email || 'Unknown'}</span>
-                        <span style={{ fontWeight: 700 }}>{u.count}</span>
-                      </div>
-                    ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </>
-      ) : (
-        <div style={{ color: 'var(--text2)' }}>No quiz bank data available.</div>
-      )}
-    </div>
-  ) : adminView === 'analytics' ? (
-    <div style={{ padding: '20px 24px', borderTop: '1.5px solid var(--border)' }}>
-      <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1.05rem', marginBottom: 4 }}>Analytics</div>
-      <div style={{ fontSize: '0.82rem', color: 'var(--text2)', marginBottom: 16 }}>Platform activity over the last 30 days.</div>
-      {loadingAnalytics ? (
-        <div className="loading-card"><div className="spinner" /><div className="loading-text">Loading analytics...</div></div>
-      ) : analytics ? (
-        <>
-          {/* Overview cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
-            {[
-              { label: 'Total Users', value: analytics.overview.totalUsers, color: '#1D4ED8' },
-              { label: 'Approved Users', value: analytics.overview.approvedUsers, color: '#059669' },
-              { label: 'Active (7d)', value: analytics.overview.activeUsers7d, color: '#7C3AED' },
-              { label: 'New Users (30d)', value: analytics.overview.newUsers30d, color: '#D97706' },
-              { label: 'Total Questions', value: analytics.overview.totalQuestions, color: '#0891B2' },
-              { label: 'Responses (30d)', value: analytics.overview.responses30d, color: '#be185d' },
-              { label: 'Correct Rate (30d)', value: analytics.overview.correctRate30d + '%', color: analytics.overview.correctRate30d >= 70 ? '#059669' : analytics.overview.correctRate30d >= 40 ? '#D97706' : '#DC2626' },
-            ].map(c => (
-              <div key={c.label} style={{ background: 'var(--surface)', borderRadius: 12, border: '1.5px solid var(--border)', padding: '14px 16px' }}>
-                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: c.color }}>{c.value}</div>
-                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text2)', marginTop: 2 }}>{c.label}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Daily activity table */}
-          <div style={{ background: 'var(--surface)', borderRadius: 12, border: '1.5px solid var(--border)', padding: 16, marginBottom: 20 }}>
-            <div style={{ fontWeight: 800, marginBottom: 12 }}>Daily Activity (last 30 days)</div>
-            {analytics.dailyActivity.length === 0 ? (
-              <div style={{ color: 'var(--text2)', fontSize: '0.9rem' }}>No activity yet.</div>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                      {['Date', 'Responses', 'Correct', 'Correct %', 'Active Users'].map(h => (
-                        <th key={h} style={{ textAlign: 'left', padding: '6px 10px', fontWeight: 800, color: 'var(--text2)' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[...analytics.dailyActivity].reverse().map(d => {
-                      const pct = d.responses > 0 ? Math.round((d.correct / d.responses) * 100) : 0
-                      return (
-                        <tr key={d.date} style={{ borderBottom: '1px solid var(--border)' }}>
-                          <td style={{ padding: '6px 10px', fontWeight: 600 }}>{d.date}</td>
-                          <td style={{ padding: '6px 10px' }}>{d.responses}</td>
-                          <td style={{ padding: '6px 10px', color: '#059669' }}>{d.correct}</td>
-                          <td style={{ padding: '6px 10px', fontWeight: 700, color: pct >= 70 ? '#059669' : pct >= 40 ? '#D97706' : '#DC2626' }}>{pct}%</td>
-                          <td style={{ padding: '6px 10px' }}>{d.activeUsers}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-          {/* Active users + top token users side by side */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <div style={{ background: 'var(--surface)', borderRadius: 12, border: '1.5px solid var(--border)', padding: 16 }}>
-              <div style={{ fontWeight: 800, marginBottom: 10 }}>Most Active Users (30d)</div>
-              {analytics.activeUsers.length === 0 ? (
-                <div style={{ color: 'var(--text2)', fontSize: '0.9rem' }}>No activity yet.</div>
-              ) : analytics.activeUsers.map((u, i) => {
-                const pct = u.responses > 0 ? Math.round((u.correct / u.responses) * 100) : 0
-                return (
-                  <div key={u.id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
-                    <span style={{ fontWeight: 800, color: 'var(--text2)', fontSize: '0.8rem', width: 18 }}>#{i + 1}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name || u.email || 'Unknown'}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text2)' }}>{u.email}</div>
-                    </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{u.responses}</div>
-                      <div style={{ fontSize: '0.72rem', color: pct >= 70 ? '#059669' : pct >= 40 ? '#D97706' : '#DC2626', fontWeight: 700 }}>{pct}% correct</div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-            <div style={{ background: 'var(--surface)', borderRadius: 12, border: '1.5px solid var(--border)', padding: 16 }}>
-              <div style={{ fontWeight: 800, marginBottom: 10 }}>Top Token Users (7d)</div>
-              {analytics.topTokenUsers.length === 0 ? (
-                <div style={{ color: 'var(--text2)', fontSize: '0.9rem' }}>No token usage yet.</div>
-              ) : analytics.topTokenUsers.map((u, i) => (
-                <div key={u.id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
-                  <span style={{ fontWeight: 800, color: 'var(--text2)', fontSize: '0.8rem', width: 18 }}>#{i + 1}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name || u.email || 'Unknown'}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text2)' }}>{u.email}</div>
-                  </div>
-                  <div style={{ fontWeight: 800, fontSize: '0.9rem', flexShrink: 0 }}>{(u.tokens || 0).toLocaleString()}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
-      ) : (
-        <div style={{ color: 'var(--text2)' }}>No analytics data available.</div>
-      )}
-    </div>
-  ) : adminView === 'review' ? (
-    <div style={{ padding: '20px 24px', borderTop: '1.5px solid var(--border)' }}>
-      <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1.05rem', marginBottom: 4 }}>Answer Review</div>
-      <div style={{ fontSize: '0.82rem', color: 'var(--text2)', marginBottom: 16 }}>Inspect every question a student has answered — see what they selected vs the correct answer.</div>
-
-      {/* User selector */}
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 20, flexWrap: 'wrap' }}>
-        <select
-          value={reviewUserId}
-          onChange={e => { setReviewUserId(e.target.value); setReviewResponses(null) }}
-          style={{ padding: '8px 12px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'white', fontSize: '0.9rem', minWidth: 220 }}
-        >
-          <option value="">Select a student…</option>
-          {safeUsers.filter(u => u.status === 'approved').map(u => (
-            <option key={u.id} value={u.id}>{u.name || u.email} ({u.email})</option>
-          ))}
-        </select>
-        <button
-          className="btn btn-primary"
-          style={{ padding: '8px 16px' }}
-          disabled={!reviewUserId || loadingReview}
-          onClick={() => loadReview(reviewUserId)}
-        >
-          {loadingReview ? 'Loading…' : 'Load Answers'}
-        </button>
-        {reviewResponses && (
-          <div style={{ display: 'flex', gap: 6 }}>
-            {['all', 'correct', 'wrong'].map(f => (
-              <button key={f} className={`filter-btn${reviewFilter === f ? ' active' : ''}`} onClick={() => setReviewFilter(f)}>
-                {f.charAt(0).toUpperCase() + f.slice(1)}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {loadingReview && <div className="loading-card"><div className="spinner" /><div className="loading-text">Loading answers…</div></div>}
-
-      {reviewResponses && (() => {
-        const labels = ['A', 'B', 'C', 'D', 'E']
-        const filtered = reviewFilter === 'correct' ? reviewResponses.filter(r => r.isCorrect)
-          : reviewFilter === 'wrong' ? reviewResponses.filter(r => !r.isCorrect)
-          : reviewResponses
-        const total = reviewResponses.length
-        const correct = reviewResponses.filter(r => r.isCorrect).length
-        return (
-          <>
-            <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-              {[
-                { label: 'Total Answered', value: total, color: '#1D4ED8' },
-                { label: 'Correct', value: correct, color: '#059669' },
-                { label: 'Wrong', value: total - correct, color: '#DC2626' },
-                { label: 'Score %', value: total > 0 ? Math.round((correct / total) * 100) + '%' : '—', color: correct / total >= 0.7 ? '#059669' : correct / total >= 0.4 ? '#D97706' : '#DC2626' },
-              ].map(c => (
-                <div key={c.label} style={{ background: 'var(--surface)', border: '1.5px solid var(--border)', borderRadius: 10, padding: '10px 16px', minWidth: 100, textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 900, color: c.color }}>{c.value}</div>
-                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text2)' }}>{c.label}</div>
-                </div>
-              ))}
-            </div>
-
-            {filtered.length === 0 ? (
-              <div style={{ color: 'var(--text2)', padding: '1rem 0' }}>No answers in this category.</div>
-            ) : filtered.map((r, i) => (
-              <div key={i} style={{
-                background: r.isCorrect ? '#F0FDF4' : '#FEF2F2',
-                border: `1.5px solid ${r.isCorrect ? '#BBF7D0' : '#FECACA'}`,
-                borderRadius: 12, padding: 16, marginBottom: 12,
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '0.72rem', fontWeight: 700, background: '#DBEAFE', color: '#1D4ED8', borderRadius: 999, padding: '2px 8px' }}>{r.examType}</span>
-                    <span style={{ fontSize: '0.72rem', fontWeight: 700, background: '#F3F4F6', color: '#374151', borderRadius: 999, padding: '2px 8px' }}>{r.topicId}</span>
-                    {r.subtopic && <span style={{ fontSize: '0.72rem', fontWeight: 700, background: '#EDE9FE', color: '#7C3AED', borderRadius: 999, padding: '2px 8px' }}>{r.subtopic}</span>}
-                    <span style={{ fontSize: '0.72rem', fontWeight: 700, background: '#F3F4F6', color: '#374151', borderRadius: 999, padding: '2px 8px' }}>{r.difficulty}</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                    <span style={{ fontSize: '1.1rem' }}>{r.isCorrect ? '✅' : '❌'}</span>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text2)' }}>{new Date(r.answeredAt).toLocaleDateString()}</span>
-                  </div>
-                </div>
-                <div style={{ fontWeight: 700, fontSize: '0.92rem', marginBottom: 10, lineHeight: 1.5 }}>{r.question}</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 10 }}>
-                  {r.options.map((opt, oi) => {
-                    const isSelected = oi === r.selectedOption
-                    const isCorrect = oi === r.correct
-                    let bg = '#F9FAFB', border = '#E5E7EB', color = '#374151'
-                    if (isCorrect) { bg = '#D1FAE5'; border = '#6EE7B7'; color = '#065F46' }
-                    if (isSelected && !isCorrect) { bg = '#FEE2E2'; border = '#FCA5A5'; color = '#991B1B' }
-                    return (
-                      <div key={oi} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 8, background: bg, border: `1.5px solid ${border}` }}>
-                        <span style={{ fontWeight: 800, fontSize: '0.8rem', color }}>{labels[oi]}</span>
-                        <span style={{ fontSize: '0.82rem', color, fontWeight: isCorrect || isSelected ? 700 : 400 }}>{opt}</span>
-                        {isSelected && !isCorrect && <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#DC2626', fontWeight: 800 }}>Selected</span>}
-                        {isCorrect && <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#059669', fontWeight: 800 }}>Correct</span>}
-                      </div>
-                    )
-                  })}
-                </div>
-                <div style={{ fontSize: '0.8rem', color: '#374151', background: 'rgba(255,255,255,0.6)', borderRadius: 8, padding: '8px 10px' }}>
-                  <strong>Explanation:</strong> {r.explanation}
-                </div>
-              </div>
-            ))}
-          </>
-        )
-      })()}
-    </div>
-  ) : null}
-  </div>
-  )
-}
-
-
 // ── STREAK CELEBRATION ────────────────────────────────────────
 
 const STREAK_CONFIG = {
@@ -1637,7 +881,6 @@ export default function App() {
   const [screen, setScreen] = useState(initialSession.user ? 'app' : 'landing') // landing | auth | pending | rejected | app | history | ranking
   const [session, setSession] = useState(initialSession)
   const [examType, setExamType] = useState('OC')
-  const [showAdmin, setShowAdmin] = useState(false)
   const [currentTopic, setCurrentTopic] = useState(null)
   const [currentSubtopic, setCurrentSubtopic] = useState(null)
   const [question, setQuestion] = useState(null)
@@ -1765,7 +1008,6 @@ export default function App() {
     window._googleInitDone = false
     setSession({ user: null, idToken: null, tokensUsedToday: 0 })
     setScreen('auth')
-    setShowAdmin(false)
     setCurrentTopic(null)
     setQuestion(null)
     setShowProfileMenu(false)
@@ -2000,23 +1242,23 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
     <div>
       {/* HEADER */}
       <header>
-        <div className="logo" onClick={() => { saveQuizAttempt(); resetQuizSession(); setShowAdmin(false); setScreen('app') }} style={{ cursor: 'pointer' }}>Exam Booster <span className="logo-sub">Practice Smarter</span></div>
+        <div className="logo" onClick={() => { saveQuizAttempt(); resetQuizSession(); setScreen('app') }} style={{ cursor: 'pointer' }}>Exam Booster <span className="logo-sub">Practice Smarter</span></div>
         <div className="header-right">
           {/* Desktop nav */}
           <div className="desktop-nav">
-            <button className="nav-btn" onClick={() => { saveQuizAttempt(); resetQuizSession(); setShowAdmin(false); setScreen('app') }}>Home</button>
+            <button className="nav-btn" onClick={() => { saveQuizAttempt(); resetQuizSession(); setScreen('app') }}>Home</button>
             <button
               className={`nav-btn${!perms.history ? ' nav-btn--locked' : ''}`}
-              onClick={() => { if (!perms.history) { setCurrentTopic(null); setShowAdmin(false); setScreen('plans'); return } setCurrentTopic(null); setShowAdmin(false); setScreen('history') }}
+              onClick={() => { if (!perms.history) { setCurrentTopic(null); setScreen('plans'); return } setCurrentTopic(null); setScreen('history') }}
               title={!perms.history ? 'Upgrade to Gold or above' : ''}
             >History{!perms.history ? ' 🔒' : ''}</button>
             <button
               className={`nav-btn${!perms.ranking ? ' nav-btn--locked' : ''}`}
-              onClick={() => { if (!perms.ranking) { setCurrentTopic(null); setShowAdmin(false); setScreen('plans'); return } setCurrentTopic(null); setShowAdmin(false); setScreen('ranking') }}
+              onClick={() => { if (!perms.ranking) { setCurrentTopic(null); setScreen('plans'); return } setCurrentTopic(null); setScreen('ranking') }}
               title={!perms.ranking ? 'Upgrade to Platinum' : ''}
             >Ranking{!perms.ranking ? ' 🔒' : ''}</button>
             {!user.is_admin && (
-              <button className="nav-btn nav-btn--plans" onClick={() => { setCurrentTopic(null); setShowAdmin(false); setScreen('plans') }}>Plans</button>
+              <button className="nav-btn nav-btn--plans" onClick={() => { setCurrentTopic(null); setScreen('plans') }}>Plans</button>
             )}
           </div>
           {!user.is_admin && (
@@ -2026,11 +1268,6 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
                 <div className="token-bar-fill" style={{ width: tokenPct + '%', background: tokenFillColor }} />
               </div>
             </div>
-          )}
-          {user.is_admin && (
-            <button className={`admin-nav-btn${showAdmin ? ' active' : ''}`} onClick={() => setShowAdmin(v => !v)}>
-              Admin Panel
-            </button>
           )}
           <div className="user-pill" onClick={handleProfileClick}>
             {user.picture && <img src={user.picture} className="user-avatar" alt="" />}
@@ -2051,20 +1288,17 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
             </button>
             {mobileMenuOpen && (
               <div className="mobile-nav-dropdown">
-                <button className="mobile-nav-item" onClick={() => { saveQuizAttempt(); resetQuizSession(); setShowAdmin(false); setScreen('app'); setMobileMenuOpen(false) }}>🏠 Home</button>
+                <button className="mobile-nav-item" onClick={() => { saveQuizAttempt(); resetQuizSession(); setScreen('app'); setMobileMenuOpen(false) }}>🏠 Home</button>
                 <button
                   className="mobile-nav-item"
-                  onClick={() => { if (!perms.history) { setScreen('plans'); setMobileMenuOpen(false); return } setCurrentTopic(null); setShowAdmin(false); setScreen('history'); setMobileMenuOpen(false) }}
+                  onClick={() => { if (!perms.history) { setScreen('plans'); setMobileMenuOpen(false); return } setCurrentTopic(null); setScreen('history'); setMobileMenuOpen(false) }}
                 >📋 History{!perms.history ? ' 🔒' : ''}</button>
                 <button
                   className="mobile-nav-item"
-                  onClick={() => { if (!perms.ranking) { setScreen('plans'); setMobileMenuOpen(false); return } setCurrentTopic(null); setShowAdmin(false); setScreen('ranking'); setMobileMenuOpen(false) }}
+                  onClick={() => { if (!perms.ranking) { setScreen('plans'); setMobileMenuOpen(false); return } setCurrentTopic(null); setScreen('ranking'); setMobileMenuOpen(false) }}
                 >🏆 Ranking{!perms.ranking ? ' 🔒' : ''}</button>
                 {!user.is_admin && (
-                  <button className="mobile-nav-item" onClick={() => { setCurrentTopic(null); setShowAdmin(false); setScreen('plans'); setMobileMenuOpen(false) }}>💎 Plans &amp; Pricing</button>
-                )}
-                {user.is_admin && (
-                  <button className="mobile-nav-item" onClick={() => { setShowAdmin(v => !v); setMobileMenuOpen(false) }}>⚙️ Admin Panel</button>
+                  <button className="mobile-nav-item" onClick={() => { setCurrentTopic(null); setScreen('plans'); setMobileMenuOpen(false) }}>💎 Plans &amp; Pricing</button>
                 )}
                 <button className="mobile-nav-item mobile-nav-item--danger" onClick={() => { handleSignOut(); setMobileMenuOpen(false) }}>🚪 Logout</button>
               </div>
@@ -2073,18 +1307,10 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
         </div>
       </header>
 
-      {/* ADMIN PANEL */}
-      {showAdmin && (
-        <div style={{ maxWidth: 1100, margin: '1.5rem auto', padding: '0 1.5rem' }}>
-          <AdminPanel idToken={session.idToken} onSignOut={handleSignOut} />
-        </div>
-      )}
-
       <StreakCelebration celebration={celebration} />
 
       {/* MAIN LAYOUT */}
-      {!showAdmin && (
-        <div className="app">
+      <div className="app">
           <button className="sidebar-toggle-btn" onClick={() => setSidebarOpen(v => !v)}>
             {sidebarOpen ? '✕ Close Topics' : '📚 Choose Topic'}
           </button>
@@ -2134,7 +1360,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
                   <div className="error-box">{questionError}</div>
                   <div style={{ marginTop: 16, display: 'flex', gap: 10 }}>
                     <button className="btn btn-primary" onClick={() => generateQuestion(currentTopic)}>Try Again</button>
-                    <button className="btn btn-secondary" onClick={() => { saveQuizAttempt(); resetQuizSession(); setShowAdmin(false); setScreen('app') }}>Back to Home</button>
+                    <button className="btn btn-secondary" onClick={() => { saveQuizAttempt(); resetQuizSession(); setScreen('app') }}>Back to Home</button>
                   </div>
                 </div>
               </div>
@@ -2153,12 +1379,11 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
                 onSubtopicChange={(sub) => generateQuestion(currentTopic, sub)}
                 onAnswer={handleAnswer}
                 onNext={() => generateQuestion(currentTopic, currentSubtopic)}
-                onHome={() => { saveQuizAttempt(); resetQuizSession(); setShowAdmin(false); setScreen('app') }}
+                onHome={() => { saveQuizAttempt(); resetQuizSession(); setScreen('app') }}
               />
             )}
           </div>
         </div>
-      )}
       <WhatsAppButton user={user} />
     </div>
   )
