@@ -1029,6 +1029,7 @@ function QuestionBankReview({ idToken, onSignOut }) {
   const [editError, setEditError] = useState('')
   const [imageFile, setImageFile] = useState(null)
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [previewQuestion, setPreviewQuestion] = useState(null)
 
   const doLoad = async (p, et, tid, s) => {
     setLoading(true)
@@ -1279,6 +1280,7 @@ function QuestionBankReview({ idToken, onSignOut }) {
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                    <button onClick={() => setPreviewQuestion(q)} style={{ padding: '5px 12px', fontSize: '0.78rem', borderRadius: 6, border: '1.5px solid #D1FAE5', background: '#ECFDF5', fontFamily: 'Nunito', fontWeight: 700, cursor: 'pointer', color: '#065F46' }}>Preview</button>
                     <button onClick={() => startEdit(q)} style={{ padding: '5px 12px', fontSize: '0.78rem', borderRadius: 6, border: '1.5px solid #BAE6FD', background: '#F0F9FF', fontFamily: 'Nunito', fontWeight: 700, cursor: 'pointer', color: '#0369A1' }}>Edit</button>
                     <button onClick={() => deleteQuestion(q.id, q.question)} style={{ padding: '5px 12px', fontSize: '0.78rem', borderRadius: 6, border: '1.5px solid #FECACA', background: '#FEF2F2', fontFamily: 'Nunito', fontWeight: 700, cursor: 'pointer', color: '#991B1B' }}>Delete</button>
                   </div>
@@ -1305,6 +1307,94 @@ function QuestionBankReview({ idToken, onSignOut }) {
           )}
         </>
       )}
+
+      {/* ── Question Preview Modal ── */}
+      {previewQuestion && (() => {
+        const pq = previewQuestion
+        const labels = ['A', 'B', 'C', 'D', 'E']
+        const diffColor = { easy: '#059669', medium: '#D97706', hard: '#DC2626' }[pq.difficulty] || '#374151'
+        return (
+          <div
+            onClick={() => setPreviewQuestion(null)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{ background: 'white', borderRadius: 20, width: '100%', maxWidth: 640, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.3)', fontFamily: 'Nunito Sans, sans-serif' }}
+            >
+              {/* Modal header */}
+              <div style={{ background: '#1E1B4B', padding: '14px 20px', borderRadius: '20px 20px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ color: 'white', fontFamily: 'Nunito', fontWeight: 800, fontSize: '0.95rem' }}>Question Preview</div>
+                <button
+                  onClick={() => setPreviewQuestion(null)}
+                  style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white', borderRadius: 8, width: 30, height: 30, cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >✕</button>
+              </div>
+
+              {/* Question card body */}
+              <div style={{ padding: '20px 24px' }}>
+                {/* Meta badges */}
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: '#DBEAFE', color: '#1D4ED8' }}>{pq.exam_type} Track</span>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: '#F3F4F6', color: '#374151' }}>{pq.topic_id}</span>
+                  {pq.subtopic && <span style={{ fontSize: '0.75rem', padding: '3px 10px', borderRadius: 20, background: '#F3F4F6', color: '#374151' }}>{pq.subtopic}</span>}
+                  {pq.year_level && <span style={{ fontSize: '0.75rem', padding: '3px 10px', borderRadius: 20, background: '#F3F4F6', color: '#374151' }}>Year {pq.year_level}</span>}
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: '#F9FAFB', color: diffColor, border: `1px solid ${diffColor}30` }}>{pq.difficulty?.charAt(0).toUpperCase() + pq.difficulty?.slice(1)}</span>
+                </div>
+
+                {/* Question text */}
+                <div style={{ fontSize: '1.05rem', fontWeight: 600, lineHeight: 1.6, color: '#1E293B', marginBottom: 16 }}>{pq.question}</div>
+
+                {/* Image */}
+                {pq.image_url && (
+                  <div style={{ marginBottom: 16, textAlign: 'center' }}>
+                    <img src={pq.image_url} alt="Question diagram" style={{ maxWidth: '100%', maxHeight: 300, borderRadius: 10, border: '1.5px solid #E2E8F0', objectFit: 'contain' }} />
+                  </div>
+                )}
+
+                {/* Visual text block */}
+                {pq.visual && (
+                  <div style={{ background: '#F8FAFC', borderRadius: 10, padding: 14, marginBottom: 16, fontSize: '0.9rem', fontFamily: 'Nunito' }}>
+                    <pre style={{ fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>{pq.visual}</pre>
+                  </div>
+                )}
+
+                {/* Options */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+                  {(pq.options || []).map((opt, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        padding: '12px 14px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 10,
+                        border: i === pq.correct ? '2px solid #22C55E' : '2px solid #E2E8F0',
+                        background: i === pq.correct ? '#F0FDF4' : '#F8FAFC',
+                        fontWeight: i === pq.correct ? 700 : 500,
+                        fontSize: '0.92rem', color: i === pq.correct ? '#166534' : '#374151',
+                      }}
+                    >
+                      <span style={{ width: 26, height: 26, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.8rem', flexShrink: 0, background: i === pq.correct ? '#22C55E' : '#E2E8F0', color: i === pq.correct ? 'white' : '#374151' }}>
+                        {i === pq.correct ? '✓' : labels[i]}
+                      </span>
+                      <span>{opt}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Explanation */}
+                {pq.explanation && (
+                  <div style={{ background: '#F0FDF4', border: '1.5px solid #BBF7D0', borderRadius: 12, padding: '12px 16px', fontSize: '0.9rem', color: '#166534', lineHeight: 1.6 }}>
+                    <strong>Explanation: </strong>{pq.explanation}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ padding: '12px 24px 20px', display: 'flex', justifyContent: 'flex-end' }}>
+                <button onClick={() => setPreviewQuestion(null)} style={{ padding: '8px 24px', background: '#1E1B4B', color: 'white', border: 'none', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 800, cursor: 'pointer' }}>Close</button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
