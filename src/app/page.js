@@ -1062,25 +1062,25 @@ function PlansScreen({ user, idToken, onHome, onReferFriend, onTierUpgrade }) {
 
 // ── HOME SCREEN ───────────────────────────────────────────────
 
-const COMING_SOON_EXAMS = new Set(['Selective'])
+const COMING_SOON_EXAMS = new Set(['Selective', 'NAPLAN'])
 
 function HomeScreen({ user, examType, onExamTypeChange, yearLevel, onYearLevelChange, score, totalAnswered, topicStats, subtopicStats, onSelectTopic, onUpgrade }) {
   const totalCorrect = Object.values(topicStats).reduce((a, v) => a + v.correct, 0)
   const topicList = EXAM_TOPICS[examType] || EXAM_TOPICS.OC
-  const [showComingSoon, setShowComingSoon] = useState(false)
+  const [showComingSoon, setShowComingSoon] = useState(null) // stores the exam label
 
   return (
     <div className="home-screen">
       {showComingSoon && (
-        <div className="coming-soon-backdrop" onClick={() => setShowComingSoon(false)}>
+        <div className="coming-soon-backdrop" onClick={() => setShowComingSoon(null)}>
           <div className="coming-soon-modal" onClick={e => e.stopPropagation()}>
-            <button className="coming-soon-close" onClick={() => setShowComingSoon(false)} aria-label="Close">✕</button>
+            <button className="coming-soon-close" onClick={() => setShowComingSoon(null)} aria-label="Close">✕</button>
             <div className="coming-soon-icon">🚧</div>
             <h3 className="coming-soon-title">Coming Soon!</h3>
             <p className="coming-soon-body">
-              We're working hard on <strong>Selective</strong> questions and will have them ready soon. Stay tuned!
+              We're working hard on <strong>{showComingSoon}</strong> questions and will have them ready soon. Stay tuned!
             </p>
-            <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setShowComingSoon(false)}>Got it</button>
+            <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setShowComingSoon(null)}>Got it</button>
           </div>
         </div>
       )}
@@ -1096,7 +1096,7 @@ function HomeScreen({ user, examType, onExamTypeChange, yearLevel, onYearLevelCh
             <button
               key={item.id}
               onClick={() => {
-                if (comingSoon) { setShowComingSoon(true); return }
+                if (comingSoon) { setShowComingSoon(item.label); return }
                 onExamTypeChange(item.id)
                 if (typeof window !== 'undefined') localStorage.setItem('oc-trainer-examType', item.id)
               }}
