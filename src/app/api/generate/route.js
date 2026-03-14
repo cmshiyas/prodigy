@@ -121,6 +121,14 @@ export async function POST(request) {
     const text = data.content.map(b => b.text || '').join('').trim()
     const q = JSON.parse(text.replace(/```json|```/g, '').trim())
 
+    // Server-side shuffle: Claude has LLM biases and cannot truly randomise.
+    // Remember the correct option by content, shuffle the array, then find it again.
+    const correctContent = q.options[q.correct]
+    const shuffled = [...q.options].sort(() => Math.random() - 0.5)
+    const newCorrect = shuffled.indexOf(correctContent)
+    q.options = shuffled
+    q.correct = newCorrect
+
     // Store the new question in the database
     const { data: storedQuestion, error: storeError } = await supabase
       .from('questions')

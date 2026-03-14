@@ -262,6 +262,11 @@ ${trimmed}`
         continue
       }
 
+      // Server-side shuffle so correct answer is not always index 0
+      const correctContent = q.options[q.correct]
+      const shuffledOptions = [...q.options].sort(() => Math.random() - 0.5)
+      const shuffledCorrect = shuffledOptions.indexOf(correctContent)
+
       const insert = {
         topic_id: resolvedTopicId,
         exam_type: examType,
@@ -269,8 +274,8 @@ ${trimmed}`
         created_by: null,
         question: q.question,
         visual: q.visual || null,
-        options: q.options,
-        correct: q.correct,
+        options: shuffledOptions,
+        correct: shuffledCorrect,
         explanation: q.explanation || '',
         difficulty: q.difficulty && ['easy', 'medium', 'hard'].includes(q.difficulty) ? q.difficulty : 'medium',
       }
