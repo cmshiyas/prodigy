@@ -505,6 +505,17 @@ header { background: var(--accent); padding: 0 2rem; display: flex; align-items:
 .trial-referral-tier { display: flex; align-items: center; gap: 12px; background: var(--surface2); border-radius: 12px; padding: 12px 14px; }
 .trial-referral-tier-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
 .trial-referral-tier-desc { font-size: 0.82rem; color: var(--text2); margin-top: 2px; }
+.trial-promo-section { margin-bottom: 1.25rem; }
+.trial-promo-divider { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-size: 0.78rem; color: var(--text2); font-weight: 600; }
+.trial-promo-divider::before, .trial-promo-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.trial-promo-row { display: flex; gap: 8px; }
+.trial-promo-input { flex: 1; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 10px; font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 0.9rem; background: white; letter-spacing: 0.04em; }
+.trial-promo-input:focus { outline: none; border-color: var(--accent); }
+.trial-promo-btn { padding: 9px 18px !important; font-size: 0.85rem !important; white-space: nowrap; }
+.trial-promo-status { margin-top: 8px; font-size: 0.82rem; font-weight: 700; border-radius: 8px; padding: 7px 12px; }
+.trial-promo-status--success { background: #D1FAE5; color: #065F46; }
+.trial-promo-status--error { background: #FEE2E2; color: #991B1B; }
+.trial-promo-hint { font-size: 0.8rem; color: var(--text2); text-align: center; padding: 8px; background: var(--surface2); border-radius: 8px; }
 
 /* ── REFERRAL MODAL ──────────────────────────────────────────── */
 .referral-modal-stat { display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--surface2); border-radius: 12px; padding: 14px 20px; margin-bottom: 1.25rem; }

@@ -51,7 +51,36 @@ function WhatsAppButton({ user }) {
 
 // ── TRIAL POPUP ───────────────────────────────────────────────
 
-function TrialModal({ onClose, onReferFriend }) {
+function TrialModal({ onClose, onReferFriend, idToken, onTierUpgrade }) {
+  const [promoCode, setPromoCode] = useState('')
+  const [promoStatus, setPromoStatus] = useState(null)
+  const [promoLoading, setPromoLoading] = useState(false)
+
+  async function redeemPromo() {
+    if (!promoCode.trim()) return
+    setPromoLoading(true)
+    setPromoStatus(null)
+    try {
+      const res = await fetch('/api/promo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+        body: JSON.stringify({ code: promoCode.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setPromoStatus({ type: 'error', message: data.error || 'Failed to redeem code' })
+      } else {
+        setPromoStatus({ type: 'success', message: data.message })
+        setPromoCode('')
+        if (onTierUpgrade) onTierUpgrade(data.tier)
+      }
+    } catch {
+      setPromoStatus({ type: 'error', message: 'Network error. Please try again.' })
+    } finally {
+      setPromoLoading(false)
+    }
+  }
+
   return (
     <div className="trial-modal-backdrop" onClick={onClose}>
       <div className="trial-modal" onClick={e => e.stopPropagation()}>
@@ -77,6 +106,36 @@ function TrialModal({ onClose, onReferFriend }) {
             </div>
           </div>
         </div>
+
+        {/* Promo code section */}
+        <div className="trial-promo-section">
+          <div className="trial-promo-divider"><span>or redeem a promo code</span></div>
+          {idToken ? (
+            <>
+              <div className="trial-promo-row">
+                <input
+                  className="trial-promo-input"
+                  type="text"
+                  placeholder="Enter promo code"
+                  value={promoCode}
+                  onChange={e => { setPromoCode(e.target.value.toUpperCase()); setPromoStatus(null) }}
+                  onKeyDown={e => e.key === 'Enter' && redeemPromo()}
+                />
+                <button
+                  className="btn btn-primary trial-promo-btn"
+                  onClick={redeemPromo}
+                  disabled={promoLoading || !promoCode.trim()}
+                >{promoLoading ? '...' : 'Apply'}</button>
+              </div>
+              {promoStatus && (
+                <div className={`trial-promo-status trial-promo-status--${promoStatus.type}`}>{promoStatus.message}</div>
+              )}
+            </>
+          ) : (
+            <div className="trial-promo-hint">Sign in to redeem a promo code</div>
+          )}
+        </div>
+
         <div className="trial-modal-actions">
           {onReferFriend && (
             <button className="btn btn-primary" style={{ background: 'var(--accent)' }} onClick={() => { onClose(); onReferFriend() }}>
@@ -987,7 +1046,7 @@ function PlansScreen({ user, idToken, onHome, onReferFriend, onTierUpgrade }) {
       <p className="plans-note">
         Invite friends using your referral link and unlock free premium access — 3 friends gets you Gold, 5 friends gets you Platinum. No credit card needed, no automatic billing — you are in full control.
       </p>
-      {showTrialModal && <TrialModal onClose={() => setShowTrialModal(false)} onReferFriend={onReferFriend} />}
+      {showTrialModal && <TrialModal onClose={() => setShowTrialModal(false)} onReferFriend={onReferFriend} idToken={idToken} onTierUpgrade={onTierUpgrade} />}
     </div>
   )
 }
