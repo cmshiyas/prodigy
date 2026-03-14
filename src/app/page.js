@@ -970,6 +970,15 @@ export default function App() {
         const data = await res.json()
         if (res.ok && data.subtopicStats) {
           setSubtopicStats(data.subtopicStats)
+          setTopicStats(prev => {
+            const reset = { ...prev }
+            // Zero out topics for current exam type before merging DB stats
+            Object.values(EXAM_TOPICS).flat().forEach(t => { reset[t.id] = { correct: 0, total: 0 } })
+            Object.entries(data.topicStats || {}).forEach(([id, s]) => {
+              reset[id] = { correct: s.correct, total: s.total }
+            })
+            return reset
+          })
         } else {
           setSubtopicStats({})
         }

@@ -40,18 +40,23 @@ export async function GET(request) {
     }
 
     const subtopicStats = {}
+    const topicStats = {}
 
     responses.forEach(r => {
       const topic = r.questions.topic_id || 'unknown'
       const subtopic = r.questions.subtopic || 'General'
+
       if (!subtopicStats[topic]) subtopicStats[topic] = {}
       if (!subtopicStats[topic][subtopic]) subtopicStats[topic][subtopic] = { correct: 0, total: 0 }
-
       subtopicStats[topic][subtopic].total += 1
       if (r.is_correct) subtopicStats[topic][subtopic].correct += 1
+
+      if (!topicStats[topic]) topicStats[topic] = { correct: 0, total: 0 }
+      topicStats[topic].total += 1
+      if (r.is_correct) topicStats[topic].correct += 1
     })
 
-    return NextResponse.json({ subtopicStats })
+    return NextResponse.json({ subtopicStats, topicStats })
   } catch (err) {
     console.error('Subtopic performance API error:', err.message)
     return NextResponse.json({ error: err.message }, { status: 500 })
