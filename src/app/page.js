@@ -93,6 +93,156 @@ function TrialModal({ onClose, onReferFriend }) {
 
 // ── SCREEN COMPONENTS ─────────────────────────────────────────
 
+function HeroIllustration() {
+  return (
+    <svg viewBox="0 0 440 360" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: 'auto' }}>
+      <circle cx="390" cy="72" r="100" fill="#FFF3E6" />
+      <circle cx="52" cy="308" r="68" fill="#EDE9FE" opacity="0.7" />
+      <circle cx="405" cy="308" r="44" fill="#E0F7FA" opacity="0.6" />
+      {/* desk */}
+      <rect x="62" y="252" width="316" height="20" rx="10" fill="#E8D0A8" />
+      <rect x="86" y="272" width="16" height="76" rx="8" fill="#D4A07A" />
+      <rect x="338" y="272" width="16" height="76" rx="8" fill="#D4A07A" />
+      {/* books */}
+      <rect x="68" y="220" width="80" height="13" rx="4" fill="#52C41A" /><rect x="68" y="220" width="7" height="13" rx="3" fill="#3d9c12" />
+      <rect x="71" y="207" width="74" height="13" rx="4" fill="#FF6B35" /><rect x="71" y="207" width="7" height="13" rx="3" fill="#c95522" />
+      <rect x="74" y="194" width="68" height="13" rx="4" fill="#7C3AED" /><rect x="74" y="194" width="7" height="13" rx="3" fill="#6027cc" />
+      <rect x="77" y="181" width="62" height="13" rx="4" fill="#4A90D9" /><rect x="77" y="181" width="7" height="13" rx="3" fill="#3270b8" />
+      {/* laptop */}
+      <rect x="186" y="177" width="152" height="75" rx="9" fill="#1E1B4B" />
+      <rect x="192" y="183" width="140" height="62" rx="6" fill="#2563EB" />
+      <rect x="202" y="193" width="68" height="5" rx="2.5" fill="white" opacity="0.7" />
+      <rect x="202" y="203" width="52" height="5" rx="2.5" fill="white" opacity="0.5" />
+      <rect x="202" y="213" width="82" height="5" rx="2.5" fill="white" opacity="0.6" />
+      <rect x="202" y="223" width="44" height="5" rx="2.5" fill="#FFD580" opacity="0.9" />
+      <circle cx="292" cy="212" r="16" fill="#52C41A" />
+      <path d="M284 212 L290 219 L301 204" stroke="white" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="170" y="252" width="184" height="12" rx="6" fill="#2D2A5E" />
+      {/* student body */}
+      <rect x="304" y="186" width="60" height="66" rx="22" fill="#FF6B35" />
+      <rect x="323" y="194" width="22" height="5" rx="2.5" fill="#c95522" />
+      {/* head */}
+      <circle cx="334" cy="151" r="42" fill="#FFD580" />
+      {/* hair */}
+      <ellipse cx="334" cy="115" rx="42" ry="17" fill="#3D2000" />
+      <ellipse cx="297" cy="139" rx="13" ry="20" fill="#3D2000" />
+      <ellipse cx="371" cy="139" rx="13" ry="20" fill="#3D2000" />
+      {/* eyes */}
+      <circle cx="320" cy="147" r="9" fill="white" />
+      <circle cx="348" cy="147" r="9" fill="white" />
+      <circle cx="321" cy="148" r="5" fill="#2D1B0E" />
+      <circle cx="349" cy="148" r="5" fill="#2D1B0E" />
+      <circle cx="323" cy="146" r="2" fill="white" />
+      <circle cx="351" cy="146" r="2" fill="white" />
+      <path d="M313 135 Q320 130 327 135" stroke="#3D2000" strokeWidth="2.8" strokeLinecap="round" fill="none" />
+      <path d="M341 135 Q348 130 355 135" stroke="#3D2000" strokeWidth="2.8" strokeLinecap="round" fill="none" />
+      <circle cx="306" cy="162" r="10" fill="#FFB347" opacity="0.4" />
+      <circle cx="362" cy="162" r="10" fill="#FFB347" opacity="0.4" />
+      <path d="M319 167 Q334 180 349 167" stroke="#2D1B0E" strokeWidth="3.2" strokeLinecap="round" fill="none" />
+      {/* graduation cap */}
+      <rect x="300" y="104" width="68" height="12" rx="3" fill="#1E1B4B" />
+      <polygon points="334,83 382,104 286,104" fill="#1E1B4B" />
+      <line x1="382" y1="104" x2="390" y2="127" stroke="#FF6B35" strokeWidth="4" strokeLinecap="round" />
+      <circle cx="390" cy="133" r="7" fill="#FF6B35" />
+      {/* stars */}
+      <path d="M46 86 L50 100 L65 100 L54 109 L58 123 L46 114 L34 123 L38 109 L27 100 L42 100 Z" fill="#FFD580" />
+      <path d="M388 182 L391 191 L401 191 L393 197 L396 206 L388 200 L380 206 L383 197 L375 191 L385 191 Z" fill="#FF6B35" opacity="0.85" />
+      <path d="M16 215 L18 222 L26 222 L20 227 L22 234 L16 230 L10 234 L12 227 L6 222 L14 222 Z" fill="#7C3AED" opacity="0.75" />
+      {/* pencil */}
+      <g transform="rotate(-38, 158, 96)">
+        <rect x="153" y="64" width="10" height="56" rx="4" fill="#FFD580" />
+        <rect x="153" y="64" width="10" height="9" rx="3" fill="#94A3B8" />
+        <polygon points="153,120 163,120 158,136" fill="#FF6B35" />
+        <rect x="153" y="111" width="10" height="5" fill="#FFB347" />
+      </g>
+      {/* question bubble */}
+      <circle cx="158" cy="50" r="30" fill="#7C3AED" />
+      <circle cx="158" cy="50" r="26" fill="#8B5CF6" />
+      <path d="M151 42 Q151 32 158 32 Q166 32 166 41 Q166 49 159 51 L159 56" stroke="white" strokeWidth="3.8" strokeLinecap="round" fill="none" />
+      <circle cx="159" cy="64" r="3.2" fill="white" />
+      {/* lightbulb */}
+      <circle cx="44" cy="155" r="24" fill="#FFD580" />
+      <rect x="38" y="174" width="12" height="11" rx="3" fill="#94A3B8" />
+      <rect x="39" y="185" width="10" height="5" rx="2.5" fill="#7A8C9E" />
+      <line x1="44" y1="127" x2="44" y2="121" stroke="#FFB347" strokeWidth="2.5" strokeLinecap="round" />
+      <line x1="66" y1="136" x2="71" y2="131" stroke="#FFB347" strokeWidth="2.5" strokeLinecap="round" />
+      <line x1="22" y1="136" x2="17" y2="131" stroke="#FFB347" strokeWidth="2.5" strokeLinecap="round" />
+      <line x1="72" y1="155" x2="78" y2="155" stroke="#FFB347" strokeWidth="2.5" strokeLinecap="round" />
+      <line x1="16" y1="155" x2="10" y2="155" stroke="#FFB347" strokeWidth="2.5" strokeLinecap="round" />
+      {/* sparkles */}
+      <circle cx="412" cy="138" r="5" fill="#FF6B35" />
+      <circle cx="423" cy="154" r="3" fill="#FFD580" />
+      <circle cx="410" cy="168" r="3.5" fill="#7C3AED" />
+      <circle cx="28" cy="262" r="4" fill="#52C41A" />
+      <circle cx="15" cy="278" r="2.5" fill="#4A90D9" />
+    </svg>
+  )
+}
+
+function PracticeIcon() {
+  return (
+    <svg viewBox="0 0 120 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', maxWidth: 160, height: 'auto' }}>
+      <circle cx="60" cy="50" r="44" fill="#FFF3E6" />
+      <rect x="30" y="22" width="56" height="66" rx="8" fill="white" stroke="#E8D5C0" strokeWidth="1.5" />
+      <rect x="40" y="36" width="36" height="4" rx="2" fill="#E8D5C0" />
+      <rect x="40" y="46" width="28" height="4" rx="2" fill="#E8D5C0" />
+      <rect x="40" y="56" width="32" height="4" rx="2" fill="#E8D5C0" />
+      <rect x="40" y="66" width="22" height="4" rx="2" fill="#E8D5C0" />
+      <g transform="rotate(-30, 82, 38)">
+        <rect x="78" y="18" width="8" height="38" rx="3" fill="#FFD580" />
+        <rect x="78" y="18" width="8" height="7" rx="2" fill="#94A3B8" />
+        <polygon points="78,56 86,56 82,68" fill="#FF6B35" />
+        <rect x="78" y="49" width="8" height="4" fill="#FFB347" />
+      </g>
+      <circle cx="64" cy="53" r="12" fill="#FF6B35" />
+      <path d="M61 47 Q61 43 64 43 Q67 43 67 47 Q67 51 64 52 L64 55" stroke="white" strokeWidth="2.2" strokeLinecap="round" fill="none" />
+      <circle cx="64" cy="58.5" r="1.8" fill="white" />
+    </svg>
+  )
+}
+
+function ConsistencyIcon() {
+  return (
+    <svg viewBox="0 0 120 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', maxWidth: 160, height: 'auto' }}>
+      <circle cx="60" cy="50" r="44" fill="#EDE9FE" />
+      <rect x="22" y="26" width="76" height="58" rx="10" fill="white" stroke="#E8D5C0" strokeWidth="1.5" />
+      <rect x="22" y="26" width="76" height="22" rx="10" fill="#7C3AED" />
+      <rect x="22" y="37" width="76" height="11" fill="#7C3AED" />
+      <rect x="37" y="19" width="7" height="14" rx="3" fill="#A78BFA" />
+      <rect x="76" y="19" width="7" height="14" rx="3" fill="#A78BFA" />
+      <rect x="46" y="31" width="28" height="4" rx="2" fill="white" opacity="0.65" />
+      <circle cx="36" cy="60" r="8" fill="#52C41A" /><path d="M33 60 L35.5 63 L40 57" stroke="white" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="60" cy="60" r="8" fill="#52C41A" /><path d="M57 60 L59.5 63 L64 57" stroke="white" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="84" cy="60" r="8" fill="#52C41A" /><path d="M81 60 L83.5 63 L88 57" stroke="white" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="36" cy="76" r="8" fill="#52C41A" /><path d="M33 76 L35.5 79 L40 73" stroke="white" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="60" cy="76" r="8" fill="#52C41A" /><path d="M57 76 L59.5 79 L64 73" stroke="white" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="84" cy="76" r="8" fill="#FF6B35" />
+      <path d="M84 70 Q88 74 86 79 Q84 75 82 79 Q80 74 84 70 Z" fill="#FFD580" />
+      <path d="M84 73 Q86 76 85 79 Q84 77 83 79 Q82 76 84 73 Z" fill="white" opacity="0.5" />
+    </svg>
+  )
+}
+
+function FeedbackIcon() {
+  return (
+    <svg viewBox="0 0 120 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', maxWidth: 160, height: 'auto' }}>
+      <circle cx="60" cy="50" r="44" fill="#E0F2FE" />
+      <rect x="20" y="18" width="80" height="54" rx="14" fill="#4A90D9" />
+      <polygon points="38,72 28,86 56,72" fill="#4A90D9" />
+      <circle cx="60" cy="42" r="20" fill="#FFD580" />
+      <rect x="54" y="58" width="12" height="9" rx="3" fill="#94A3B8" />
+      <rect x="55" y="67" width="10" height="4" rx="2" fill="#7A8C9E" />
+      <path d="M55 42 Q60 35 65 42" stroke="#FF6B35" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+      <circle cx="67" cy="33" r="5" fill="white" opacity="0.35" />
+      <line x1="60" y1="19" x2="60" y2="15" stroke="#FFD580" strokeWidth="2.2" strokeLinecap="round" />
+      <line x1="76" y1="25" x2="79" y2="22" stroke="#FFD580" strokeWidth="2.2" strokeLinecap="round" />
+      <line x1="44" y1="25" x2="41" y2="22" stroke="#FFD580" strokeWidth="2.2" strokeLinecap="round" />
+      <line x1="82" y1="42" x2="86" y2="42" stroke="#FFD580" strokeWidth="2.2" strokeLinecap="round" />
+      <line x1="38" y1="42" x2="34" y2="42" stroke="#FFD580" strokeWidth="2.2" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 function LandingScreen({ onSignIn }) {
   const [showTrialModal, setShowTrialModal] = useState(false)
   return (
@@ -126,11 +276,66 @@ function LandingScreen({ onSignIn }) {
             <button className="btn btn-secondary lp-cta-btn" onClick={onSignIn}>Sign in</button>
           </div>
         </div>
-        <div className="lp-hero-stats">
-          <div className="lp-stat-card"><div className="lp-stat-num">3+</div><div className="lp-stat-label">Exam tracks</div></div>
-          <div className="lp-stat-card"><div className="lp-stat-num">1000+</div><div className="lp-stat-label">Practice questions</div></div>
-          <div className="lp-stat-card"><div className="lp-stat-num">100%</div><div className="lp-stat-label">Curriculum aligned</div></div>
-          <div className="lp-stat-card"><div className="lp-stat-num">Live</div><div className="lp-stat-label">Progress tracking</div></div>
+        <div className="lp-hero-illustration">
+          <HeroIllustration />
+        </div>
+      </section>
+
+      {/* ── STATS STRIP ── */}
+      <div className="lp-stats-strip">
+        <div className="lp-stats-row">
+          {[
+            { n: '3+', l: 'Exam tracks' },
+            { n: '1000+', l: 'Practice questions' },
+            { n: '100%', l: 'Curriculum aligned' },
+            { n: 'Live', l: 'Progress tracking' },
+          ].map(s => (
+            <div className="lp-stat-item" key={s.l}>
+              <span className="lp-stat-n">{s.n}</span>
+              <span className="lp-stat-l">{s.l}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── PILLARS ── */}
+      <section className="lp-section lp-section-alt">
+        <div className="lp-section-inner">
+          <div className="lp-section-label">Our Method</div>
+          <h2 className="lp-section-h2">The three pillars of exam mastery</h2>
+          <div className="lp-pillars-grid">
+            {[
+              {
+                Icon: PracticeIcon,
+                title: 'Practice',
+                color: '#FF6B35',
+                bg: '#FFF3E6',
+                desc: 'Targeted questions across every topic and subtopic — with instant, clear explanations so students actually learn from every answer, not just memorise.',
+              },
+              {
+                Icon: ConsistencyIcon,
+                title: 'Consistency',
+                color: '#7C3AED',
+                bg: '#F5F3FF',
+                desc: 'Daily habit-building through streaks and progress tracking. Small, regular sessions beat last-minute cramming — showing up every day is the real secret.',
+              },
+              {
+                Icon: FeedbackIcon,
+                title: 'Feedback',
+                color: '#4A90D9',
+                bg: '#EFF6FF',
+                desc: 'Every question comes with a step-by-step explanation showing exactly why the answer is correct. Real understanding, not guesswork.',
+              },
+            ].map(p => (
+              <div className="lp-pillar-card" key={p.title} style={{ borderTop: `4px solid ${p.color}` }}>
+                <div className="lp-pillar-illustration" style={{ background: p.bg }}>
+                  <p.Icon />
+                </div>
+                <h3 className="lp-pillar-title" style={{ color: p.color }}>{p.title}</h3>
+                <p className="lp-pillar-desc">{p.desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 

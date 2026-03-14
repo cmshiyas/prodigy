@@ -96,9 +96,28 @@ body { font-family: 'Nunito Sans', sans-serif; background: var(--bg); color: var
 .lp-footer-col a:hover { color: white; }
 .lp-footer-bottom { max-width: 1100px; margin: 0 auto; padding: 20px 0; font-size: 0.82rem; }
 
+/* Hero illustration */
+.lp-hero-illustration { display: flex; align-items: center; justify-content: center; }
+
+/* Stats strip */
+.lp-stats-strip { background: #1E1B4B; padding: 26px 24px; }
+.lp-stats-row { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.lp-stat-item { text-align: center; padding: 6px; }
+.lp-stat-n { display: block; font-family: 'Nunito', sans-serif; font-size: 2rem; font-weight: 900; color: #FF6B35; line-height: 1; }
+.lp-stat-l { display: block; font-size: 0.8rem; font-weight: 700; color: #A5B4FC; margin-top: 5px; letter-spacing: 0.3px; }
+
+/* Pillars */
+.lp-pillars-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.lp-pillar-card { background: white; border-radius: 20px; box-shadow: 0 4px 24px rgba(0,0,0,0.07); overflow: hidden; }
+.lp-pillar-illustration { padding: 28px 28px 16px; display: flex; align-items: center; justify-content: center; }
+.lp-pillar-title { font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 1.35rem; padding: 0 24px 8px; }
+.lp-pillar-desc { font-size: 0.9rem; color: #4B5563; line-height: 1.7; padding: 0 24px 28px; }
+
 @media (max-width: 900px) {
   .lp-hero { grid-template-columns: 1fr; padding: 48px 20px 40px; }
-  .lp-hero-stats { grid-template-columns: repeat(2, 1fr); }
+  .lp-hero-illustration { display: none; }
+  .lp-stats-row { grid-template-columns: repeat(2, 1fr); }
+  .lp-pillars-grid { grid-template-columns: 1fr; }
   .lp-steps { grid-template-columns: 1fr; }
   .lp-benefits { grid-template-columns: 1fr; }
   .lp-features { grid-template-columns: 1fr 1fr; }
