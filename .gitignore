@@ -4,3 +4,6 @@ supabase-schema.sql
 .vercel
 .next
 requirements.md
+notes.md
+changelog.md
+CHANGELOG.md
