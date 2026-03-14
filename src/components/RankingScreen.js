@@ -47,7 +47,7 @@ export default function RankingScreen({ user, idToken, onHome, onHistory }) {
       <div>
         {/* HEADER */}
         <header>
-          <div className="logo" onClick={onHome} style={{ cursor: 'pointer' }}>RepHub <span>Mastering by Reps</span></div>
+          <div className="logo" onClick={onHome} style={{ cursor: 'pointer' }}>Self Paced Learning <span>Practice · Consistency · Feedback</span></div>
           <div className="header-right">
             <button className="nav-btn" onClick={onHome}>Home</button>
             <button className="nav-btn" onClick={onHistory}>History</button>
@@ -89,7 +89,7 @@ export default function RankingScreen({ user, idToken, onHome, onHistory }) {
     <div>
       {/* HEADER */}
       <header>
-        <div className="logo" onClick={onHome} style={{ cursor: 'pointer' }}>RepHub <span>Mastering by Reps</span></div>
+        <div className="logo" onClick={onHome} style={{ cursor: 'pointer' }}>Self Paced Learning <span>Practice · Consistency · Feedback</span></div>
         <div className="header-right">
           <button className="nav-btn" onClick={onHome}>Home</button>
           <button className="nav-btn" onClick={onHistory}>History</button>

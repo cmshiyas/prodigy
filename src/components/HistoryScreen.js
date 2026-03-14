@@ -30,7 +30,7 @@ export default function HistoryScreen({ user, idToken, examType, onExamTypeChang
       <div>
         {/* HEADER */}
         <header>
-          <div className="logo" onClick={onHome} style={{ cursor: 'pointer' }}>RepHub <span>Mastering by Reps</span></div>
+          <div className="logo" onClick={onHome} style={{ cursor: 'pointer' }}>Self Paced Learning <span>Practice · Consistency · Feedback</span></div>
           <div className="header-right">
             <button className="nav-btn" onClick={onHome}>Home</button>
             <button className="nav-btn active">History</button>
@@ -71,7 +71,7 @@ export default function HistoryScreen({ user, idToken, examType, onExamTypeChang
     <div>
       {/* HEADER */}
       <header>
-        <div className="logo" onClick={onHome} style={{ cursor: 'pointer' }}>RepHub <span>Mastering by Reps</span></div>
+        <div className="logo" onClick={onHome} style={{ cursor: 'pointer' }}>Self Paced Learning <span>Practice · Consistency · Feedback</span></div>
         <div className="header-right">
           <button className="nav-btn" onClick={onHome}>Home</button>
           <button className="nav-btn active">History</button>

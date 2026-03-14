@@ -30,8 +30,8 @@ const WA_NUMBER = '61432302644'
 
 function WhatsAppButton({ user }) {
   const message = user
-    ? `Hi! I'm ${user.name} (${user.email}). I have a question about Exam Booster.`
-    : `Hi! I have a question about Exam Booster.`
+    ? `Hi! I'm ${user.name} (${user.email}). I have a question about Self Paced Learning.`
+    : `Hi! I have a question about Self Paced Learning.`
   const url = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(message)}`
   return (
     <a
@@ -102,8 +102,8 @@ function LandingScreen({ onSignIn }) {
       <header className="lp-header">
         <div className="lp-header-inner">
           <div className="lp-logo">
-            <span className="lp-logo-icon">📘</span>
-            <span>Exam Booster</span>
+            <span className="lp-logo-icon">🎯</span>
+            <span>Self Paced Learning</span>
           </div>
           <nav className="lp-nav-links">
             <a href="#how-it-works">How it works</a>
@@ -118,9 +118,9 @@ function LandingScreen({ onSignIn }) {
       {/* ── HERO ── */}
       <section className="lp-hero">
         <div className="lp-hero-text">
-          <p className="lp-eyebrow">AI-powered exam preparation for Australian students</p>
-          <h1 className="lp-h1">Build exam confidence<br/>one question at a time</h1>
-          <p className="lp-sub">Targeted practice questions for OC, Selective and NAPLAN exams — with instant feedback, subtopic tracking and streak rewards to keep kids motivated.</p>
+          <p className="lp-eyebrow">Self-paced exam mastery for Australian students</p>
+          <h1 className="lp-h1">Practice. Consistency.<br/>Feedback. Mastery.</h1>
+          <p className="lp-sub">Build exam confidence through consistent, self-paced practice for OC, Selective and NAPLAN exams — with instant feedback, subtopic tracking and streak rewards to keep kids motivated.</p>
           <div className="lp-cta-row">
             <button className="btn btn-primary lp-cta-btn" onClick={onSignIn}>Get Started Free</button>
             <button className="btn btn-secondary lp-cta-btn" onClick={onSignIn}>Sign in</button>
@@ -162,7 +162,7 @@ function LandingScreen({ onSignIn }) {
       {/* ── BENEFITS ── */}
       <section className="lp-section lp-section-alt" id="benefits">
         <div className="lp-section-inner">
-          <div className="lp-section-label">Why Exam Booster</div>
+          <div className="lp-section-label">Why Self Paced Learning</div>
           <h2 className="lp-section-h2">Benefits for students & parents</h2>
           <div className="lp-benefits">
             <div className="lp-benefit-col">
@@ -291,14 +291,14 @@ function LandingScreen({ onSignIn }) {
             </div>
 
           </div>
-          <p className="lp-pricing-note">All plans include a Google sign-in account and access via any device. Upgrades managed by the admin — contact us on WhatsApp to upgrade.</p>
+          <p className="lp-pricing-note">All plans include a Google sign-in account and access via any device. Invite friends to earn free upgrades — 3 friends gets you Gold, 5 friends gets you Platinum.</p>
         </div>
       </section>
 
       {/* ── CTA BANNER ── */}
       <section className="lp-cta-banner">
-        <h2>Ready to boost your child's exam results?</h2>
-        <p>Join students already practising smarter with Exam Booster.</p>
+        <h2>Ready to build real exam confidence?</h2>
+        <p>Join students already mastering exams through consistent, self-paced practice.</p>
         <button className="btn btn-primary lp-cta-btn" onClick={onSignIn}>Get Started — it's free</button>
       </section>
 
@@ -306,9 +306,9 @@ function LandingScreen({ onSignIn }) {
       <footer className="lp-footer">
         <div className="lp-footer-inner">
           <div className="lp-footer-brand">
-            <span className="lp-logo-icon">📘</span>
-            <strong>Exam Booster</strong>
-            <p>AI-powered practice for Australian school exams.</p>
+            <span className="lp-logo-icon">🎯</span>
+            <strong>Self Paced Learning</strong>
+            <p>Practice. Consistency. Feedback. — for Australian school exams.</p>
           </div>
           <div className="lp-footer-links">
             <div className="lp-footer-col">
@@ -326,7 +326,7 @@ function LandingScreen({ onSignIn }) {
           </div>
         </div>
         <div className="lp-footer-bottom">
-          © {new Date().getFullYear()} Exam Booster. All rights reserved.
+          © {new Date().getFullYear()} Self Paced Learning. All rights reserved.
         </div>
       </footer>
 
@@ -363,7 +363,7 @@ function AuthScreen() {
   return (
     <div className="auth-screen">
       <div className="auth-card">
-        <div className="auth-logo">📘 Exam Booster</div>
+        <div className="auth-logo">🎯 Self Paced Learning</div>
         <p className="auth-sub">Get started with AI-generated exam practice.</p>
         <div className="auth-divider">Sign in with Google</div>
         <div id="google-btn" className="g_id_signin" />
@@ -446,7 +446,7 @@ function ReferralModal({ user, referralCount, onClose }) {
         </div>
         <a
           className="trial-modal-wa-btn btn"
-          href={`https://wa.me/?text=${encodeURIComponent('Join me on Exam Booster — the best way to prepare for OC, Selective and NAPLAN exams! Sign up here: ' + referralLink)}`}
+          href={`https://wa.me/?text=${encodeURIComponent('Join me on Self Paced Learning — master OC, Selective and NAPLAN exams through consistent practice and instant feedback! Sign up here: ' + referralLink)}`}
           target="_blank" rel="noopener noreferrer"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.128.557 4.126 1.526 5.854L0 24l6.334-1.506A11.96 11.96 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.891 0-3.661-.483-5.207-1.327L3 22l1.357-3.72A9.962 9.962 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
@@ -676,7 +676,7 @@ function PlansScreen({ user, onHome, onReferFriend }) {
         <h2 className="plans-title">Plans &amp; Pricing</h2>
         <p className="plans-sub">
           You are currently on the <strong style={{ color: PLANS.find(p=>p.tier===currentTier)?.color }}>{TIER_LABELS[currentTier]}</strong> plan.
-          {currentTier !== 'platinum' && ' Upgrade any time via WhatsApp — instant activation.'}
+          {currentTier !== 'platinum' && ' Invite friends to earn a free upgrade, or contact us to upgrade directly.'}
         </p>
       </div>
 
@@ -1301,7 +1301,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
   if (screen === 'plans') return (
     <div>
       <header>
-        <div className="logo" style={{ cursor: 'pointer' }} onClick={() => setScreen('app')}>Exam Booster <span>Practice Smarter</span></div>
+        <div className="logo" style={{ cursor: 'pointer' }} onClick={() => setScreen('app')}>Self Paced Learning <span>Practice · Consistency · Feedback</span></div>
         <div className="header-right">
           <button className="nav-btn" onClick={() => setScreen('app')}>Home</button>
         </div>
@@ -1323,7 +1323,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
     <div>
       {/* HEADER */}
       <header>
-        <div className="logo" onClick={() => { saveQuizAttempt(); resetQuizSession(); setScreen('app') }} style={{ cursor: 'pointer' }}>Exam Booster <span className="logo-sub">Practice Smarter</span></div>
+        <div className="logo" onClick={() => { saveQuizAttempt(); resetQuizSession(); setScreen('app') }} style={{ cursor: 'pointer' }}>Self Paced Learning <span className="logo-sub">Practice · Consistency · Feedback</span></div>
         <div className="header-right">
           {/* Desktop nav */}
           <div className="desktop-nav">

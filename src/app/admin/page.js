@@ -803,7 +803,7 @@ export default function AdminPage() {
           <div style={{ background: 'white', borderRadius: 24, padding: '3rem 2.5rem', maxWidth: 420, width: '90%', textAlign: 'center', boxShadow: '0 24px 64px rgba(0,0,0,0.3)' }}>
             <div style={{ fontSize: '2.5rem', marginBottom: 8 }}>⚙️</div>
             <div style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '1.6rem', color: '#1E1B4B', marginBottom: 4 }}>Admin Portal</div>
-            <div style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '0.95rem', color: '#FF6B35', marginBottom: 24 }}>Exam Booster</div>
+            <div style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '0.95rem', color: '#FF6B35', marginBottom: 24 }}>Self Paced Learning</div>
             <p style={{ color: '#4B5563', fontSize: '0.9rem', marginBottom: 28, lineHeight: 1.6 }}>Sign in with your administrator Google account to access the admin panel.</p>
             {error && <div style={{ background: '#FEF2F2', border: '1.5px solid #FECACA', borderRadius: 10, padding: '12px 16px', color: '#991B1B', fontSize: '0.88rem', marginBottom: 20, fontWeight: 600 }}>{error}</div>}
             {loading ? (
@@ -825,7 +825,7 @@ export default function AdminPage() {
         {/* Admin header */}
         <header style={{ background: '#1E1B4B', padding: '0 2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64, position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 12px rgba(0,0,0,0.3)' }}>
           <div style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '1.2rem', color: 'white' }}>
-            ⚙️ Admin Portal <span style={{ color: '#A5B4FC', fontSize: '0.85rem', fontWeight: 600 }}>— Exam Booster</span>
+            ⚙️ Admin Portal <span style={{ color: '#A5B4FC', fontSize: '0.85rem', fontWeight: 600 }}>— Self Paced Learning</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ color: '#A5B4FC', fontSize: '0.85rem', fontWeight: 600 }}>{session.user.email}</span>
