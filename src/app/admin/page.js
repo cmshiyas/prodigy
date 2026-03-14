@@ -216,6 +216,19 @@ function AdminPanel({ idToken, onSignOut }) {
     } catch (err) { alert('Failed: ' + err.message) }
   }
 
+  const deleteUser = async (userId, name) => {
+    if (!confirm(`Permanently delete user "${name}"?\n\nThis will remove the account and all their data. This cannot be undone.`)) return
+    try {
+      const res = await fetch('/api/admin?action=deleteUser', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+        body: JSON.stringify({ userId }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error)
+      await loadUsers()
+    } catch (err) { alert('Failed: ' + err.message) }
+  }
+
   const uploadQuestions = async () => {
     if (!uploadFile) { setUploadStatus('Please choose a JSON file first.'); return }
     setUploadStatus('Reading file and uploading...')
@@ -397,6 +410,7 @@ function AdminPanel({ idToken, onSignOut }) {
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {!isAdmin && u.status !== 'approved' && <button onClick={() => updateUser(u.id, { status: 'approved' })} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', background: '#DCFCE7', color: '#166534', fontFamily: 'Nunito' }}>Approve</button>}
                     {!isAdmin && u.status !== 'rejected' && <button onClick={() => updateUser(u.id, { status: 'rejected' })} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', background: '#FEE2E2', color: '#991B1B', fontFamily: 'Nunito' }}>Reject</button>}
+                    {!isAdmin && <button onClick={() => deleteUser(u.id, u.name || u.email)} style={{ padding: '4px 10px', borderRadius: 6, border: '1.5px solid #FECACA', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', background: '#FFF1F2', color: '#881337', fontFamily: 'Nunito' }}>Delete</button>}
                     {isAdmin && <span style={{ fontSize: '0.75rem', color: '#7A5C3F' }}>You</span>}
                   </div>
                 </div>
@@ -1030,6 +1044,9 @@ function QuestionBankReview({ idToken, onSignOut }) {
   const [imageFile, setImageFile] = useState(null)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [previewQuestion, setPreviewQuestion] = useState(null)
+  const [showDuplicates, setShowDuplicates] = useState(false)
+  const [duplicates, setDuplicates] = useState(null)
+  const [loadingDuplicates, setLoadingDuplicates] = useState(false)
 
   const doLoad = async (p, et, tid, s) => {
     setLoading(true)
@@ -1050,6 +1067,23 @@ function QuestionBankReview({ idToken, onSignOut }) {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { doLoad(1, examType, topicId, search); setPage(1) }, [examType, topicId, search])
+
+  const loadDuplicates = async () => {
+    setLoadingDuplicates(true)
+    try {
+      const res = await fetch('/api/admin?action=duplicates', { headers: { Authorization: 'Bearer ' + idToken } })
+      if (res.status === 403) { const e = await res.json(); if (e.error?.includes('Not')) { onSignOut(); return } }
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setDuplicates(data)
+    } catch (err) { alert('Failed: ' + err.message) }
+    finally { setLoadingDuplicates(false) }
+  }
+
+  const toggleDuplicates = () => {
+    if (!showDuplicates) { setShowDuplicates(true); loadDuplicates() }
+    else { setShowDuplicates(false); setDuplicates(null) }
+  }
 
   const startEdit = (q) => {
     setEditingId(q.id)
@@ -1160,7 +1194,71 @@ function QuestionBankReview({ idToken, onSignOut }) {
           <button onClick={() => { setSearch(''); setSearchInput(''); setTopicId('') }} style={{ padding: '7px 14px', background: 'white', color: '#7A5C3F', border: '1.5px solid #E8D5C0', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 700, cursor: 'pointer' }}>Clear</button>
         )}
         <div style={{ marginLeft: 'auto', fontSize: '0.82rem', color: '#7A5C3F', fontWeight: 600 }}>{total} questions</div>
+        <button
+          onClick={toggleDuplicates}
+          style={{ padding: '7px 14px', background: showDuplicates ? '#7C3AED' : 'white', color: showDuplicates ? 'white' : '#7C3AED', border: '1.5px solid #C4B5FD', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap' }}
+        >{showDuplicates ? 'Hide Duplicates' : '🔍 Find Duplicates'}</button>
       </div>
+
+      {/* ── Duplicates panel ── */}
+      {showDuplicates && (
+        <div style={{ marginBottom: 20, background: '#F5F3FF', border: '1.5px solid #C4B5FD', borderRadius: 12, padding: '16px 18px' }}>
+          <div style={{ fontFamily: 'Nunito', fontWeight: 800, fontSize: '0.95rem', color: '#5B21B6', marginBottom: 4 }}>Duplicate Questions</div>
+          {loadingDuplicates ? (
+            <div style={{ color: '#7C3AED', padding: '12px 0', fontSize: '0.88rem' }}>Scanning for duplicates…</div>
+          ) : !duplicates ? null : duplicates.totalDuplicateGroups === 0 ? (
+            <div style={{ color: '#059669', fontWeight: 700, fontSize: '0.88rem', padding: '8px 0' }}>✓ No duplicates found — your question bank is clean!</div>
+          ) : (
+            <>
+              <div style={{ fontSize: '0.82rem', color: '#7C3AED', marginBottom: 14 }}>
+                Found <strong>{duplicates.totalDuplicateGroups}</strong> duplicate group{duplicates.totalDuplicateGroups !== 1 ? 's' : ''} ({duplicates.totalExtraRows} extra rows). Keep one, delete the rest.
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {(duplicates.groups || []).map((group, gi) => (
+                  <div key={gi} style={{ background: 'white', border: '1.5px solid #C4B5FD', borderRadius: 10, overflow: 'hidden' }}>
+                    <div style={{ background: '#EDE9FE', padding: '8px 14px', fontSize: '0.78rem', fontWeight: 700, color: '#5B21B6' }}>
+                      Group {gi + 1} — {group.length} identical questions
+                    </div>
+                    <div style={{ padding: '10px 14px 4px' }}>
+                      <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#1E293B', marginBottom: 10, lineHeight: 1.5 }}>
+                        "{group[0].question.length > 160 ? group[0].question.slice(0, 160) + '…' : group[0].question}"
+                      </div>
+                      {group.map((q, qi) => (
+                        <div key={q.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderTop: '1px solid #EDE9FE' }}>
+                          <div style={{ flex: 1, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '1px 7px', borderRadius: 20, background: '#DBEAFE', color: '#1D4ED8' }}>{q.exam_type}</span>
+                            <span style={{ fontSize: '0.72rem', padding: '1px 7px', borderRadius: 20, background: '#F3F4F6', color: '#374151' }}>{q.topic_id}</span>
+                            {q.subtopic && <span style={{ fontSize: '0.72rem', padding: '1px 7px', borderRadius: 20, background: '#F3F4F6', color: '#374151' }}>{q.subtopic}</span>}
+                            {q.year_level && <span style={{ fontSize: '0.72rem', padding: '1px 7px', borderRadius: 20, background: '#F3F4F6', color: '#374151' }}>Yr {q.year_level}</span>}
+                            <span style={{ fontSize: '0.72rem', color: '#94A3B8' }}>Added {new Date(q.created_at).toLocaleDateString('en-AU')}</span>
+                            {qi === 0 && <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '1px 7px', borderRadius: 20, background: '#DCFCE7', color: '#166534' }}>oldest</span>}
+                          </div>
+                          <button
+                            onClick={async () => {
+                              if (!confirm('Delete this duplicate question? This cannot be undone.')) return
+                              try {
+                                const res = await fetch('/api/admin?action=deleteQuestion', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+                                  body: JSON.stringify({ questionId: q.id }),
+                                })
+                                if (!res.ok) throw new Error((await res.json()).error)
+                                await loadDuplicates()
+                                doLoad(page, examType, topicId, search)
+                              } catch (err) { alert('Failed: ' + err.message) }
+                            }}
+                            style={{ padding: '4px 12px', fontSize: '0.75rem', borderRadius: 6, border: '1.5px solid #FECACA', background: '#FEF2F2', fontFamily: 'Nunito', fontWeight: 700, cursor: 'pointer', color: '#991B1B', flexShrink: 0 }}
+                          >Delete</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <div style={{ padding: 40, textAlign: 'center', color: '#7A5C3F' }}>Loading questions...</div>

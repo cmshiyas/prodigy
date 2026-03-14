@@ -205,6 +205,27 @@ export async function GET(request) {
     return NextResponse.json({ responses: result })
   }
 
+  if (action === 'duplicates') {
+    // Fetch all questions (lean select) and find duplicates by normalised text
+    const { data: allQs, error } = await supabase
+      .from('questions')
+      .select('id, question, exam_type, topic_id, subtopic, year_level, difficulty, created_at')
+      .order('created_at', { ascending: true })
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    const groups = {}
+    for (const q of allQs || []) {
+      const key = q.question.trim().toLowerCase().replace(/\s+/g, ' ')
+      if (!groups[key]) groups[key] = []
+      groups[key].push(q)
+    }
+    const duplicateGroups = Object.values(groups)
+      .filter(g => g.length > 1)
+      .sort((a, b) => b.length - a.length)
+
+    return NextResponse.json({ groups: duplicateGroups, totalDuplicateGroups: duplicateGroups.length, totalExtraRows: duplicateGroups.reduce((s, g) => s + g.length - 1, 0) })
+  }
+
   if (action === 'questions') {
     const url = new URL(request.url)
     const examType = url.searchParams.get('examType') || ''
@@ -301,6 +322,17 @@ export async function POST(request) {
     const { promoId } = await request.json()
     if (!promoId) return NextResponse.json({ error: 'promoId required' }, { status: 400 })
     const { error } = await supabase.from('promo_codes').delete().eq('id', promoId)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ ok: true })
+  }
+
+  if (action === 'deleteUser') {
+    const { userId } = await request.json()
+    if (!userId) return NextResponse.json({ error: 'userId required' }, { status: 400 })
+    // Prevent deleting the admin account
+    const { data: target } = await supabase.from('users').select('email').eq('id', userId).single()
+    if (target?.email === ADMIN_EMAIL) return NextResponse.json({ error: 'Cannot delete admin account' }, { status: 403 })
+    const { error } = await supabase.from('users').delete().eq('id', userId)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true })
   }
