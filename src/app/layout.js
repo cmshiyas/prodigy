@@ -1,4 +1,5 @@
 import './globals.css'
+import { Analytics } from '@vercel/analytics/react'
 
 export const metadata = {
   metadataBase: new URL('https://exambooster.com.au'),
@@ -59,7 +60,10 @@ export default function RootLayout({ children }) {
         {/* Google Identity Services - loaded before page script */}
         <script src="https://accounts.google.com/gsi/client" async defer />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <Analytics />
+      </body>
     </html>
   )
 }
