@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { EXAM_TYPES, EXAM_TOPICS, TOPIC_PROMPTS, TOKEN_LIMITS, TIER_LABELS, TIER_CLASSES, ADMIN_EMAIL } from '@/lib/constants'
+import { EXAM_TYPES, EXAM_TOPICS, TOPIC_PROMPTS, TOKEN_LIMITS, TIER_LABELS, TIER_CLASSES, ADMIN_EMAIL, EXAM_YEAR_LEVELS } from '@/lib/constants'
 import HistoryScreen from '@/components/HistoryScreen'
 import RankingScreen from '@/components/RankingScreen'
 
@@ -1064,7 +1064,7 @@ function PlansScreen({ user, idToken, onHome, onReferFriend, onTierUpgrade }) {
 
 const COMING_SOON_EXAMS = new Set(['Selective'])
 
-function HomeScreen({ user, examType, onExamTypeChange, score, totalAnswered, topicStats, subtopicStats, onSelectTopic, onUpgrade }) {
+function HomeScreen({ user, examType, onExamTypeChange, yearLevel, onYearLevelChange, score, totalAnswered, topicStats, subtopicStats, onSelectTopic, onUpgrade }) {
   const totalCorrect = Object.values(topicStats).reduce((a, v) => a + v.correct, 0)
   const topicList = EXAM_TOPICS[examType] || EXAM_TOPICS.OC
   const [showComingSoon, setShowComingSoon] = useState(false)
@@ -1109,6 +1109,23 @@ function HomeScreen({ user, examType, onExamTypeChange, score, totalAnswered, to
           )
         })}
       </div>
+      {(EXAM_YEAR_LEVELS[examType] || []).length > 1 && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', alignSelf: 'center' }}>Year level:</span>
+          {(EXAM_YEAR_LEVELS[examType] || []).map(y => (
+            <button
+              key={y.value}
+              onClick={() => onYearLevelChange(y.value)}
+              className={`exam-chip${yearLevel === y.value ? ' active' : ''}`}
+            >{y.label}</button>
+          ))}
+        </div>
+      )}
+      {(EXAM_YEAR_LEVELS[examType] || []).length === 1 && (
+        <div style={{ marginBottom: 12, fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>
+          Year level: <span style={{ fontWeight: 800, color: '#334155' }}>{EXAM_YEAR_LEVELS[examType][0].label}</span>
+        </div>
+      )}
       {!user.is_admin && (
         <div className="limit-banner" style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
@@ -1271,6 +1288,7 @@ export default function App() {
   const [screen, setScreen] = useState(initialSession.user ? 'app' : 'landing') // landing | auth | pending | rejected | app | history | ranking
   const [session, setSession] = useState(initialSession)
   const [examType, setExamType] = useState('OC')
+  const [yearLevel, setYearLevel] = useState('4')
   const [currentTopic, setCurrentTopic] = useState(null)
   const [currentSubtopic, setCurrentSubtopic] = useState(null)
   const [question, setQuestion] = useState(null)
@@ -1341,6 +1359,12 @@ export default function App() {
       }
     }
   }, [])
+
+  // Reset yearLevel when examType changes
+  useEffect(() => {
+    const levels = EXAM_YEAR_LEVELS[examType] || []
+    setYearLevel(levels.length === 1 ? levels[0].value : '')
+  }, [examType])
 
   // Fetch referral count when logged in
   useEffect(() => {
@@ -1495,6 +1519,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
           topicId,
           subtopic,
           examType,
+          yearLevel,
           model: 'claude-sonnet-4-20250514',
           max_tokens: 1000,
           messages: [{ role: 'user', content: prompt }]
@@ -1789,6 +1814,8 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
                 user={user}
                 examType={examType}
                 onExamTypeChange={setExamType}
+                yearLevel={yearLevel}
+                onYearLevelChange={setYearLevel}
                 score={score}
                 totalAnswered={totalAnswered}
                 topicStats={topicStats}

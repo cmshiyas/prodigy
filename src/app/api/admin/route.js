@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { verifyGoogleToken } from '@/lib/google'
 import { getSupabase } from '@/lib/supabase'
-import { ADMIN_EMAIL, EXAM_TOPICS, EXAM_TYPES } from '@/lib/constants'
+import { ADMIN_EMAIL, EXAM_TOPICS, EXAM_TYPES, EXAM_YEAR_LEVELS } from '@/lib/constants'
 
 async function verifyAdmin(request) {
   const authHeader = request.headers.get('authorization')
@@ -37,7 +37,7 @@ export async function GET(request) {
     // Fetch question stats per topic, exam type, and creator
     const { data: questions, error: questionsError } = await supabase
       .from('questions')
-      .select('id, topic_id, exam_type, created_by')
+      .select('id, topic_id, exam_type, created_by, year_level')
 
     if (questionsError) return NextResponse.json({ error: questionsError.message }, { status: 500 })
 
@@ -50,6 +50,7 @@ export async function GET(request) {
     const topicExamCounts = {}
     const examCounts = {}
     const userCounts = {}
+    const yearBreakdown = {}
 
     questions.forEach(q => {
       const exam = q.exam_type || 'Unknown'
@@ -59,7 +60,14 @@ export async function GET(request) {
       if (q.created_by) {
         userCounts[q.created_by] = (userCounts[q.created_by] || 0) + 1
       }
+      const key = `${q.exam_type}::${q.year_level || 'unset'}`
+      yearBreakdown[key] = (yearBreakdown[key] || 0) + 1
     })
+
+    const yearBreakdownArr = Object.entries(yearBreakdown).map(([key, count]) => {
+      const [examType, yearLevel] = key.split('::')
+      return { examType, yearLevel, count }
+    }).sort((a, b) => a.examType.localeCompare(b.examType) || a.yearLevel.localeCompare(b.yearLevel))
 
     const topics = Object.entries(topicExamCounts).map(([topicId, byExam]) => ({
       topicId,
@@ -80,7 +88,7 @@ export async function GET(request) {
       }))
       .sort((a, b) => b.count - a.count)
 
-    return NextResponse.json({ topics, examBreakdown, users: userRanking, total: questions.length })
+    return NextResponse.json({ topics, examBreakdown, yearBreakdown: yearBreakdownArr, users: userRanking, total: questions.length })
   }
 
   if (action === 'analytics') {
@@ -261,6 +269,7 @@ export async function POST(request) {
     const formData = await request.formData()
     const examType = formData.get('examType')?.toString() || ''
     const topicId = formData.get('topicId')?.toString() || ''
+    const yearLevel = formData.get('yearLevel')?.toString() || ''
     const file = formData.get('file')
     const validExamIds = EXAM_TYPES.map(item => item.id)
 
@@ -407,6 +416,7 @@ ${trimmed}`
         correct: shuffledCorrect,
         explanation: q.explanation || '',
         difficulty: q.difficulty && ['easy', 'medium', 'hard'].includes(q.difficulty) ? q.difficulty : 'medium',
+        year_level: yearLevel || null,
       }
       const { error: insertError } = await supabase.from('questions').insert(insert)
       if (insertError) {
@@ -427,7 +437,7 @@ ${trimmed}`
   }
 
   if (action === 'generateQuestions') {
-    const { examType, topicId, subtopic, count = 10 } = await request.json()
+    const { examType, topicId, subtopic, yearLevel, count = 10 } = await request.json()
     const validExamIds = EXAM_TYPES.map(item => item.id)
     if (!validExamIds.includes(examType)) {
       return NextResponse.json({ error: 'Invalid exam type' }, { status: 400 })
@@ -454,10 +464,13 @@ ${trimmed}`
       ? `Subtopic: ${subtopic} — every question must specifically test this subtopic.`
       : `Cover a variety of subtopics within the topic: ${topicDef.subtopics?.join(', ') || topicDef.name}.`
 
-    const prompt = `You are an expert ${examType} exam question writer for Australian Year 4-6 students.
+    const yearLine = yearLevel ? `Year level: Year ${yearLevel}. Questions must be appropriate for NSW Year ${yearLevel} students.` : ''
+
+    const prompt = `You are an expert ${examType} exam question writer for NSW Australia Year ${yearLevel || '4-6'} students.
 
 Topic: ${topicDef.name}
 ${subtopicLine}
+${yearLine}
 
 Generate exactly ${n} unique, high-quality multiple-choice questions. Vary difficulty: 40% easy, 40% medium, 20% hard. Ensure every question is distinct — no duplicates or near-duplicates.
 
@@ -523,6 +536,7 @@ Respond with ONLY valid JSON (no markdown, no prose):
         correct: newCorrect,
         explanation: q.explanation || '',
         difficulty: ['easy', 'medium', 'hard'].includes(q.difficulty) ? q.difficulty : 'medium',
+        year_level: yearLevel || null,
       })
 
       if (insertError) {
@@ -537,7 +551,7 @@ Respond with ONLY valid JSON (no markdown, no prose):
   }
 
   if (action === 'uploadQuestions') {
-    const { examType, questions } = await request.json()
+    const { examType, yearLevel, questions } = await request.json()
     const validExamIds = EXAM_TYPES.map(item => item.id)
     if (!validExamIds.includes(examType)) {
       return NextResponse.json({ error: 'Invalid exam type' }, { status: 400 })
@@ -599,6 +613,7 @@ Respond with ONLY valid JSON (no markdown, no prose):
         correct,
         explanation: explanation.trim(),
         difficulty,
+        year_level: yearLevel || null,
       })
 
       if (insertError) {

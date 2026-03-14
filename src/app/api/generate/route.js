@@ -43,7 +43,7 @@ export async function POST(request) {
     }
 
     const body = await request.json()
-    const { topicId, examType, subtopic } = body
+    const { topicId, examType, subtopic, yearLevel } = body
     const validExamIds = EXAM_TYPES.map(item => item.id)
     const exam = validExamIds.includes(examType) ? examType : 'OC'
 
@@ -80,6 +80,10 @@ export async function POST(request) {
 
     if (resolvedSubtopic) {
       questionQuery = questionQuery.eq('subtopic', resolvedSubtopic)
+    }
+
+    if (yearLevel) {
+      questionQuery = questionQuery.eq('year_level', yearLevel)
     }
 
     if (attemptedIds.length > 0) {
@@ -128,6 +132,7 @@ export async function POST(request) {
       difficulty: question.difficulty,
       topicId: question.topic_id,
       subtopic: question.subtopic || null,
+      year_level: question.year_level || null,
       _usage: { tokensUsedToday: 0, limit: 99999, tier: user.tier, remaining: 99999 },
     })
 

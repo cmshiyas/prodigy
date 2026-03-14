@@ -97,3 +97,9 @@ export const TOPIC_PROMPTS = {
   probability:   'Basic probability language, outcomes, chance comparisons, and simple experiments.',
   reasoning:     'Multi-step word problems, logic puzzles, inference, and spatial reasoning tasks.',
 }
+
+export const EXAM_YEAR_LEVELS = {
+  OC:        [{ value: '4', label: 'Year 4' }],
+  NAPLAN:    [{ value: '3', label: 'Year 3' }, { value: '5', label: 'Year 5' }, { value: '7', label: 'Year 7' }, { value: '9', label: 'Year 9' }],
+  Selective: [{ value: '6', label: 'Year 6 (Yr 7 entry)' }, { value: '8', label: 'Year 8 (Yr 9 entry)' }],
+}

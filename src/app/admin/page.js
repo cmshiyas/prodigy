@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { ADMIN_EMAIL, EXAM_TYPES, EXAM_TOPICS, TOKEN_LIMITS, TIER_LABELS } from '@/lib/constants'
+import { ADMIN_EMAIL, EXAM_TYPES, EXAM_TOPICS, TOKEN_LIMITS, TIER_LABELS, EXAM_YEAR_LEVELS } from '@/lib/constants'
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
 
@@ -113,15 +113,18 @@ function AdminPanel({ idToken, onSignOut }) {
   const [quizBankUserSort, setQuizBankUserSort] = useState('countDesc')
   const [uploadFile, setUploadFile] = useState(null)
   const [uploadExamType, setUploadExamType] = useState('OC')
+  const [uploadYearLevel, setUploadYearLevel] = useState('')
   const [uploadStatus, setUploadStatus] = useState('')
   const [uploadPdfFile, setUploadPdfFile] = useState(null)
   const [uploadPdfExamType, setUploadPdfExamType] = useState('OC')
   const [uploadPdfTopicId, setUploadPdfTopicId] = useState('')
+  const [uploadPdfYearLevel, setUploadPdfYearLevel] = useState('')
   const [uploadPdfStatus, setUploadPdfStatus] = useState('')
 
   const [genExamType, setGenExamType] = useState('OC')
   const [genTopicId, setGenTopicId] = useState('')
   const [genSubtopic, setGenSubtopic] = useState('')
+  const [genYearLevel, setGenYearLevel] = useState('')
   const [genCount, setGenCount] = useState(10)
   const [genStatus, setGenStatus] = useState('')
   const [genLoading, setGenLoading] = useState(false)
@@ -223,13 +226,14 @@ function AdminPanel({ idToken, onSignOut }) {
       const res = await fetch('/api/admin?action=uploadQuestions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
-        body: JSON.stringify({ examType: uploadExamType, questions: questionData }),
+        body: JSON.stringify({ examType: uploadExamType, yearLevel: uploadYearLevel, questions: questionData }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Upload failed')
       const errCount = data.errors?.length || 0
       setUploadStatus(`Uploaded ${data.inserted || 0} questions. ${errCount > 0 ? `${errCount} records failed.` : 'Done.'}`)
       setUploadFile(null)
+      setUploadYearLevel('')
       document.getElementById('question-upload-input').value = ''
       loadQuizBank()
     } catch (err) { setUploadStatus('Upload error: ' + err.message) }
@@ -242,6 +246,7 @@ function AdminPanel({ idToken, onSignOut }) {
       const formData = new FormData()
       formData.append('examType', uploadPdfExamType)
       if (uploadPdfTopicId) formData.append('topicId', uploadPdfTopicId)
+      if (uploadPdfYearLevel) formData.append('yearLevel', uploadPdfYearLevel)
       formData.append('file', uploadPdfFile)
       const res = await fetch('/api/admin?action=uploadPdf', { method: 'POST', body: formData, headers: { Authorization: 'Bearer ' + idToken } })
       const data = await res.json()
@@ -250,6 +255,7 @@ function AdminPanel({ idToken, onSignOut }) {
       const topics = (data.topics || []).map(t => t.name).join(', ') || 'n/a'
       setUploadPdfStatus(`Extracted topics: ${topics}. Inserted: ${data.inserted || 0}. Skipped: ${data.skipped || 0}. Errors: ${errors}.`)
       setUploadPdfFile(null)
+      setUploadPdfYearLevel('')
       document.getElementById('pdf-upload-input').value = ''
       loadQuizBank()
     } catch (err) { setUploadPdfStatus('PDF upload failed: ' + err.message) }
@@ -261,7 +267,7 @@ function AdminPanel({ idToken, onSignOut }) {
     setGenLoading(true)
     setGenStatus('Generating questions with AI...')
     try {
-      const body = { examType: genExamType, topicId: genTopicId, count }
+      const body = { examType: genExamType, topicId: genTopicId, yearLevel: genYearLevel, count }
       if (genSubtopic) body.subtopic = genSubtopic
       const res = await fetch('/api/admin?action=generateQuestions', {
         method: 'POST',
@@ -409,8 +415,12 @@ function AdminPanel({ idToken, onSignOut }) {
           <div style={{ padding: 14, borderRadius: 10, border: '1px solid #E8D5C0', background: '#FFF3E6', marginBottom: 16 }}>
             <div style={{ fontWeight: 700, marginBottom: 6 }}>Bulk upload sample questions (JSON)</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
-              <select value={uploadExamType} onChange={e => setUploadExamType(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white' }}>
+              <select value={uploadExamType} onChange={e => { setUploadExamType(e.target.value); setUploadYearLevel('') }} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white' }}>
                 {EXAM_TYPES.map(e => <option key={e.id} value={e.id}>{e.label}</option>)}
+              </select>
+              <select value={uploadYearLevel} onChange={e => setUploadYearLevel(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white' }}>
+                <option value="">All year levels</option>
+                {(EXAM_YEAR_LEVELS[uploadExamType] || []).map(y => <option key={y.value} value={y.value}>{y.label}</option>)}
               </select>
               <input id="question-upload-input" type="file" accept="application/json" onChange={e => setUploadFile(e.target.files?.[0] || null)} style={{ padding: '6px 8px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white' }} />
               <button style={{ padding: '7px 12px', background: '#FF6B35', color: 'white', border: 'none', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 800, cursor: 'pointer' }} onClick={uploadQuestions}>Upload</button>
@@ -421,12 +431,16 @@ function AdminPanel({ idToken, onSignOut }) {
           <div style={{ padding: 14, borderRadius: 10, border: '1px solid #E8D5C0', background: '#FFF3E6', marginBottom: 16 }}>
             <div style={{ fontWeight: 700, marginBottom: 6 }}>Upload PDF for AI topic extraction</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
-              <select value={uploadPdfExamType} onChange={e => { setUploadPdfExamType(e.target.value); setUploadPdfTopicId('') }} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white' }}>
+              <select value={uploadPdfExamType} onChange={e => { setUploadPdfExamType(e.target.value); setUploadPdfTopicId(''); setUploadPdfYearLevel('') }} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white' }}>
                 {EXAM_TYPES.map(e => <option key={e.id} value={e.id}>{e.label}</option>)}
               </select>
               <select value={uploadPdfTopicId} onChange={e => setUploadPdfTopicId(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white' }}>
                 <option value="">Auto-detect topic</option>
                 {(EXAM_TOPICS[uploadPdfExamType] || []).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+              <select value={uploadPdfYearLevel} onChange={e => setUploadPdfYearLevel(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white' }}>
+                <option value="">All year levels</option>
+                {(EXAM_YEAR_LEVELS[uploadPdfExamType] || []).map(y => <option key={y.value} value={y.value}>{y.label}</option>)}
               </select>
               <input id="pdf-upload-input" type="file" accept="application/pdf" onChange={e => setUploadPdfFile(e.target.files?.[0] || null)} style={{ padding: '6px 8px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white' }} />
               <button style={{ padding: '7px 12px', background: '#FF6B35', color: 'white', border: 'none', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 800, cursor: 'pointer' }} onClick={uploadPdf}>Upload PDF</button>
@@ -440,10 +454,18 @@ function AdminPanel({ idToken, onSignOut }) {
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
               <select
                 value={genExamType}
-                onChange={e => { setGenExamType(e.target.value); setGenTopicId(''); setGenSubtopic('') }}
+                onChange={e => { setGenExamType(e.target.value); setGenTopicId(''); setGenSubtopic(''); setGenYearLevel('') }}
                 style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #C4B5FD', background: 'white' }}
               >
                 {EXAM_TYPES.map(e => <option key={e.id} value={e.id}>{e.label}</option>)}
+              </select>
+              <select
+                value={genYearLevel}
+                onChange={e => setGenYearLevel(e.target.value)}
+                style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #C4B5FD', background: 'white' }}
+              >
+                <option value="">All year levels</option>
+                {(EXAM_YEAR_LEVELS[genExamType] || []).map(y => <option key={y.value} value={y.value}>{y.label}</option>)}
               </select>
               <select
                 value={genTopicId}
@@ -503,6 +525,12 @@ function AdminPanel({ idToken, onSignOut }) {
                   <div key={e.examType} style={{ background: 'white', borderRadius: 12, border: '1.5px solid #E8D5C0', padding: '14px 20px', minWidth: 120, textAlign: 'center' }}>
                     <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#1D4ED8' }}>{e.count}</div>
                     <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#7A5C3F', marginTop: 2 }}>{e.examType} Track</div>
+                  </div>
+                ))}
+                {(quizBank.yearBreakdown || []).map(yb => (
+                  <div key={`${yb.examType}-${yb.yearLevel}`} style={{ background: 'white', borderRadius: 12, border: '1.5px solid #E8D5C0', padding: '14px 20px', minWidth: 110, textAlign: 'center' }}>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#059669' }}>{yb.count}</div>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F', marginTop: 2 }}>{yb.examType} · {yb.yearLevel === 'unset' ? 'No year' : `Yr ${yb.yearLevel}`}</div>
                   </div>
                 ))}
               </div>
