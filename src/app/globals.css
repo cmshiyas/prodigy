@@ -483,6 +483,16 @@ header { background: var(--accent); padding: 0 2rem; display: flex; align-items:
 }
 .trial-modal-wa-btn:hover { background: #1ebe5d !important; transform: translateY(-1px); }
 
+/* ── REFERRAL MODAL ──────────────────────────────────────────── */
+.referral-modal-stat { display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--surface2); border-radius: 12px; padding: 14px 20px; margin-bottom: 1.25rem; }
+.referral-modal-stat-num { font-family: 'Nunito', sans-serif; font-size: 2rem; font-weight: 900; color: var(--accent); line-height: 1; }
+.referral-modal-stat-label { font-size: 0.8rem; font-weight: 700; color: var(--text2); text-align: left; }
+.referral-link-row { display: flex; gap: 8px; margin-bottom: 1rem; }
+.referral-link-input { flex: 1; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 0.82rem; color: var(--text2); background: var(--surface2); font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.referral-copy-btn { padding: 10px 16px; background: var(--accent); color: white; border: none; border-radius: 10px; font-weight: 700; font-size: 0.85rem; cursor: pointer; white-space: nowrap; transition: background 0.15s; }
+.referral-copy-btn:hover { background: #e55a25; }
+.referral-copy-btn.copied { background: var(--green); }
+
 /* ── NAV PLANS BUTTON ────────────────────────────────────────── */
 .nav-btn--plans { color: var(--purple) !important; font-weight: 800 !important; }
 

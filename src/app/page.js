@@ -409,6 +409,51 @@ const STREAK_CONFIG = {
   4: { emoji: '🏆', heading: 'LEGENDARY!', sub: '15+ correct streak — absolute legend!', color: '#059669', bg: 'linear-gradient(135deg,#D1FAE5,#6EE7B7)' },
 }
 
+function ReferralModal({ user, referralCount, onClose }) {
+  const [copied, setCopied] = useState(false)
+  const referralLink = typeof window !== 'undefined'
+    ? `${window.location.origin}?ref=${user.referral_code}`
+    : `https://exambooster.com.au?ref=${user.referral_code}`
+
+  function handleCopy() {
+    navigator.clipboard.writeText(referralLink).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  return (
+    <div className="trial-modal-backdrop" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="trial-modal">
+        <button className="trial-modal-close" onClick={onClose}>✕</button>
+        <div className="trial-modal-icon">🎁</div>
+        <div className="trial-modal-title">Refer a Friend</div>
+        <div className="trial-modal-body">
+          Share your link — when a friend signs up, you both help grow the community!
+        </div>
+        <div className="referral-modal-stat">
+          <div className="referral-modal-stat-num">{referralCount}</div>
+          <div className="referral-modal-stat-label">friend{referralCount !== 1 ? 's' : ''} referred<br/>so far</div>
+        </div>
+        <div className="referral-link-row">
+          <input className="referral-link-input" readOnly value={referralLink} />
+          <button className={`referral-copy-btn${copied ? ' copied' : ''}`} onClick={handleCopy}>
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+        </div>
+        <a
+          className="trial-modal-wa-btn btn"
+          href={`https://wa.me/?text=${encodeURIComponent('Join me on Exam Booster — the best way to prepare for OC, Selective and NAPLAN exams! Sign up here: ' + referralLink)}`}
+          target="_blank" rel="noopener noreferrer"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.128.557 4.126 1.526 5.854L0 24l6.334-1.506A11.96 11.96 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.891 0-3.661-.483-5.207-1.327L3 22l1.357-3.72A9.962 9.962 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+          Share on WhatsApp
+        </a>
+      </div>
+    </div>
+  )
+}
+
 function StreakCelebration({ celebration }) {
   if (!celebration) return null
   const cfg = STREAK_CONFIG[celebration.level] || STREAK_CONFIG[1]
@@ -898,6 +943,8 @@ export default function App() {
   const [quizTopicsAttempted, setQuizTopicsAttempted] = useState(new Set())
   const [correctStreak, setCorrectStreak] = useState(0)
   const [celebration, setCelebration] = useState(null) // { streak, level }
+  const [showReferralModal, setShowReferralModal] = useState(false)
+  const [referralCount, setReferralCount] = useState(0)
 
   const baseTopics = EXAM_TOPICS[examType] || EXAM_TOPICS.OC
   const currentTopics = baseTopics.map(t => ({ ...t, subtopics: dynamicSubtopics[t.id] || [] }))
@@ -917,6 +964,29 @@ export default function App() {
       }
     }
   }, [])
+
+  // Capture referral code from URL ?ref= param and store it
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const ref = params.get('ref')
+      if (ref) {
+        localStorage.setItem('oc-ref-code', ref)
+        const url = new URL(window.location.href)
+        url.searchParams.delete('ref')
+        window.history.replaceState({}, '', url.toString())
+      }
+    }
+  }, [])
+
+  // Fetch referral count when logged in
+  useEffect(() => {
+    if (!session?.idToken) return
+    fetch('/api/referral', { headers: { Authorization: 'Bearer ' + session.idToken } })
+      .then(r => r.json())
+      .then(data => { if (data.referral_count !== undefined) setReferralCount(data.referral_count) })
+      .catch(() => {})
+  }, [session?.idToken])
 
   // Fetch dynamic subtopics from DB whenever examType or session changes
   useEffect(() => {
@@ -989,13 +1059,15 @@ export default function App() {
   async function handleGoogleSignIn(response) {
     const idToken = response.credential
     try {
+      const storedRefCode = typeof window !== 'undefined' ? localStorage.getItem('oc-ref-code') : null
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ credential: idToken }),
+        body: JSON.stringify({ credential: idToken, referralCode: storedRefCode }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
+      if (storedRefCode) localStorage.removeItem('oc-ref-code')
       setSession({ user: data.user, idToken, tokensUsedToday: data.tokensUsedToday || 0 })
       setScreen('app')
     } catch (err) {
@@ -1284,6 +1356,9 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
               {TIER_LABELS[user.tier] || user.tier}
             </span>
             <div className="profile-dropdown" style={{ display: showProfileMenu ? 'block' : 'none' }}>
+              <button className="dropdown-item" onClick={() => { setShowReferralModal(true); setShowProfileMenu(false) }}>
+                <span>🎁</span> Refer a Friend
+              </button>
               <button className="dropdown-item" onClick={handleSignOut}>
                 <span>🚪</span> Logout
               </button>
@@ -1308,6 +1383,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
                 {!user.is_admin && (
                   <button className="mobile-nav-item" onClick={() => { setCurrentTopic(null); setScreen('plans'); setMobileMenuOpen(false) }}>💎 Plans &amp; Pricing</button>
                 )}
+                <button className="mobile-nav-item" onClick={() => { setShowReferralModal(true); setMobileMenuOpen(false) }}>🎁 Refer a Friend</button>
                 <button className="mobile-nav-item mobile-nav-item--danger" onClick={() => { handleSignOut(); setMobileMenuOpen(false) }}>🚪 Logout</button>
               </div>
             )}
@@ -1316,6 +1392,9 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
       </header>
 
       <StreakCelebration celebration={celebration} />
+      {showReferralModal && session.user?.referral_code && (
+        <ReferralModal user={session.user} referralCount={referralCount} onClose={() => setShowReferralModal(false)} />
+      )}
 
       {/* MAIN LAYOUT */}
       <div className="app">

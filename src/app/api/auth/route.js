@@ -2,10 +2,15 @@ import { NextResponse } from 'next/server'
 import { verifyGoogleToken } from '@/lib/google'
 import { getSupabase } from '@/lib/supabase'
 import { ADMIN_EMAIL } from '@/lib/constants'
+import { randomBytes } from 'crypto'
+
+function generateReferralCode() {
+  return randomBytes(4).toString('hex').toUpperCase()
+}
 
 export async function POST(request) {
   try {
-    const { credential } = await request.json()
+    const { credential, referralCode } = await request.json()
     if (!credential) return NextResponse.json({ error: 'Missing credential' }, { status: 400 })
 
     const payload = await verifyGoogleToken(credential)
@@ -43,9 +48,16 @@ export async function POST(request) {
       user = data
     } else {
       // Brand new user (auto-approved)
+      // Look up referrer if a referral code was provided
+      let referredBy = null
+      if (referralCode) {
+        const { data: referrer } = await supabase
+          .from('users').select('id').eq('referral_code', referralCode).single()
+        if (referrer) referredBy = referrer.id
+      }
       const { data, error } = await supabase
         .from('users')
-        .insert({ google_id, email, name, picture, is_admin: isAdmin, status: 'approved', tier: isAdmin ? 'admin' : 'silver' })
+        .insert({ google_id, email, name, picture, is_admin: isAdmin, status: 'approved', tier: isAdmin ? 'admin' : 'silver', referral_code: generateReferralCode(), referred_by: referredBy })
         .select().single()
       if (error) throw new Error('DB insert failed: ' + error.message)
       user = data
@@ -60,11 +72,18 @@ export async function POST(request) {
 }
 
 async function respond(supabase, user) {
+  // Backfill referral code for users who don't have one yet
+  if (!user.referral_code) {
+    const { data: updated } = await supabase
+      .from('users').update({ referral_code: generateReferralCode() })
+      .eq('id', user.id).select().single()
+    if (updated) user = updated
+  }
   const today = new Date().toISOString().split('T')[0]
   const { data: usage } = await supabase
     .from('token_usage').select('tokens_used').eq('user_id', user.id).eq('date', today).single()
   return NextResponse.json({
-    user: { id: user.id, email: user.email, name: user.name, picture: user.picture, status: user.status, tier: user.tier, is_admin: user.is_admin },
+    user: { id: user.id, email: user.email, name: user.name, picture: user.picture, status: user.status, tier: user.tier, is_admin: user.is_admin, referral_code: user.referral_code },
     tokensUsedToday: usage?.tokens_used || 0,
   })
 }
