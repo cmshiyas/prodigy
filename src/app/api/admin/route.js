@@ -239,24 +239,9 @@ export async function POST(request) {
     const fileBuffer = Buffer.from(await file.arrayBuffer())
     let text
     try {
-      // Polyfill browser APIs required by pdfjs-dist in Node.js
-      if (!global.DOMMatrix) global.DOMMatrix = class DOMMatrix {
-        constructor() { this.a=1;this.b=0;this.c=0;this.d=1;this.e=0;this.f=0 }
-        static fromMatrix(m) { return new global.DOMMatrix() }
-        multiply() { return this }
-        translate() { return this }
-        scale() { return this }
-        rotate() { return this }
-        inverse() { return this }
-      }
-      if (!global.DOMPoint) global.DOMPoint = class DOMPoint {
-        constructor(x=0,y=0,z=0,w=1){this.x=x;this.y=y;this.z=z;this.w=w}
-      }
-      const { PDFParse } = require('pdf-parse')
-      const parser = new PDFParse({ data: new Uint8Array(fileBuffer) })
-      await parser.load()
-      const result = await parser.getText()
-      text = result.text || (result.pages || []).map(p => p.text || '').join('\n')
+      const pdfParse = require('pdf-parse')
+      const result = await pdfParse(fileBuffer)
+      text = result.text || ''
     } catch (err) {
       return NextResponse.json({ error: 'Failed to parse PDF: ' + err.message }, { status: 500 })
     }
