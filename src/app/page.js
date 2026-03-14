@@ -739,9 +739,7 @@ function PlansScreen({ user, onHome, onReferFriend }) {
 
 // ── HOME SCREEN ───────────────────────────────────────────────
 
-function HomeScreen({ user, examType, onExamTypeChange, tokensUsedToday, score, totalAnswered, topicStats, subtopicStats, onSelectTopic, onUpgrade }) {
-  const limit = TOKEN_LIMITS[user.tier] || 5000
-  const remaining = Math.max(0, limit - tokensUsedToday)
+function HomeScreen({ user, examType, onExamTypeChange, score, totalAnswered, topicStats, subtopicStats, onSelectTopic, onUpgrade }) {
   const totalCorrect = Object.values(topicStats).reduce((a, v) => a + v.correct, 0)
   const topicList = EXAM_TOPICS[examType] || EXAM_TOPICS.OC
 
@@ -770,7 +768,7 @@ function HomeScreen({ user, examType, onExamTypeChange, tokensUsedToday, score, 
       {!user.is_admin && (
         <div className="limit-banner" style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-            <span><strong>{TIER_LABELS[user.tier]} Tier</strong> — {remaining.toLocaleString()} tokens remaining today ({tokensUsedToday.toLocaleString()} / {limit.toLocaleString()} used). Resets at midnight.</span>
+            <span><strong>{TIER_LABELS[user.tier]} Tier</strong></span>
             {user.tier === 'silver' && (
               <button
                 className="btn btn-primary"
@@ -1425,7 +1423,6 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
                 user={user}
                 examType={examType}
                 onExamTypeChange={setExamType}
-                tokensUsedToday={tokensUsedToday}
                 score={score}
                 totalAnswered={totalAnswered}
                 topicStats={topicStats}
