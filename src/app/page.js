@@ -1062,31 +1062,52 @@ function PlansScreen({ user, idToken, onHome, onReferFriend, onTierUpgrade }) {
 
 // ── HOME SCREEN ───────────────────────────────────────────────
 
+const COMING_SOON_EXAMS = new Set(['Selective'])
+
 function HomeScreen({ user, examType, onExamTypeChange, score, totalAnswered, topicStats, subtopicStats, onSelectTopic, onUpgrade }) {
   const totalCorrect = Object.values(topicStats).reduce((a, v) => a + v.correct, 0)
   const topicList = EXAM_TOPICS[examType] || EXAM_TOPICS.OC
+  const [showComingSoon, setShowComingSoon] = useState(false)
 
   return (
     <div className="home-screen">
+      {showComingSoon && (
+        <div className="coming-soon-backdrop" onClick={() => setShowComingSoon(false)}>
+          <div className="coming-soon-modal" onClick={e => e.stopPropagation()}>
+            <button className="coming-soon-close" onClick={() => setShowComingSoon(false)} aria-label="Close">✕</button>
+            <div className="coming-soon-icon">🚧</div>
+            <h3 className="coming-soon-title">Coming Soon!</h3>
+            <p className="coming-soon-body">
+              We're working hard on <strong>Selective</strong> questions and will have them ready soon. Stay tuned!
+            </p>
+            <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setShowComingSoon(false)}>Got it</button>
+          </div>
+        </div>
+      )}
       <div className="home-title">Hi {user.name.split(' ')[0]}! 👋</div>
       <div className="home-sub">Practice for {examType} exam-style questions. Choose a topic to generate a question.</div>
       <div style={{ marginBottom: 10, fontSize: '0.86rem', color: '#334155', fontWeight: 600 }}>
         Current track: <span style={{ fontWeight: 800 }}>{examType}</span>
       </div>
       <div className="exam-row" style={{ marginBottom: 16 }}>
-        {EXAM_TYPES.map(item => (
-          <button
-            key={item.id}
-            onClick={() => {
-              onExamTypeChange(item.id)
-              if (typeof window !== 'undefined') localStorage.setItem('oc-trainer-examType', item.id)
-            }}
-            className={`exam-chip${examType === item.id ? ' active' : ''}`}
-            style={{ marginRight: 8 }}
-          >
-            {item.label}
-          </button>
-        ))}
+        {EXAM_TYPES.map(item => {
+          const comingSoon = COMING_SOON_EXAMS.has(item.id)
+          return (
+            <button
+              key={item.id}
+              onClick={() => {
+                if (comingSoon) { setShowComingSoon(true); return }
+                onExamTypeChange(item.id)
+                if (typeof window !== 'undefined') localStorage.setItem('oc-trainer-examType', item.id)
+              }}
+              className={`exam-chip${examType === item.id ? ' active' : ''}${comingSoon ? ' exam-chip--soon' : ''}`}
+              style={{ marginRight: 8 }}
+              title={comingSoon ? 'Coming soon' : undefined}
+            >
+              {item.label}{comingSoon && <span className="exam-chip-soon-badge">Soon</span>}
+            </button>
+          )
+        })}
       </div>
       {!user.is_admin && (
         <div className="limit-banner" style={{ marginBottom: 20 }}>

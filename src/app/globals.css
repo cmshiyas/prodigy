@@ -233,6 +233,14 @@ header { background: var(--accent); padding: 0 2rem; display: flex; align-items:
 .exam-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
 .exam-chip { padding: 7px 13px; font-size: 0.8rem; border-radius: 999px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text); font-weight: 700; cursor: pointer; transition: all 0.15s; }
 .exam-chip.active { border-color: var(--accent); background: #FFF7ED; color: #C2410C; }
+.exam-chip--soon { opacity: 0.55; cursor: pointer; position: relative; }
+.exam-chip-soon-badge { margin-left: 5px; font-size: 0.68rem; font-weight: 800; background: #F59E0B; color: white; border-radius: 999px; padding: 1px 6px; vertical-align: middle; }
+.coming-soon-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+.coming-soon-modal { background: white; border-radius: 20px; padding: 2rem 1.75rem; max-width: 360px; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.2); position: relative; }
+.coming-soon-close { position: absolute; top: 14px; right: 16px; background: none; border: none; font-size: 1.1rem; cursor: pointer; color: var(--text2); line-height: 1; }
+.coming-soon-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+.coming-soon-title { font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 1.4rem; color: var(--text1); margin: 0 0 0.6rem; }
+.coming-soon-body { color: var(--text2); font-size: 0.92rem; line-height: 1.6; margin-bottom: 1.25rem; }
 .topics-overview { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 24px; }
 .topic-overview-card { background: var(--surface2); border-radius: 12px; padding: 14px; display: flex; align-items: center; gap: 12px; border: 1.5px solid var(--border); cursor: pointer; transition: all 0.15s; }
 .topic-overview-card:hover { border-color: var(--accent); background: #FFF0E8; transform: translateY(-1px); }
