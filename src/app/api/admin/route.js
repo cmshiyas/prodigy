@@ -159,6 +159,35 @@ export async function GET(request) {
     })
   }
 
+  if (action === 'userResponses') {
+    const userId = new URL(request.url).searchParams.get('userId')
+    if (!userId) return NextResponse.json({ error: 'Missing userId' }, { status: 400 })
+
+    const { data: responses, error } = await supabase
+      .from('question_responses')
+      .select('selected_option, is_correct, created_at, questions!inner(id, question, options, correct, explanation, difficulty, topic_id, subtopic, exam_type)')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    const result = (responses || []).map(r => ({
+      answeredAt: r.created_at,
+      isCorrect: r.is_correct,
+      selectedOption: r.selected_option,
+      question: r.questions.question,
+      options: r.questions.options,
+      correct: r.questions.correct,
+      explanation: r.questions.explanation,
+      difficulty: r.questions.difficulty,
+      topicId: r.questions.topic_id,
+      subtopic: r.questions.subtopic,
+      examType: r.questions.exam_type,
+    }))
+
+    return NextResponse.json({ responses: result })
+  }
+
   return NextResponse.json({ error: 'Unknown action' }, { status: 404 })
 }
 

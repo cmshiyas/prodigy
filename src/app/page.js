@@ -256,6 +256,11 @@ function AdminPanel({ idToken, onSignOut }) {
   const [analytics, setAnalytics] = useState(null)
   const [loadingAnalytics, setLoadingAnalytics] = useState(false)
 
+  const [reviewUserId, setReviewUserId] = useState('')
+  const [reviewResponses, setReviewResponses] = useState(null)
+  const [loadingReview, setLoadingReview] = useState(false)
+  const [reviewFilter, setReviewFilter] = useState('all') // all | correct | wrong
+
   const loadUsers = useCallback(async () => {
     setLoading(true)
     try {
@@ -316,11 +321,28 @@ function AdminPanel({ idToken, onSignOut }) {
     finally { setLoadingAnalytics(false) }
   }, [idToken])
 
+  const loadReview = useCallback(async (uid) => {
+    if (!uid) return
+    setLoadingReview(true)
+    setReviewResponses(null)
+    try {
+      const res = await fetch(`/api/admin?action=userResponses&userId=${encodeURIComponent(uid)}`, {
+        headers: { Authorization: 'Bearer ' + idToken }
+      })
+      if (res.status === 403) { const e = await res.json(); if (e.error?.includes('Not')) { onSignOut(); return } }
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setReviewResponses(data.responses)
+    } catch (err) { alert('Failed to load responses: ' + err.message) }
+    finally { setLoadingReview(false) }
+  }, [idToken])
+
   useEffect(() => { loadUsers() }, [loadUsers])
 
   useEffect(() => {
     if (adminView === 'quizBank') loadQuizBank()
     if (adminView === 'analytics') loadAnalytics()
+    if (adminView === 'review') { setReviewUserId(''); setReviewResponses(null) }
   }, [adminView])
 
   const updateUser = async (userId, updates) => {
@@ -434,6 +456,7 @@ function AdminPanel({ idToken, onSignOut }) {
           <button className={`filter-btn${adminView === 'users' ? ' active' : ''}`} onClick={() => setAdminView('users')}>Users</button>
           <button className={`filter-btn${adminView === 'quizBank' ? ' active' : ''}`} onClick={() => setAdminView('quizBank')}>Quiz Bank</button>
           <button className={`filter-btn${adminView === 'analytics' ? ' active' : ''}`} onClick={() => setAdminView('analytics')}>Analytics</button>
+          <button className={`filter-btn${adminView === 'review' ? ' active' : ''}`} onClick={() => setAdminView('review')}>Answer Review</button>
         </div>
       </div>
       {adminView === 'users' ? (
@@ -753,6 +776,114 @@ function AdminPanel({ idToken, onSignOut }) {
       ) : (
         <div style={{ color: 'var(--text2)' }}>No analytics data available.</div>
       )}
+    </div>
+  ) : adminView === 'review' ? (
+    <div style={{ padding: '20px 24px', borderTop: '1.5px solid var(--border)' }}>
+      <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1.05rem', marginBottom: 4 }}>Answer Review</div>
+      <div style={{ fontSize: '0.82rem', color: 'var(--text2)', marginBottom: 16 }}>Inspect every question a student has answered — see what they selected vs the correct answer.</div>
+
+      {/* User selector */}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 20, flexWrap: 'wrap' }}>
+        <select
+          value={reviewUserId}
+          onChange={e => { setReviewUserId(e.target.value); setReviewResponses(null) }}
+          style={{ padding: '8px 12px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'white', fontSize: '0.9rem', minWidth: 220 }}
+        >
+          <option value="">Select a student…</option>
+          {safeUsers.filter(u => u.status === 'approved').map(u => (
+            <option key={u.id} value={u.id}>{u.name || u.email} ({u.email})</option>
+          ))}
+        </select>
+        <button
+          className="btn btn-primary"
+          style={{ padding: '8px 16px' }}
+          disabled={!reviewUserId || loadingReview}
+          onClick={() => loadReview(reviewUserId)}
+        >
+          {loadingReview ? 'Loading…' : 'Load Answers'}
+        </button>
+        {reviewResponses && (
+          <div style={{ display: 'flex', gap: 6 }}>
+            {['all', 'correct', 'wrong'].map(f => (
+              <button key={f} className={`filter-btn${reviewFilter === f ? ' active' : ''}`} onClick={() => setReviewFilter(f)}>
+                {f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {loadingReview && <div className="loading-card"><div className="spinner" /><div className="loading-text">Loading answers…</div></div>}
+
+      {reviewResponses && (() => {
+        const labels = ['A', 'B', 'C', 'D', 'E']
+        const filtered = reviewFilter === 'correct' ? reviewResponses.filter(r => r.isCorrect)
+          : reviewFilter === 'wrong' ? reviewResponses.filter(r => !r.isCorrect)
+          : reviewResponses
+        const total = reviewResponses.length
+        const correct = reviewResponses.filter(r => r.isCorrect).length
+        return (
+          <>
+            <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+              {[
+                { label: 'Total Answered', value: total, color: '#1D4ED8' },
+                { label: 'Correct', value: correct, color: '#059669' },
+                { label: 'Wrong', value: total - correct, color: '#DC2626' },
+                { label: 'Score %', value: total > 0 ? Math.round((correct / total) * 100) + '%' : '—', color: correct / total >= 0.7 ? '#059669' : correct / total >= 0.4 ? '#D97706' : '#DC2626' },
+              ].map(c => (
+                <div key={c.label} style={{ background: 'var(--surface)', border: '1.5px solid var(--border)', borderRadius: 10, padding: '10px 16px', minWidth: 100, textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 900, color: c.color }}>{c.value}</div>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text2)' }}>{c.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {filtered.length === 0 ? (
+              <div style={{ color: 'var(--text2)', padding: '1rem 0' }}>No answers in this category.</div>
+            ) : filtered.map((r, i) => (
+              <div key={i} style={{
+                background: r.isCorrect ? '#F0FDF4' : '#FEF2F2',
+                border: `1.5px solid ${r.isCorrect ? '#BBF7D0' : '#FECACA'}`,
+                borderRadius: 12, padding: 16, marginBottom: 12,
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, background: '#DBEAFE', color: '#1D4ED8', borderRadius: 999, padding: '2px 8px' }}>{r.examType}</span>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, background: '#F3F4F6', color: '#374151', borderRadius: 999, padding: '2px 8px' }}>{r.topicId}</span>
+                    {r.subtopic && <span style={{ fontSize: '0.72rem', fontWeight: 700, background: '#EDE9FE', color: '#7C3AED', borderRadius: 999, padding: '2px 8px' }}>{r.subtopic}</span>}
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, background: '#F3F4F6', color: '#374151', borderRadius: 999, padding: '2px 8px' }}>{r.difficulty}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                    <span style={{ fontSize: '1.1rem' }}>{r.isCorrect ? '✅' : '❌'}</span>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text2)' }}>{new Date(r.answeredAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+                <div style={{ fontWeight: 700, fontSize: '0.92rem', marginBottom: 10, lineHeight: 1.5 }}>{r.question}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 10 }}>
+                  {r.options.map((opt, oi) => {
+                    const isSelected = oi === r.selectedOption
+                    const isCorrect = oi === r.correct
+                    let bg = '#F9FAFB', border = '#E5E7EB', color = '#374151'
+                    if (isCorrect) { bg = '#D1FAE5'; border = '#6EE7B7'; color = '#065F46' }
+                    if (isSelected && !isCorrect) { bg = '#FEE2E2'; border = '#FCA5A5'; color = '#991B1B' }
+                    return (
+                      <div key={oi} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 8, background: bg, border: `1.5px solid ${border}` }}>
+                        <span style={{ fontWeight: 800, fontSize: '0.8rem', color }}>{labels[oi]}</span>
+                        <span style={{ fontSize: '0.82rem', color, fontWeight: isCorrect || isSelected ? 700 : 400 }}>{opt}</span>
+                        {isSelected && !isCorrect && <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#DC2626', fontWeight: 800 }}>Selected</span>}
+                        {isCorrect && <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#059669', fontWeight: 800 }}>Correct</span>}
+                      </div>
+                    )
+                  })}
+                </div>
+                <div style={{ fontSize: '0.8rem', color: '#374151', background: 'rgba(255,255,255,0.6)', borderRadius: 8, padding: '8px 10px' }}>
+                  <strong>Explanation:</strong> {r.explanation}
+                </div>
+              </div>
+            ))}
+          </>
+        )
+      })()}
     </div>
   ) : null}
   </div>
