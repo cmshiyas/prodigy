@@ -7,6 +7,13 @@ import RankingScreen from '@/components/RankingScreen'
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
 
+const TIER_PERMISSIONS = {
+  silver:   { subtopics: false, history: false, ranking: false, streaks: false },
+  gold:     { subtopics: true,  history: true,  ranking: false, streaks: false },
+  platinum: { subtopics: true,  history: true,  ranking: true,  streaks: true  },
+  admin:    { subtopics: true,  history: true,  ranking: true,  streaks: true  },
+}
+
 if (!GOOGLE_CLIENT_ID) {
   console.error('Missing NEXT_PUBLIC_GOOGLE_CLIENT_ID environment variable')
 }
@@ -1161,7 +1168,7 @@ function StreakCelebration({ celebration }) {
 
 // ── SIDEBAR ───────────────────────────────────────────────────
 
-function Sidebar({ currentTopic, currentSubtopic, topics, topicStats, subtopicStats, totalAnswered, onSelectTopic }) {
+function Sidebar({ currentTopic, currentSubtopic, topics, topicStats, subtopicStats, totalAnswered, onSelectTopic, canUseSubtopics, onUpgrade }) {
   return (
     <div className="sidebar">
       <div className="sidebar-card">
@@ -1180,36 +1187,52 @@ function Sidebar({ currentTopic, currentSubtopic, topics, topicStats, subtopicSt
               {(() => {
                 const statSubs = Object.keys(subtopicStats[t.id] || {})
                 const allSubs = [...new Set([...(t.subtopics || []), ...statSubs])]
-                return allSubs.length > 0 && (
-                <div style={{ paddingLeft: 12, display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 4 }}>
-                  {allSubs.map(sub => {
-                    const stats = (subtopicStats[t.id] || {})[sub]
-                    const pct = stats?.total > 0 ? Math.round((stats.correct / stats.total) * 100) : null
-                    const dotColor = pct === null ? '#cbd5e1' : pct >= 70 ? '#22c55e' : pct >= 40 ? '#f59e0b' : '#ef4444'
-                    const isActive = currentTopic === t.id && currentSubtopic === sub
-                    return (
-                      <button
-                        key={sub}
-                        onClick={() => onSelectTopic(t.id, sub)}
-                        style={{
-                          textAlign: 'left', padding: '4px 8px', borderRadius: 6, fontSize: '0.75rem',
-                          fontWeight: isActive ? 700 : 500,
-                          background: isActive ? t.bg : 'transparent',
-                          color: isActive ? t.color : '#64748b',
-                          border: 'none', cursor: 'pointer', width: '100%',
-                          display: 'flex', alignItems: 'center', gap: 6,
-                        }}
-                      >
-                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
-                        <span style={{ flex: 1 }}>{sub}</span>
-                        {pct !== null && (
-                          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: dotColor }}>{pct}%</span>
-                        )}
-                      </button>
-                    )
-                  })}
-                </div>
-              )})()}
+                if (allSubs.length === 0) return null
+                if (!canUseSubtopics) {
+                  return (
+                    <button
+                      onClick={onUpgrade}
+                      style={{
+                        marginLeft: 12, marginBottom: 4, padding: '5px 10px', borderRadius: 8,
+                        background: '#FEF3C7', border: '1.5px dashed #F59E0B', color: '#92400E',
+                        fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', textAlign: 'left', width: 'calc(100% - 12px)',
+                      }}
+                    >
+                      🔒 Subtopic drill — Gold+
+                    </button>
+                  )
+                }
+                return (
+                  <div style={{ paddingLeft: 12, display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 4 }}>
+                    {allSubs.map(sub => {
+                      const stats = (subtopicStats[t.id] || {})[sub]
+                      const pct = stats?.total > 0 ? Math.round((stats.correct / stats.total) * 100) : null
+                      const dotColor = pct === null ? '#cbd5e1' : pct >= 70 ? '#22c55e' : pct >= 40 ? '#f59e0b' : '#ef4444'
+                      const isActive = currentTopic === t.id && currentSubtopic === sub
+                      return (
+                        <button
+                          key={sub}
+                          onClick={() => onSelectTopic(t.id, sub)}
+                          style={{
+                            textAlign: 'left', padding: '4px 8px', borderRadius: 6, fontSize: '0.75rem',
+                            fontWeight: isActive ? 700 : 500,
+                            background: isActive ? t.bg : 'transparent',
+                            color: isActive ? t.color : '#64748b',
+                            border: 'none', cursor: 'pointer', width: '100%',
+                            display: 'flex', alignItems: 'center', gap: 6,
+                          }}
+                        >
+                          <span style={{ width: 7, height: 7, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
+                          <span style={{ flex: 1 }}>{sub}</span>
+                          {pct !== null && (
+                            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: dotColor }}>{pct}%</span>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
             </div>
           ))}
         </div>
@@ -1382,7 +1405,7 @@ function PlansScreen({ user, onHome }) {
 
 // ── HOME SCREEN ───────────────────────────────────────────────
 
-function HomeScreen({ user, examType, onExamTypeChange, tokensUsedToday, score, totalAnswered, topicStats, subtopicStats, onSelectTopic }) {
+function HomeScreen({ user, examType, onExamTypeChange, tokensUsedToday, score, totalAnswered, topicStats, subtopicStats, onSelectTopic, onUpgrade }) {
   const limit = TOKEN_LIMITS[user.tier] || 5000
   const remaining = Math.max(0, limit - tokensUsedToday)
   const totalCorrect = Object.values(topicStats).reduce((a, v) => a + v.correct, 0)
@@ -1412,7 +1435,26 @@ function HomeScreen({ user, examType, onExamTypeChange, tokensUsedToday, score, 
       </div>
       {!user.is_admin && (
         <div className="limit-banner" style={{ marginBottom: 20 }}>
-          <strong>{TIER_LABELS[user.tier]} Tier</strong> — {remaining.toLocaleString()} tokens remaining today ({tokensUsedToday.toLocaleString()} / {limit.toLocaleString()} used). Resets at midnight.
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+            <span><strong>{TIER_LABELS[user.tier]} Tier</strong> — {remaining.toLocaleString()} tokens remaining today ({tokensUsedToday.toLocaleString()} / {limit.toLocaleString()} used). Resets at midnight.</span>
+            {user.tier === 'silver' && (
+              <button
+                className="btn btn-primary"
+                style={{ fontSize: '0.78rem', padding: '5px 12px' }}
+                onClick={onUpgrade}
+              >Upgrade ↑</button>
+            )}
+          </div>
+          {user.tier === 'silver' && (
+            <div style={{ marginTop: 8, fontSize: '0.8rem', color: '#92400E' }}>
+              🔒 Subtopic drill, History, Ranking &amp; Streak rewards unlock with Gold or Platinum.
+            </div>
+          )}
+          {user.tier === 'gold' && (
+            <div style={{ marginTop: 8, fontSize: '0.8rem', color: '#92400E' }}>
+              🔒 Leaderboard &amp; Streak rewards unlock with Platinum.
+            </div>
+          )}
         </div>
       )}
       <div className="stats-card" style={{ marginBottom: 20 }}>
@@ -1565,6 +1607,8 @@ export default function App() {
   const [subtopicStats, setSubtopicStats] = useState({})
   const [dynamicSubtopics, setDynamicSubtopics] = useState({})
   const [showProfileMenu, setShowProfileMenu] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [quizSessionStartTime, setQuizSessionStartTime] = useState(null)
   const [quizTopicsAttempted, setQuizTopicsAttempted] = useState(new Set())
   const [correctStreak, setCorrectStreak] = useState(0)
@@ -1649,10 +1693,13 @@ export default function App() {
       if (showProfileMenu && !event.target.closest('.user-pill')) {
         setShowProfileMenu(false)
       }
+      if (mobileMenuOpen && !event.target.closest('.mobile-nav-wrap')) {
+        setMobileMenuOpen(false)
+      }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [showProfileMenu])
+  }, [showProfileMenu, mobileMenuOpen])
 
   async function handleGoogleSignIn(response) {
     const idToken = response.credential
@@ -1783,7 +1830,8 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
       setScore(s => s + (question.difficulty === 'hard' ? 3 : question.difficulty === 'medium' ? 2 : 1))
       setCorrectStreak(prev => {
         const next = prev + 1
-        if (next % 3 === 0) {
+        const p = TIER_PERMISSIONS[session.user?.tier] || TIER_PERMISSIONS.silver
+        if (p.streaks && next % 3 === 0) {
           const level = next >= 15 ? 4 : next >= 9 ? 3 : next >= 6 ? 2 : 1
           setCelebration({ streak: next, level })
           setTimeout(() => setCelebration(null), 3500)
@@ -1902,6 +1950,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
 
   const { user, tokensUsedToday } = session
   const limit = TOKEN_LIMITS[user.tier] || 5000
+  const perms = TIER_PERMISSIONS[user.tier] || TIER_PERMISSIONS.silver
   const tokenPct = Math.min(100, Math.round((tokensUsedToday / limit) * 100))
   const tokenFillColor = tokenPct > 80 ? '#FCA5A5' : tokenPct > 50 ? '#FDE68A' : 'white'
 
@@ -1909,16 +1958,25 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
     <div>
       {/* HEADER */}
       <header>
-        <div className="logo" onClick={() => { saveQuizAttempt(); resetQuizSession(); setShowAdmin(false); setScreen('app') }} style={{ cursor: 'pointer' }}>Exam Booster <span>Practice Smarter</span></div>
+        <div className="logo" onClick={() => { saveQuizAttempt(); resetQuizSession(); setShowAdmin(false); setScreen('app') }} style={{ cursor: 'pointer' }}>Exam Booster <span className="logo-sub">Practice Smarter</span></div>
         <div className="header-right">
-          <button className="nav-btn" onClick={() => { saveQuizAttempt(); resetQuizSession(); setShowAdmin(false); setScreen('app') }}>Home</button>
-          <button className="nav-btn" onClick={() => { setCurrentTopic(null); setShowAdmin(false); setScreen('history') }}>History</button>
-          <button className="nav-btn" onClick={() => { setCurrentTopic(null); setShowAdmin(false); setScreen('ranking') }}>Ranking</button>
-          {!user.is_admin && (
-            <button className="nav-btn nav-btn--plans" onClick={() => { setCurrentTopic(null); setShowAdmin(false); setScreen('plans') }}>
-              Plans
-            </button>
-          )}
+          {/* Desktop nav */}
+          <div className="desktop-nav">
+            <button className="nav-btn" onClick={() => { saveQuizAttempt(); resetQuizSession(); setShowAdmin(false); setScreen('app') }}>Home</button>
+            <button
+              className={`nav-btn${!perms.history ? ' nav-btn--locked' : ''}`}
+              onClick={() => { if (!perms.history) { setCurrentTopic(null); setShowAdmin(false); setScreen('plans'); return } setCurrentTopic(null); setShowAdmin(false); setScreen('history') }}
+              title={!perms.history ? 'Upgrade to Gold or above' : ''}
+            >History{!perms.history ? ' 🔒' : ''}</button>
+            <button
+              className={`nav-btn${!perms.ranking ? ' nav-btn--locked' : ''}`}
+              onClick={() => { if (!perms.ranking) { setCurrentTopic(null); setShowAdmin(false); setScreen('plans'); return } setCurrentTopic(null); setShowAdmin(false); setScreen('ranking') }}
+              title={!perms.ranking ? 'Upgrade to Platinum' : ''}
+            >Ranking{!perms.ranking ? ' 🔒' : ''}</button>
+            {!user.is_admin && (
+              <button className="nav-btn nav-btn--plans" onClick={() => { setCurrentTopic(null); setShowAdmin(false); setScreen('plans') }}>Plans</button>
+            )}
+          </div>
           {!user.is_admin && (
             <div className="token-bar-wrap">
               <div>{tokensUsedToday.toLocaleString()} / {limit.toLocaleString()} tokens</div>
@@ -1934,7 +1992,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
           )}
           <div className="user-pill" onClick={handleProfileClick}>
             {user.picture && <img src={user.picture} className="user-avatar" alt="" />}
-            <span>{user.name.split(' ')[0]}</span>
+            <span className="user-first-name">{user.name.split(' ')[0]}</span>
             <span className={`tier-badge ${TIER_CLASSES[user.tier] || 'tier-silver'}`}>
               {TIER_LABELS[user.tier] || user.tier}
             </span>
@@ -1943,6 +2001,32 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
                 <span>🚪</span> Logout
               </button>
             </div>
+          </div>
+          {/* Hamburger for mobile */}
+          <div className="mobile-nav-wrap">
+            <button className="hamburger-btn" onClick={() => setMobileMenuOpen(v => !v)} aria-label="Menu">
+              {mobileMenuOpen ? '✕' : '☰'}
+            </button>
+            {mobileMenuOpen && (
+              <div className="mobile-nav-dropdown">
+                <button className="mobile-nav-item" onClick={() => { saveQuizAttempt(); resetQuizSession(); setShowAdmin(false); setScreen('app'); setMobileMenuOpen(false) }}>🏠 Home</button>
+                <button
+                  className="mobile-nav-item"
+                  onClick={() => { if (!perms.history) { setScreen('plans'); setMobileMenuOpen(false); return } setCurrentTopic(null); setShowAdmin(false); setScreen('history'); setMobileMenuOpen(false) }}
+                >📋 History{!perms.history ? ' 🔒' : ''}</button>
+                <button
+                  className="mobile-nav-item"
+                  onClick={() => { if (!perms.ranking) { setScreen('plans'); setMobileMenuOpen(false); return } setCurrentTopic(null); setShowAdmin(false); setScreen('ranking'); setMobileMenuOpen(false) }}
+                >🏆 Ranking{!perms.ranking ? ' 🔒' : ''}</button>
+                {!user.is_admin && (
+                  <button className="mobile-nav-item" onClick={() => { setCurrentTopic(null); setShowAdmin(false); setScreen('plans'); setMobileMenuOpen(false) }}>💎 Plans &amp; Pricing</button>
+                )}
+                {user.is_admin && (
+                  <button className="mobile-nav-item" onClick={() => { setShowAdmin(v => !v); setMobileMenuOpen(false) }}>⚙️ Admin Panel</button>
+                )}
+                <button className="mobile-nav-item mobile-nav-item--danger" onClick={() => { handleSignOut(); setMobileMenuOpen(false) }}>🚪 Logout</button>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -1959,6 +2043,11 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
       {/* MAIN LAYOUT */}
       {!showAdmin && (
         <div className="app">
+          <button className="sidebar-toggle-btn" onClick={() => setSidebarOpen(v => !v)}>
+            {sidebarOpen ? '✕ Close Topics' : '📚 Choose Topic'}
+          </button>
+          <div className={`sidebar-overlay${sidebarOpen ? ' sidebar-overlay--open' : ''}`} onClick={() => setSidebarOpen(false)} />
+          <div className={`sidebar-drawer${sidebarOpen ? ' sidebar-drawer--open' : ''}`}>
           <Sidebar
             currentTopic={currentTopic}
             currentSubtopic={currentSubtopic}
@@ -1967,7 +2056,10 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
             subtopicStats={subtopicStats}
             totalAnswered={totalAnswered}
             onSelectTopic={generateQuestion}
+            canUseSubtopics={perms.subtopics}
+            onUpgrade={() => setScreen('plans')}
           />
+          </div>
           <div className="main">
             {/* Home */}
             {!currentTopic && !loadingQuestion && (
@@ -1981,6 +2073,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
                 topicStats={topicStats}
                 subtopicStats={subtopicStats}
                 onSelectTopic={generateQuestion}
+                onUpgrade={() => setScreen('plans')}
               />
             )}
 
