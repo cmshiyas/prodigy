@@ -1097,9 +1097,12 @@ export default function App() {
     const prompt = `You are an expert at creating Australian Year 4 ${examType} exam-style questions.
 Topic: ${topic.name} — ${TOPIC_PROMPTS[topicId]}${subtopic ? `\nSubtopic: ${subtopic} — focus the question specifically on this subtopic.` : ''}
 Create ONE multiple choice question for Year 4 (9-10 year olds). Vary difficulty: 40% easy, 40% medium, 20% hard.
-Return ONLY valid JSON, no markdown:
-{"question":"...","visual":"optional table/list or empty string","options":["A","B","C","D","E"],"correct":0,"explanation":"step-by-step solution","difficulty":"easy"}
-Rules: exactly 5 options, correct is 0-4 index, difficulty is easy/medium/hard.`
+
+IMPORTANT: The correct answer must be randomly distributed across positions A–E (indices 0–4). Do NOT always place the correct answer at index 0. Solve the question yourself first, then arrange the options so the correct answer appears at a random position.
+
+Return ONLY valid JSON, no markdown, no explanation outside the JSON:
+{"question":"...","visual":"optional table/list or empty string","options":["option1","option2","option3","option4","option5"],"correct":<0-based index of the correct option>,"explanation":"step-by-step solution","difficulty":"easy|medium|hard"}
+Rules: exactly 5 options, correct is the 0-based index of the correct option (vary between 0 and 4), difficulty is easy/medium/hard.`
 
     try {
       const res = await fetch('/api/generate', {

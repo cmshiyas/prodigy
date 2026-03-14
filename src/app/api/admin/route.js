@@ -184,7 +184,7 @@ Below is the text of an exam paper. Extract every multiple choice question and d
 IMPORTANT: Respond with ONLY valid JSON, no markdown, no prose.
 
 Required format:
-{"topics":[{"id":"string","name":"string","subtopics":["string"]}],"extractedQuestions":[{"topicId":"string","subtopic":"string","question":"string","options":["string"],"correct":0,"explanation":"string","difficulty":"easy"}]}
+{"topics":[{"id":"string","name":"string","subtopics":["string"]}],"extractedQuestions":[{"topicId":"string","subtopic":"string","question":"string","options":["string"],"correct":2,"explanation":"string","difficulty":"easy"}]}
 
 Exam paper text:
 ${trimmed}`
