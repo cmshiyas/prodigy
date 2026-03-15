@@ -12,8 +12,14 @@ export async function GET(request) {
     const payload = await verifyGoogleToken(authHeader.split(' ')[1])
     const supabase = getSupabase()
 
-    const { data: user } = await supabase
-      .from('users').select('id, referral_code').eq('email', payload.email).single()
+    // Look up by google_id first (matches auth route logic — avoids wrong row if duplicate emails exist)
+    let { data: user } = await supabase
+      .from('users').select('id, referral_code').eq('google_id', payload.sub).single()
+    if (!user) {
+      const { data: byEmail } = await supabase
+        .from('users').select('id, referral_code').eq('email', payload.email).single()
+      user = byEmail
+    }
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
     // Fetch referred users as rows (more reliable than head:true count)
@@ -24,19 +30,14 @@ export async function GET(request) {
 
     if (countError) console.error('Referral count error:', countError.message)
 
-    // DEBUG: log user id and raw rows — remove after diagnosis
-    console.log('[referral] user.id:', user.id, '| referredUsers:', JSON.stringify(referredUsers))
-
     return NextResponse.json({
       referral_code: user.referral_code,
       referral_count: referredUsers?.length ?? 0,
-      _debug_user_id: user.id,
-      _debug_referred_rows: referredUsers,
       goldCount: config.goldCount,
       platinumCount: config.platinumCount,
       goldBenefit: config.goldBenefit,
       platinumBenefit: config.platinumBenefit,
-    })
+    }, { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } })
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 })
   }

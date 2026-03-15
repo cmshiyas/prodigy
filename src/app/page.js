@@ -116,7 +116,7 @@ function TrialModal({ onClose, onReferFriend, onSignIn, idToken, onTierUpgrade, 
     if (!idToken) return
     setCountError(false)
     setReferralCount(null)
-    fetch('/api/referral', { headers: { Authorization: 'Bearer ' + idToken } })
+    fetch('/api/referral', { headers: { Authorization: 'Bearer ' + idToken }, cache: 'no-store' })
       .then(r => r.json())
       .then(data => {
         if (data.referral_count !== undefined) setReferralCount(data.referral_count)
@@ -787,7 +787,7 @@ function ReferralModal({ user, idToken, referralConfig = {}, onClose }) {
     if (!idToken) return
     setCountError(false)
     setReferralCount(null)
-    fetch('/api/referral', { headers: { Authorization: 'Bearer ' + idToken } })
+    fetch('/api/referral', { headers: { Authorization: 'Bearer ' + idToken }, cache: 'no-store' })
       .then(r => r.json())
       .then(data => {
         if (data.referral_count !== undefined) setReferralCount(data.referral_count)
@@ -1586,7 +1586,7 @@ export default function App() {
   // Fetch referral count when logged in
   useEffect(() => {
     if (!session?.idToken) return
-    fetch('/api/referral', { headers: { Authorization: 'Bearer ' + session.idToken } })
+    fetch('/api/referral', { headers: { Authorization: 'Bearer ' + session.idToken }, cache: 'no-store' })
       .then(r => r.json())
       .then(data => {
         if (data.referral_count !== undefined) setReferralCount(data.referral_count)
