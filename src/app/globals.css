@@ -162,6 +162,7 @@ header { background: var(--accent); padding: 0 2rem; display: flex; align-items:
 .sidebar { display: flex; flex-direction: column; gap: 1rem; }
 .sidebar-card { background: var(--surface); border-radius: var(--radius); border: 1.5px solid var(--border); overflow: hidden; }
 .sidebar-title { background: var(--surface2); padding: 12px 16px; font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text2); border-bottom: 1.5px solid var(--border); }
+.sidebar-title--cta { background: var(--accent); color: #fff; font-size: 0.85rem; letter-spacing: 0.4px; border-bottom-color: #e05a28; }
 .topic-list { padding: 8px; }
 .topic-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: none; background: transparent; border-radius: 10px; cursor: pointer; font-family: 'Nunito Sans', sans-serif; font-size: 0.88rem; font-weight: 600; color: var(--text); text-align: left; transition: background 0.15s; }
 .topic-btn:hover { background: var(--surface2); }

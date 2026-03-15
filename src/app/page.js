@@ -914,7 +914,7 @@ function Sidebar({ currentTopic, currentSubtopic, topics, topicStats, subtopicSt
   return (
     <div className="sidebar">
       <div className="sidebar-card">
-        <div className="sidebar-title">Choose a Topic or Subtopic to Practise</div>
+        <div className="sidebar-title sidebar-title--cta">👇 Click on a Topic to Practise</div>
         <div className="topic-list">
           {topics.map(t => (
             <div key={t.id}>
