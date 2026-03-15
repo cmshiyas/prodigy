@@ -400,7 +400,7 @@ export async function POST(request) {
       image_url: urls[0] || null,
       image_urls: urls.length > 0 ? urls : null,
       question_source: source,
-      paper_year: source === 'past_paper' ? (paper_year || null) : null,
+      paper_year: paper_year || null,
     }).eq('id', questionId).select().single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ question: data })
@@ -625,7 +625,7 @@ ${trimmed}`
         difficulty: q.difficulty && ['easy', 'medium', 'hard'].includes(q.difficulty) ? q.difficulty : 'medium',
         year_level: yearLevel || null,
         question_source: questionSource,
-        paper_year: questionSource === 'past_paper' ? (paperYear || null) : null,
+        paper_year: paperYear || null,
       }
       const { error: insertError } = await supabase.from('questions').insert(insert)
       if (insertError) {
@@ -825,7 +825,7 @@ Respond with ONLY valid JSON (no markdown, no prose):
         difficulty,
         year_level: yearLevel || null,
         question_source: uploadSource,
-        paper_year: uploadSource === 'past_paper' ? (paperYear || null) : null,
+        paper_year: paperYear || null,
       })
 
       if (insertError) {
