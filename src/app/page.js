@@ -109,6 +109,23 @@ function TrialModal({ onClose, onReferFriend, onSignIn, idToken, onTierUpgrade, 
   const [promoCode, setPromoCode] = useState('')
   const [promoStatus, setPromoStatus] = useState(null)
   const [promoLoading, setPromoLoading] = useState(false)
+  const [referralCount, setReferralCount] = useState(null)
+  const [countError, setCountError] = useState(false)
+
+  const fetchCount = () => {
+    if (!idToken) return
+    setCountError(false)
+    setReferralCount(null)
+    fetch('/api/referral', { headers: { Authorization: 'Bearer ' + idToken } })
+      .then(r => r.json())
+      .then(data => {
+        if (data.referral_count !== undefined) setReferralCount(data.referral_count)
+        else setCountError(true)
+      })
+      .catch(() => setCountError(true))
+  }
+
+  useEffect(() => { fetchCount() }, [idToken]) // eslint-disable-line
 
   async function redeemPromo() {
     if (!promoCode.trim()) return
@@ -144,18 +161,32 @@ function TrialModal({ onClose, onReferFriend, onSignIn, idToken, onTierUpgrade, 
         <p className="trial-modal-body">
           Invite your friends and unlock free premium access:
         </p>
+        {idToken && (
+          <div className="referral-modal-stat">
+            {countError ? (
+              <button onClick={fetchCount} style={{ background: 'none', border: '1.5px solid #e2e8f0', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', fontSize: '0.8rem', color: '#64748b' }}>↺ Retry</button>
+            ) : (
+              <div className="referral-modal-stat-num">{referralCount === null ? '…' : referralCount}</div>
+            )}
+            <div className="referral-modal-stat-label">friend{referralCount !== 1 ? 's' : ''} referred<br/>so far</div>
+          </div>
+        )}
         <div className="trial-referral-tiers">
           <div className="trial-referral-tier">
-            <span className="trial-referral-tier-icon" style={{ background: '#FEF3C7', color: '#F59E0B' }}>🥇</span>
+            <span className="trial-referral-tier-icon" style={{ background: referralCount >= goldCount ? '#FEF3C7' : '#F3F4F6', color: referralCount >= goldCount ? '#F59E0B' : '#9CA3AF' }}>🥇</span>
             <div>
-              <strong style={{ color: '#F59E0B' }}>Invite {goldCount} friends</strong>
+              <strong style={{ color: referralCount >= goldCount ? '#F59E0B' : '#6B7280' }}>
+                {referralCount >= goldCount ? '✓ ' : ''}Invite {goldCount} friends
+              </strong>
               <div className="trial-referral-tier-desc">{goldBenefit}</div>
             </div>
           </div>
           <div className="trial-referral-tier">
-            <span className="trial-referral-tier-icon" style={{ background: '#EDE9FE', color: '#7C3AED' }}>💜</span>
+            <span className="trial-referral-tier-icon" style={{ background: referralCount >= platinumCount ? '#EDE9FE' : '#F3F4F6', color: referralCount >= platinumCount ? '#7C3AED' : '#9CA3AF' }}>💜</span>
             <div>
-              <strong style={{ color: '#7C3AED' }}>Invite {platinumCount} friends</strong>
+              <strong style={{ color: referralCount >= platinumCount ? '#7C3AED' : '#6B7280' }}>
+                {referralCount >= platinumCount ? '✓ ' : ''}Invite {platinumCount} friends
+              </strong>
               <div className="trial-referral-tier-desc">{platinumBenefit}</div>
             </div>
           </div>
