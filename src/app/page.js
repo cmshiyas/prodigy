@@ -402,7 +402,35 @@ function FeedbackIcon() {
   )
 }
 
-function LandingScreen({ onSignIn, referralConfig = {} }) {
+// ── SUBSCRIPTION FEATURE HELPERS ───────────────────────────────
+
+const FALLBACK_QLIMITS = { silver: 10, gold: 40, platinum: 999999, admin: 999999 }
+const FALLBACK_FEATURES = {
+  silver:   { all_exams: false, analytics: false, history: false },
+  gold:     { all_exams: true,  analytics: true,  history: true  },
+  platinum: { all_exams: true,  analytics: true,  history: true  },
+  admin:    { all_exams: true,  analytics: true,  history: true  },
+}
+
+function getPlanFeatures(tier, subscriptionFeatures) {
+  const f  = subscriptionFeatures?.features?.[tier] ?? FALLBACK_FEATURES[tier] ?? FALLBACK_FEATURES.silver
+  const ql = subscriptionFeatures?.questionLimits?.[tier] ?? FALLBACK_QLIMITS[tier] ?? 10
+  const qText = ql >= 999999 ? 'Unlimited questions per day' : `~${ql} questions per day`
+  const ranking = tier === 'platinum' || tier === 'admin'
+  const streaks  = tier === 'platinum' || tier === 'admin'
+  return [
+    { text: f.all_exams ? 'All exam tracks (OC, Selective, NAPLAN)' : 'OC exam track only', yes: f.all_exams },
+    { text: qText, yes: true },
+    { text: 'Instant answer explanations', yes: true },
+    { text: 'Topic-level progress tracking', yes: true },
+    { text: 'Subtopic drill & accuracy rates', yes: f.analytics },
+    { text: 'Answer history review', yes: f.history },
+    { text: 'Leaderboard & ranking', yes: ranking },
+    { text: 'Streak celebration rewards', yes: streaks },
+  ]
+}
+
+function LandingScreen({ onSignIn, referralConfig = {}, subscriptionFeatures }) {
   const [showTrialModal, setShowTrialModal] = useState(false)
   return (
     <div className="landing-screen">
@@ -599,14 +627,9 @@ function LandingScreen({ onSignIn, referralConfig = {} }) {
               <div className="lp-plan-price"><span className="lp-plan-amount">Free</span></div>
               <p className="lp-plan-desc">Perfect for getting started and exploring the platform.</p>
               <ul className="lp-plan-features">
-                <li className="lp-feat lp-feat--yes">All exam tracks (OC, Selective, NAPLAN)</li>
-                <li className="lp-feat lp-feat--yes">~10 questions per day</li>
-                <li className="lp-feat lp-feat--yes">Instant answer explanations</li>
-                <li className="lp-feat lp-feat--yes">Topic-level progress tracking</li>
-                <li className="lp-feat lp-feat--no">Subtopic drill & accuracy rates</li>
-                <li className="lp-feat lp-feat--no">Answer history review</li>
-                <li className="lp-feat lp-feat--no">Leaderboard & ranking</li>
-                <li className="lp-feat lp-feat--no">Streak celebration rewards</li>
+                {getPlanFeatures('silver', subscriptionFeatures).map((f, i) => (
+                  <li key={i} className={`lp-feat lp-feat--${f.yes ? 'yes' : 'no'}`}>{f.text}</li>
+                ))}
               </ul>
               <button className="btn btn-secondary lp-plan-btn" onClick={onSignIn}>Get Started Free</button>
             </div>
@@ -620,14 +643,9 @@ function LandingScreen({ onSignIn, referralConfig = {} }) {
               </div>
               <p className="lp-plan-desc">For students who practise regularly and want to track improvement.</p>
               <ul className="lp-plan-features">
-                <li className="lp-feat lp-feat--yes">All exam tracks (OC, Selective, NAPLAN)</li>
-                <li className="lp-feat lp-feat--yes">~40 questions per day</li>
-                <li className="lp-feat lp-feat--yes">Instant answer explanations</li>
-                <li className="lp-feat lp-feat--yes">Topic-level progress tracking</li>
-                <li className="lp-feat lp-feat--yes">Subtopic drill & accuracy rates</li>
-                <li className="lp-feat lp-feat--yes">Answer history review</li>
-                <li className="lp-feat lp-feat--no">Leaderboard & ranking</li>
-                <li className="lp-feat lp-feat--no">Streak celebration rewards</li>
+                {getPlanFeatures('gold', subscriptionFeatures).map((f, i) => (
+                  <li key={i} className={`lp-feat lp-feat--${f.yes ? 'yes' : 'no'}`}>{f.text}</li>
+                ))}
               </ul>
               <button className="btn btn-primary lp-plan-btn" onClick={() => setShowTrialModal(true)}>Get Gold</button>
             </div>
@@ -642,14 +660,9 @@ function LandingScreen({ onSignIn, referralConfig = {} }) {
               </div>
               <p className="lp-plan-desc">Unlimited practice with every feature — the complete exam prep experience.</p>
               <ul className="lp-plan-features">
-                <li className="lp-feat lp-feat--yes">All exam tracks (OC, Selective, NAPLAN)</li>
-                <li className="lp-feat lp-feat--yes">~100 questions per day (unlimited)</li>
-                <li className="lp-feat lp-feat--yes">Instant answer explanations</li>
-                <li className="lp-feat lp-feat--yes">Topic-level progress tracking</li>
-                <li className="lp-feat lp-feat--yes">Subtopic drill & accuracy rates</li>
-                <li className="lp-feat lp-feat--yes">Answer history review</li>
-                <li className="lp-feat lp-feat--yes">Leaderboard & ranking</li>
-                <li className="lp-feat lp-feat--yes">Streak celebration rewards</li>
+                {getPlanFeatures('platinum', subscriptionFeatures).map((f, i) => (
+                  <li key={i} className={`lp-feat lp-feat--${f.yes ? 'yes' : 'no'}`}>{f.text}</li>
+                ))}
               </ul>
               <button className="btn btn-primary lp-plan-btn lp-plan-btn--platinum" onClick={() => setShowTrialModal(true)}>Get Platinum</button>
             </div>
@@ -1005,68 +1018,13 @@ function Sidebar({ currentTopic, currentSubtopic, topics, topicStats, subtopicSt
 
 // ── PLANS SCREEN ──────────────────────────────────────────────
 
-const PLANS = [
-  {
-    tier: 'silver',
-    label: 'Silver',
-    price: 'Free',
-    period: null,
-    desc: 'Get started and explore the platform at no cost.',
-    color: '#64748B',
-    bg: '#F1F5F9',
-    features: [
-      { text: 'All exam tracks (OC, Selective, NAPLAN)', yes: true },
-      { text: '~10 questions per day', yes: true },
-      { text: 'Instant answer explanations', yes: true },
-      { text: 'Topic-level progress tracking', yes: true },
-      { text: 'Subtopic drill & accuracy rates', yes: false },
-      { text: 'Answer history review', yes: false },
-      { text: 'Leaderboard & ranking', yes: false },
-      { text: 'Streak celebration rewards', yes: false },
-    ],
-  },
-  {
-    tier: 'gold',
-    label: 'Gold',
-    price: '$5',
-    period: '/month',
-    desc: 'More questions and deeper tracking for serious practice.',
-    color: '#92400E',
-    bg: '#FEF3C7',
-    features: [
-      { text: 'All exam tracks (OC, Selective, NAPLAN)', yes: true },
-      { text: '~40 questions per day', yes: true },
-      { text: 'Instant answer explanations', yes: true },
-      { text: 'Topic-level progress tracking', yes: true },
-      { text: 'Subtopic drill & accuracy rates', yes: true },
-      { text: 'Answer history review', yes: true },
-      { text: 'Leaderboard & ranking', yes: false },
-      { text: 'Streak celebration rewards', yes: false },
-    ],
-  },
-  {
-    tier: 'platinum',
-    label: 'Platinum',
-    price: '$9',
-    period: '/month',
-    desc: 'Unlimited questions and every feature — the complete experience.',
-    color: '#6D28D9',
-    bg: '#EDE9FE',
-    popular: true,
-    features: [
-      { text: 'All exam tracks (OC, Selective, NAPLAN)', yes: true },
-      { text: '~100 questions per day (unlimited)', yes: true },
-      { text: 'Instant answer explanations', yes: true },
-      { text: 'Topic-level progress tracking', yes: true },
-      { text: 'Subtopic drill & accuracy rates', yes: true },
-      { text: 'Answer history review', yes: true },
-      { text: 'Leaderboard & ranking', yes: true },
-      { text: 'Streak celebration rewards', yes: true },
-    ],
-  },
+const PLAN_META = [
+  { tier: 'silver',   label: 'Silver',   price: 'Free', period: null,     desc: 'Get started and explore the platform at no cost.',                       color: '#64748B', bg: '#F1F5F9',  popular: false },
+  { tier: 'gold',     label: 'Gold',     price: '$5',   period: '/month', desc: 'More questions and deeper tracking for serious practice.',                 color: '#92400E', bg: '#FEF3C7',  popular: false },
+  { tier: 'platinum', label: 'Platinum', price: '$9',   period: '/month', desc: 'Unlimited questions and every feature — the complete experience.',         color: '#6D28D9', bg: '#EDE9FE',  popular: true  },
 ]
 
-function PlansScreen({ user, idToken, onHome, onReferFriend, onTierUpgrade, referralConfig = {} }) {
+function PlansScreen({ user, idToken, onHome, onReferFriend, onTierUpgrade, referralConfig = {}, subscriptionFeatures }) {
   const currentTier     = user.tier || 'silver'
   const goldCount       = referralConfig.goldCount       || 3
   const platinumCount   = referralConfig.platinumCount   || 5
@@ -1109,15 +1067,16 @@ function PlansScreen({ user, idToken, onHome, onReferFriend, onTierUpgrade, refe
         <button className="btn btn-secondary" onClick={onHome} style={{ marginBottom: '1.5rem' }}>← Back</button>
         <h2 className="plans-title">Plans &amp; Pricing</h2>
         <p className="plans-sub">
-          You are currently on the <strong style={{ color: PLANS.find(p=>p.tier===currentTier)?.color }}>{TIER_LABELS[currentTier]}</strong> plan.
+          You are currently on the <strong style={{ color: PLAN_META.find(p=>p.tier===currentTier)?.color }}>{TIER_LABELS[currentTier]}</strong> plan.
           {currentTier !== 'platinum' && ' Invite friends to earn a free upgrade, or subscribe below.'}
         </p>
       </div>
 
       <div className="plans-grid">
-        {PLANS.map(plan => {
+        {PLAN_META.map(plan => {
           const isCurrent = plan.tier === currentTier
-          const isDowngrade = PLANS.findIndex(p=>p.tier===plan.tier) < PLANS.findIndex(p=>p.tier===currentTier)
+          const isDowngrade = PLAN_META.findIndex(p=>p.tier===plan.tier) < PLAN_META.findIndex(p=>p.tier===currentTier)
+          const features = getPlanFeatures(plan.tier, subscriptionFeatures)
           return (
             <div
               key={plan.tier}
@@ -1137,7 +1096,7 @@ function PlansScreen({ user, idToken, onHome, onReferFriend, onTierUpgrade, refe
               </div>
               <p className="plan-desc">{plan.desc}</p>
               <ul className="plan-features">
-                {plan.features.map(f => (
+                {features.map(f => (
                   <li key={f.text} className={`plan-feat${f.yes ? ' plan-feat--yes' : ' plan-feat--no'}`}>
                     {f.yes ? '✅' : '—'} {f.text}
                   </li>
@@ -2034,7 +1993,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
   }
 
   // ── RENDER SCREENS ──────────────────────────────────────────
-  if (screen === 'landing') return <LandingScreen onSignIn={() => setScreen('auth')} referralConfig={referralConfig} />
+  if (screen === 'landing') return <LandingScreen onSignIn={() => setScreen('auth')} referralConfig={referralConfig} subscriptionFeatures={subscriptionFeatures} />
   if (screen === 'auth') return <AuthScreen />
   if (screen === 'pending') return <PendingScreen email={session.user?.email} onSignOut={handleSignOut} />
   if (screen === 'rejected') return <RejectedScreen onSignOut={handleSignOut} />
@@ -2064,6 +2023,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
           onReferFriend={() => setShowReferralModal(true)}
           onTierUpgrade={newTier => setSession(s => ({ ...s, user: { ...s.user, tier: newTier } }))}
           referralConfig={referralConfig}
+          subscriptionFeatures={subscriptionFeatures}
         />
       </div>
       <FeedbackButton user={session.user} idToken={session.idToken} />
