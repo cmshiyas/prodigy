@@ -28,9 +28,9 @@ export const metadata = {
     locale: 'en_AU',
     images: [
       {
-        url: 'https://www.selfpaced.com.au/opengraph-image',
-        width: 1200,
-        height: 630,
+        url: 'https://www.selfpaced.com.au/og-image.png',
+        width: 880,
+        height: 750,
         alt: 'Self Paced Learning — Exam mastery for Australian students',
       },
     ],
@@ -40,7 +40,7 @@ export const metadata = {
     title: 'Self Paced Learning — Practice. Consistency. Feedback.',
     description: 'Self-paced exam mastery for Australian students. Build confidence through consistent practice and instant feedback across NAPLAN, OC, and Selective school topics.',
     creator: '@selfpacedlearn',
-    images: ['https://www.selfpaced.com.au/opengraph-image'],
+    images: ['https://www.selfpaced.com.au/og-image.png'],
   },
   robots: {
     index: true,
