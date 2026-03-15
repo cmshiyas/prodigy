@@ -204,6 +204,157 @@ function TokenLimitsEditor({ idToken, onSignOut }) {
   )
 }
 
+// ── SUBSCRIPTION FEATURES EDITOR ───────────────────────────────
+
+const SUB_TIERS = [
+  { key: 'silver',   label: 'Silver',   color: '#94A3B8' },
+  { key: 'gold',     label: 'Gold',     color: '#F59E0B' },
+  { key: 'platinum', label: 'Platinum', color: '#8B5CF6' },
+  { key: 'admin',    label: 'Admin',    color: '#EF4444' },
+]
+const SUB_FEATURES = [
+  { key: 'analytics', label: 'Performance Analytics', hint: 'Show subtopic performance stats panel' },
+  { key: 'history',   label: 'Attempt History',       hint: 'Show past quiz attempts list' },
+  { key: 'all_exams', label: 'All Exam Types',         hint: 'Access to NAPLAN & Selective (if off, OC only)' },
+]
+const SUB_DEFAULTS = {
+  question_limit_silver: '10', question_limit_gold: '40',
+  question_limit_platinum: '999999', question_limit_admin: '999999',
+  feature_analytics_silver: '0', feature_analytics_gold: '1', feature_analytics_platinum: '1', feature_analytics_admin: '1',
+  feature_history_silver: '0',   feature_history_gold: '1',   feature_history_platinum: '1',   feature_history_admin: '1',
+  feature_all_exams_silver: '0', feature_all_exams_gold: '1', feature_all_exams_platinum: '1', feature_all_exams_admin: '1',
+}
+
+function SubscriptionFeaturesEditor({ idToken }) {
+  const [values, setValues] = useState(null)
+  const [saving, setSaving] = useState(null)
+  const [saved, setSaved]   = useState(null)
+
+  useEffect(() => {
+    fetch('/api/admin?action=config', { headers: { Authorization: 'Bearer ' + idToken } })
+      .then(r => r.json())
+      .then(data => {
+        if (!data?.config) return
+        const map = {}
+        data.config.forEach(({ key, value }) => { map[key] = value })
+        const merged = {}
+        Object.keys(SUB_DEFAULTS).forEach(k => { merged[k] = map[k] ?? SUB_DEFAULTS[k] })
+        setValues(merged)
+      })
+  }, [idToken]) // eslint-disable-line
+
+  const saveKey = async (key, val) => {
+    const v = val ?? values[key]
+    setSaving(key)
+    try {
+      const res = await fetch('/api/admin?action=config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+        body: JSON.stringify({ key, value: v }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error)
+      setSaved(key); setTimeout(() => setSaved(null), 2000)
+    } catch (err) { alert('Failed: ' + err.message) }
+    finally { setSaving(null) }
+  }
+
+  const toggleFeature = (key) => {
+    const newVal = values[key] === '1' ? '0' : '1'
+    setValues(v => ({ ...v, [key]: newVal }))
+    saveKey(key, newVal)
+  }
+
+  if (!values) return <div style={{ padding: 24, color: '#64748b' }}>Loading subscription config...</div>
+
+  return (
+    <div style={{ padding: '20px 24px' }}>
+      <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1.05rem', marginBottom: 4 }}>Subscription Plan Features</div>
+      <div style={{ fontSize: '0.8rem', color: '#7A5C3F', marginBottom: 20 }}>Configure daily question limits and feature access per tier. Changes take effect immediately.</div>
+
+      {/* Question Limits */}
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontWeight: 800, fontSize: '0.9rem', marginBottom: 10, color: '#2D1B0E' }}>Daily Question Limits</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+          {SUB_TIERS.map(({ key, label, color }) => {
+            const cfgKey = `question_limit_${key}`
+            return (
+              <div key={key} style={{ background: '#FFF3E6', borderRadius: 10, padding: '12px 16px', border: '1.5px solid #E8D5C0' }}>
+                <div style={{ fontWeight: 800, fontSize: '0.85rem', color, marginBottom: 8 }}>{label}</div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    type="number"
+                    value={values[cfgKey] || ''}
+                    onChange={e => setValues(v => ({ ...v, [cfgKey]: e.target.value }))}
+                    style={{ flex: 1, padding: '6px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', fontFamily: 'Nunito', fontWeight: 700, fontSize: '0.9rem', background: 'white' }}
+                  />
+                  <button
+                    onClick={() => saveKey(cfgKey)}
+                    disabled={saving === cfgKey}
+                    style={{ padding: '6px 14px', fontSize: '0.8rem', background: '#FF6B35', color: 'white', border: 'none', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 800, cursor: 'pointer' }}
+                  >{saving === cfgKey ? '…' : saved === cfgKey ? '✓' : 'Save'}</button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Feature flags */}
+      <div>
+        <div style={{ fontWeight: 800, fontSize: '0.9rem', marginBottom: 10, color: '#2D1B0E' }}>Feature Access per Tier</div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: 'left', padding: '8px 12px', background: '#FFF3E6', borderBottom: '2px solid #E8D5C0', fontFamily: 'Nunito', fontWeight: 900 }}>Feature</th>
+                {SUB_TIERS.map(({ key, label, color }) => (
+                  <th key={key} style={{ textAlign: 'center', padding: '8px 12px', background: '#FFF3E6', borderBottom: '2px solid #E8D5C0', fontFamily: 'Nunito', fontWeight: 900, color }}>{label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {SUB_FEATURES.map(({ key: fname, label, hint }) => (
+                <tr key={fname} style={{ borderBottom: '1px solid #F0E4D4' }}>
+                  <td style={{ padding: '10px 12px' }}>
+                    <div style={{ fontWeight: 700 }}>{label}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#7A5C3F' }}>{hint}</div>
+                  </td>
+                  {SUB_TIERS.map(({ key: tier }) => {
+                    const cfgKey = `feature_${fname}_${tier}`
+                    const on = values[cfgKey] === '1'
+                    const isSaving = saving === cfgKey
+                    return (
+                      <td key={tier} style={{ textAlign: 'center', padding: '10px 12px' }}>
+                        <button
+                          onClick={() => toggleFeature(cfgKey)}
+                          disabled={isSaving}
+                          style={{
+                            width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
+                            background: on ? '#22C55E' : '#CBD5E1',
+                            position: 'relative', transition: 'background 0.2s',
+                            opacity: isSaving ? 0.6 : 1,
+                          }}
+                        >
+                          <span style={{
+                            position: 'absolute', top: 3, left: on ? 22 : 3,
+                            width: 18, height: 18, borderRadius: '50%', background: 'white',
+                            transition: 'left 0.2s', display: 'block',
+                          }} />
+                        </button>
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div style={{ fontSize: '0.75rem', color: '#7A5C3F', marginTop: 10 }}>Toggles auto-save on click.</div>
+      </div>
+    </div>
+  )
+}
+
 // ── ADMIN PANEL ────────────────────────────────────────────────
 
 function AdminPanel({ idToken, onSignOut }) {
@@ -449,6 +600,7 @@ function AdminPanel({ idToken, onSignOut }) {
           {tabBtn('referrals', 'Referral Details')}
           {tabBtn('feedback', 'Feedback')}
           {tabBtn('examDates', 'Exam Dates')}
+          {tabBtn('subscription', 'Subscription')}
         </div>
       </div>
 
@@ -895,6 +1047,11 @@ function AdminPanel({ idToken, onSignOut }) {
       {/* Exam Dates tab */}
       {adminView === 'examDates' && (
         <ExamDatesManager idToken={idToken} />
+      )}
+
+      {/* Subscription tab */}
+      {adminView === 'subscription' && (
+        <SubscriptionFeaturesEditor idToken={idToken} />
       )}
     </div>
   )

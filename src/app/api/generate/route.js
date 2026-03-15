@@ -24,8 +24,12 @@ export async function POST(request) {
 
     if (userErr || !user) return NextResponse.json({ error: 'User not found' }, { status: 401 })
 
-    // Enforce daily question limit based on tier
-    const limit = QUESTION_LIMITS[user.tier] || QUESTION_LIMITS.silver
+    // Enforce daily question limit — read from DB config, fall back to constants
+    const { data: configRows } = await supabase.from('config').select('key, value')
+      .eq('key', `question_limit_${user.tier}`)
+      .single()
+    const dbLimit = configRows ? parseInt(configRows.value) : NaN
+    const limit = !isNaN(dbLimit) ? dbLimit : (QUESTION_LIMITS[user.tier] ?? QUESTION_LIMITS.silver)
     if (limit < 999999) {
       const todayStart = new Date()
       todayStart.setHours(0, 0, 0, 0)
