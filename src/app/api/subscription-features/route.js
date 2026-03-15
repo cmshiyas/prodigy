@@ -20,10 +20,11 @@ export async function GET() {
   const { data, error } = await supabase.from('config').select('key, value')
 
   if (error) console.error('[subscription-features] config fetch error:', error)
+  console.log('[subscription-features] raw row count:', data?.length, '| sample:', JSON.stringify(data?.slice(0, 3)))
 
   const map = {}
   ;(data || []).forEach(({ key, value }) => { map[key] = value })
-  console.log('[subscription-features] config keys found:', Object.keys(map).filter(k => k.startsWith('feature_') || k.startsWith('question_limit_')))
+  console.log('[subscription-features] all keys in map:', Object.keys(map))
 
   const questionLimits = {}
   TIERS.forEach(tier => {
