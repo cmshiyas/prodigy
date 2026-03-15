@@ -18,6 +18,7 @@ export async function GET(request) {
       .from('users').select('*').eq('google_id', google_id).single()
 
     if (userErr || !user) return NextResponse.json({ error: 'User not found' }, { status: 401 })
+    console.log('[subtopic-performance] user.id:', user.id, '| email:', user.email, '| examType:', examType)
 
     const url = new URL(request.url)
     const examType = url.searchParams.get('examType')
