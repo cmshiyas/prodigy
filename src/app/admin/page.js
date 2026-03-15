@@ -446,6 +446,7 @@ function AdminPanel({ idToken, onSignOut }) {
           {tabBtn('review', 'Answer Review')}
           {tabBtn('promos', 'Promo Codes')}
           {tabBtn('referral', 'Referral')}
+          {tabBtn('referrals', 'Referral Details')}
           {tabBtn('feedback', 'Feedback')}
         </div>
       </div>
@@ -880,9 +881,128 @@ function AdminPanel({ idToken, onSignOut }) {
         <ReferralConfigEditor idToken={idToken} onSignOut={onSignOut} />
       )}
 
+      {/* Referral Details tab */}
+      {adminView === 'referrals' && (
+        <ReferralDetailsViewer idToken={idToken} />
+      )}
+
       {/* Feedback tab */}
       {adminView === 'feedback' && (
         <FeedbackViewer idToken={idToken} />
+      )}
+    </div>
+  )
+}
+
+// ── REFERRAL DETAILS VIEWER ────────────────────────────────────
+
+function ReferralDetailsViewer({ idToken }) {
+  const [data, setData] = useState(null)
+  const [search, setSearch] = useState('')
+  const [searchInput, setSearchInput] = useState('')
+  const [page, setPage] = useState(1)
+  const [loading, setLoading] = useState(true)
+  const pageSize = 50
+
+  const load = async (p = 1, s = search) => {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams({ action: 'referrals', page: p, ...(s ? { search: s } : {}) })
+      const res = await fetch(`/api/admin?${params}`, { headers: { Authorization: 'Bearer ' + idToken } })
+      const json = await res.json()
+      setData(json)
+      setPage(p)
+    } catch { setData({ referrals: [], total: 0, topReferrers: [] }) }
+    finally { setLoading(false) }
+  }
+
+  useEffect(() => { load(1) }, []) // eslint-disable-line
+
+  const handleSearch = () => { setSearch(searchInput); load(1, searchInput) }
+
+  const totalPages = data ? Math.ceil(data.total / pageSize) : 1
+  const TIER_COLOUR = { silver: '#64748b', gold: '#F59E0B', platinum: '#7C3AED', admin: '#EF4444' }
+
+  return (
+    <div style={{ padding: '20px 24px' }}>
+      <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1.05rem', marginBottom: 4 }}>Referral Details</div>
+      <div style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: 16 }}>
+        {data ? `${data.total} referred user${data.total !== 1 ? 's' : ''} total` : '…'}
+      </div>
+
+      {/* Top Referrers */}
+      {data?.topReferrers?.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#1e293b', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Top Referrers</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {data.topReferrers.map(r => (
+              <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '8px 14px', cursor: 'pointer' }}
+                onClick={() => { setSearchInput(r.email); setSearch(r.email); load(1, r.email) }}>
+                <span style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.88rem' }}>{r.name || r.email}</span>
+                <span style={{ background: '#6366f1', color: 'white', borderRadius: 20, padding: '2px 9px', fontSize: '0.78rem', fontWeight: 700 }}>{r.count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Search */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        <input
+          value={searchInput}
+          onChange={e => setSearchInput(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleSearch()}
+          placeholder="Filter by referred user name or email…"
+          style={{ flex: 1, padding: '8px 12px', border: '1.5px solid #e2e8f0', borderRadius: 8, fontSize: '0.88rem', fontFamily: 'Nunito', outline: 'none' }}
+        />
+        <button onClick={handleSearch} style={{ padding: '8px 18px', background: '#1E1B4B', color: 'white', border: 'none', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 700, cursor: 'pointer' }}>Search</button>
+        {search && <button onClick={() => { setSearchInput(''); setSearch(''); load(1, '') }} style={{ padding: '8px 14px', background: '#f1f5f9', border: '1.5px solid #e2e8f0', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 700, cursor: 'pointer' }}>Clear</button>}
+      </div>
+
+      {loading ? (
+        <div style={{ color: '#94a3b8', textAlign: 'center', padding: 40 }}>Loading…</div>
+      ) : !data?.referrals?.length ? (
+        <div style={{ color: '#94a3b8', textAlign: 'center', padding: 40 }}>No referrals found.</div>
+      ) : (
+        <>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
+              <thead>
+                <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                  {['Referred User', 'Email', 'Tier', 'Referred By', 'Referrer Email', 'Joined'].map(h => (
+                    <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontFamily: 'Nunito', fontWeight: 800, color: '#475569', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {data.referrals.map((r, i) => (
+                  <tr key={r.id} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? 'white' : '#fafafa' }}>
+                    <td style={{ padding: '10px 12px', fontWeight: 600, color: '#1e293b' }}>{r.name || '—'}</td>
+                    <td style={{ padding: '10px 12px', color: '#475569' }}>{r.email}</td>
+                    <td style={{ padding: '10px 12px' }}>
+                      <span style={{ background: TIER_COLOUR[r.tier] + '22', color: TIER_COLOUR[r.tier], borderRadius: 20, padding: '2px 10px', fontWeight: 700, fontSize: '0.78rem', textTransform: 'capitalize' }}>{r.tier}</span>
+                    </td>
+                    <td style={{ padding: '10px 12px', fontWeight: 600, color: '#1e293b' }}>{r.referrer?.name || '—'}</td>
+                    <td style={{ padding: '10px 12px', color: '#475569' }}>{r.referrer?.email || '—'}</td>
+                    <td style={{ padding: '10px 12px', color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                      {new Date(r.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 20 }}>
+              <button onClick={() => load(page - 1)} disabled={page <= 1}
+                style={{ padding: '6px 16px', borderRadius: 8, border: '1.5px solid #e2e8f0', background: 'white', cursor: 'pointer', fontFamily: 'Nunito', fontWeight: 700 }}>← Prev</button>
+              <span style={{ padding: '6px 12px', color: '#64748b', fontSize: '0.88rem' }}>{page} / {totalPages}</span>
+              <button onClick={() => load(page + 1)} disabled={page >= totalPages}
+                style={{ padding: '6px 16px', borderRadius: 8, border: '1.5px solid #e2e8f0', background: 'white', cursor: 'pointer', fontFamily: 'Nunito', fontWeight: 700 }}>Next →</button>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

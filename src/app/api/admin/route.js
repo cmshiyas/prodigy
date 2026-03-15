@@ -205,6 +205,47 @@ export async function GET(request) {
     return NextResponse.json({ responses: result })
   }
 
+  if (action === 'referrals') {
+    const search   = new URL(request.url).searchParams.get('search') || ''
+    const page     = Math.max(1, parseInt(new URL(request.url).searchParams.get('page') || '1') || 1)
+    const pageSize = 50
+    const offset   = (page - 1) * pageSize
+
+    // Fetch all users with a referrer, joining referrer details
+    let query = supabase
+      .from('users')
+      .select('id, name, email, tier, created_at, referral_code, referred_by, referrer:referred_by(id, name, email)', { count: 'exact' })
+      .not('referred_by', 'is', null)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + pageSize - 1)
+
+    if (search) {
+      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%`)
+    }
+
+    const { data, error, count } = await query
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    // Top referrers summary
+    const { data: allReferred } = await supabase
+      .from('users')
+      .select('referred_by, referrer:referred_by(id, name, email)')
+      .not('referred_by', 'is', null)
+
+    const referrerMap = {}
+    ;(allReferred || []).forEach(u => {
+      if (!u.referrer) return
+      const key = u.referred_by
+      if (!referrerMap[key]) referrerMap[key] = { ...u.referrer, count: 0 }
+      referrerMap[key].count++
+    })
+    const topReferrers = Object.values(referrerMap)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10)
+
+    return NextResponse.json({ referrals: data, total: count || 0, page, pageSize, topReferrers })
+  }
+
   if (action === 'feedbacks') {
     const page     = Math.max(1, parseInt(new URL(request.url).searchParams.get('page') || '1') || 1)
     const pageSize = 30

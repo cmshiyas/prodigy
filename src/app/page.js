@@ -101,7 +101,7 @@ function FeedbackButton({ user, idToken }) {
 
 // ── TRIAL POPUP ───────────────────────────────────────────────
 
-function TrialModal({ onClose, onReferFriend, idToken, onTierUpgrade, referralConfig = {} }) {
+function TrialModal({ onClose, onReferFriend, onSignIn, idToken, onTierUpgrade, referralConfig = {} }) {
   const goldCount       = referralConfig.goldCount       || 3
   const platinumCount   = referralConfig.platinumCount   || 5
   const goldBenefit     = referralConfig.goldBenefit     || 'Free Gold access — permanently'
@@ -195,6 +195,16 @@ function TrialModal({ onClose, onReferFriend, idToken, onTierUpgrade, referralCo
             <button className="btn btn-primary" style={{ background: 'var(--accent)' }} onClick={() => { onClose(); onReferFriend() }}>
               🔗 Get My Referral Link
             </button>
+          )}
+          {!idToken && !onReferFriend && onSignIn && (
+            <div style={{ textAlign: 'center', width: '100%' }}>
+              <div style={{ fontSize: '0.88rem', color: '#64748b', marginBottom: 10 }}>
+                Sign in to get your personal referral link and start earning free access.
+              </div>
+              <button className="btn btn-primary" style={{ width: '100%', background: 'var(--accent)' }} onClick={() => { onClose(); onSignIn() }}>
+                🔗 Sign In to Get My Referral Link
+              </button>
+            </div>
           )}
           <button className="btn btn-secondary" onClick={onClose}>Maybe later</button>
         </div>
@@ -561,7 +571,7 @@ function LandingScreen({ onSignIn, referralConfig = {} }) {
                 <li className="lp-feat lp-feat--no">Leaderboard & ranking</li>
                 <li className="lp-feat lp-feat--no">Streak celebration rewards</li>
               </ul>
-              <button className="btn btn-secondary lp-plan-btn" onClick={() => setShowTrialModal(true)}>Get Started Free</button>
+              <button className="btn btn-secondary lp-plan-btn" onClick={onSignIn}>Get Started Free</button>
             </div>
 
             {/* GOLD */}
@@ -648,7 +658,7 @@ function LandingScreen({ onSignIn, referralConfig = {} }) {
       </footer>
 
       <FeedbackButton />
-      {showTrialModal && <TrialModal onClose={() => setShowTrialModal(false)} referralConfig={referralConfig} />}
+      {showTrialModal && <TrialModal onClose={() => setShowTrialModal(false)} onSignIn={onSignIn} referralConfig={referralConfig} />}
     </div>
   )
 }
