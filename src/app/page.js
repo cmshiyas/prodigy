@@ -1608,14 +1608,8 @@ function TestSession({ questions, label, idToken, onFinish }) {
         <div className="question-text">{q.question}</div>
         <div className="options-list">
           {q.options.map((opt, i) => {
-            const isCorrect = i === q.correct
-            let cls = 'option-btn'
-            if (isSubmitted) {
-              if (isCorrect) cls += ' option-correct'
-              else if (answers[current] === i) cls += ' option-wrong'
-            } else if (pending[current] === i) {
-              cls += ' option-selected'
-            }
+            const isChosen = isSubmitted ? answers[current] === i : pending[current] === i
+            const cls = 'option-btn' + (isChosen ? ' option-selected' : '')
             return (
               <button key={i} className={cls} onClick={() => !isSubmitted && setPending(prev => ({ ...prev, [current]: i }))} disabled={isSubmitted}>
                 <span className="option-letter">{String.fromCharCode(65 + i)}</span>
@@ -1624,11 +1618,6 @@ function TestSession({ questions, label, idToken, onFinish }) {
             )
           })}
         </div>
-        {isSubmitted && (
-          <div style={{ marginTop: 12, padding: '8px 14px', borderRadius: 8, background: answers[current] === q.correct ? '#DCFCE7' : '#FEE2E2', fontSize: '0.88rem', fontWeight: 700, color: answers[current] === q.correct ? '#166534' : '#991B1B' }}>
-            {answers[current] === q.correct ? '✓ Correct!' : `✗ Incorrect — correct answer: ${String.fromCharCode(65 + q.correct)}`}
-          </div>
-        )}
       </div>
 
       <div style={{ display: 'flex', gap: 10, marginTop: 16, justifyContent: 'space-between', alignItems: 'center' }}>
