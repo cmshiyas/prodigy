@@ -1507,15 +1507,15 @@ export default function App() {
   }, [])
 
   // Capture referral code from URL ?ref= param and store it
+  // NOTE: We intentionally do NOT strip ?ref= from the URL so that if the user opens
+  // the link in WhatsApp's in-app browser (where Google Sign-In is blocked) and then
+  // opens in a real browser, the ref code is still present in the URL.
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
       const ref = params.get('ref')
       if (ref) {
         localStorage.setItem('oc-ref-code', ref)
-        const url = new URL(window.location.href)
-        url.searchParams.delete('ref')
-        window.history.replaceState({}, '', url.toString())
       }
     }
   }, [])
@@ -1640,7 +1640,10 @@ export default function App() {
   async function handleGoogleSignIn(response) {
     const idToken = response.credential
     try {
-      const storedRefCode = typeof window !== 'undefined' ? localStorage.getItem('oc-ref-code') : null
+      // Read ref code from localStorage first, then fall back to current URL param
+      // (URL param is the fallback for when users switch from WhatsApp's in-app browser to a real browser)
+      const urlRef = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('ref') : null
+      const storedRefCode = (typeof window !== 'undefined' ? localStorage.getItem('oc-ref-code') : null) || urlRef
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
