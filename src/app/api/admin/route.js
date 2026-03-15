@@ -10,6 +10,8 @@ async function verifyAdmin(request) {
   if (payload.email !== ADMIN_EMAIL) throw new Error('Not authorised')
 }
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request) {
   try { await verifyAdmin(request) }
   catch (err) { return NextResponse.json({ error: err.message }, { status: 403 }) }

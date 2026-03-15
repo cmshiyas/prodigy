@@ -3,6 +3,8 @@ import { verifyGoogleToken } from '@/lib/google'
 import { getSupabase } from '@/lib/supabase'
 import { EXAM_TYPES } from '@/lib/constants'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(request) {
   try {
     const body = await request.json()

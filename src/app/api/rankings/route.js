@@ -3,6 +3,8 @@ import { verifyGoogleToken } from '@/lib/google'
 import { getSupabase } from '@/lib/supabase'
 import { EXAM_TOPICS } from '@/lib/constants'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request) {
   const authHeader = request.headers.get('authorization')
   if (!authHeader?.startsWith('Bearer ')) {

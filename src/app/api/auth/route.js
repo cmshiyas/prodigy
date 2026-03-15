@@ -9,6 +9,8 @@ function generateReferralCode() {
   return randomBytes(4).toString('hex').toUpperCase()
 }
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(request) {
   try {
     const { credential, referralCode } = await request.json()

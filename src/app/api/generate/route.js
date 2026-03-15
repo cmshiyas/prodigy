@@ -6,6 +6,8 @@ import { EXAM_TYPES, QUESTION_LIMITS } from '@/lib/constants'
 // Users only receive questions that are already in the database.
 // AI generation is an admin-only operation (see /api/admin?action=generateQuestions).
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(request) {
   const authHeader = request.headers.get('authorization')
   if (!authHeader?.startsWith('Bearer ')) {
