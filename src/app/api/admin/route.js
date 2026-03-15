@@ -440,6 +440,14 @@ export async function POST(request) {
     return NextResponse.json({ ok: true })
   }
 
+  if (action === 'deleteQuestions') {
+    const { questionIds } = await request.json()
+    if (!Array.isArray(questionIds) || !questionIds.length) return NextResponse.json({ error: 'questionIds required' }, { status: 400 })
+    const { error } = await supabase.from('questions').delete().in('id', questionIds)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ ok: true })
+  }
+
   if (action === 'uploadImage') {
     const formData = await request.formData()
     const file = formData.get('file')
@@ -508,7 +516,7 @@ Below is the text of an exam paper. Extract every multiple choice question and d
 1. Copy the question text exactly
 2. Copy all options (A-E) as an array in order
 3. SOLVE the question and set "correct" to the 0-based index of the correct answer (A=0, B=1, C=2, D=3, E=4)
-4. Write a brief step-by-step explanation of why that answer is correct
+4. Write a brief step-by-step explanation of why that answer is correct. The explanation must be confident and final — no self-corrections, no "wait", no "let me recalculate". Present only the correct reasoning leading to the final answer.
 5. Assign a subtopic (e.g. "Algebraic thinking", "Fractions", "Measurement", "Number operations", "Geometry", "Spatial reasoning", "Number patterns", "Problem solving", "Data & graphs")
 6. Set difficulty: easy / medium / hard
 7. ${topicInstruction}
@@ -668,7 +676,7 @@ ${yearLine}
 
 Generate exactly ${n} unique, high-quality multiple-choice questions. Vary difficulty: 40% easy, 40% medium, 20% hard. Ensure every question is distinct — no duplicates or near-duplicates.
 
-IMPORTANT: For each question, solve it yourself first, then place the correct answer at a RANDOM index (0–4). Do NOT always use index 0.
+IMPORTANT: For each question, solve it yourself first, then place the correct answer at a RANDOM index (0–4). Do NOT always use index 0. The explanation must be confident and final — no self-corrections, no "wait", no "let me recalculate". Present only the correct reasoning leading to the final answer.
 
 Respond with ONLY valid JSON (no markdown, no prose):
 {"questions":[{"question":"...","visual":"optional text table or empty string","options":["A","B","C","D","E"],"correct":<0-based index>,"explanation":"step-by-step solution","difficulty":"easy|medium|hard","subtopic":"subtopic name"}]}`

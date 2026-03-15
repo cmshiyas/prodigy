@@ -1447,6 +1447,7 @@ function QuestionBankReview({ idToken, onSignOut }) {
   const [showDuplicates, setShowDuplicates] = useState(false)
   const [duplicates, setDuplicates] = useState(null)
   const [loadingDuplicates, setLoadingDuplicates] = useState(false)
+  const [selectedIds, setSelectedIds] = useState(new Set())
 
   const doLoad = async (p, et, tid, s) => {
     setLoading(true)
@@ -1461,6 +1462,7 @@ function QuestionBankReview({ idToken, onSignOut }) {
       if (!res.ok) throw new Error(data.error)
       setQuestions(data.questions || [])
       setTotal(data.total || 0)
+      setSelectedIds(new Set())
     } catch (err) { alert('Failed to load questions: ' + err.message) }
     finally { setLoading(false) }
   }
@@ -1557,6 +1559,38 @@ function QuestionBankReview({ idToken, onSignOut }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
         body: JSON.stringify({ questionId: qId }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error)
+      await doLoad(page, examType, topicId, search)
+    } catch (err) { alert('Failed: ' + err.message) }
+  }
+
+  const toggleSelect = (id) => setSelectedIds(prev => {
+    const next = new Set(prev)
+    if (next.has(id)) next.delete(id); else next.add(id)
+    return next
+  })
+
+  const isPageAllSelected = !!(questions?.length) && questions.every(q => selectedIds.has(q.id))
+  const isPagePartialSelected = !isPageAllSelected && !!(questions?.some(q => selectedIds.has(q.id)))
+
+  const togglePageSelect = () => {
+    if (isPageAllSelected) {
+      setSelectedIds(prev => { const next = new Set(prev); questions.forEach(q => next.delete(q.id)); return next })
+    } else {
+      setSelectedIds(prev => { const next = new Set(prev); questions.forEach(q => next.add(q.id)); return next })
+    }
+  }
+
+  const deleteSelected = async () => {
+    const ids = [...selectedIds]
+    if (!ids.length) return
+    if (!confirm(`Delete ${ids.length} selected question${ids.length !== 1 ? 's' : ''}? This cannot be undone.`)) return
+    try {
+      const res = await fetch('/api/admin?action=deleteQuestions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+        body: JSON.stringify({ questionIds: ids }),
       })
       if (!res.ok) throw new Error((await res.json()).error)
       await doLoad(page, examType, topicId, search)
@@ -1667,6 +1701,33 @@ function QuestionBankReview({ idToken, onSignOut }) {
         <div style={{ color: '#94A3B8', padding: 20, textAlign: 'center' }}>No questions found.</div>
       ) : (
         <>
+          {/* Selection toolbar */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, padding: '7px 12px', background: selectedIds.size > 0 ? '#FFF7ED' : '#F8FAFC', border: '1.5px solid', borderColor: selectedIds.size > 0 ? '#FED7AA' : '#E2E8F0', borderRadius: 8 }}>
+            <input
+              type="checkbox"
+              checked={isPageAllSelected}
+              ref={el => { if (el) el.indeterminate = isPagePartialSelected }}
+              onChange={togglePageSelect}
+              style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#FF6B35' }}
+            />
+            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#7A5C3F' }}>
+              {isPageAllSelected ? 'All on page selected' : isPagePartialSelected ? `${questions.filter(q => selectedIds.has(q.id)).length} on page selected` : 'Select page'}
+            </span>
+            {selectedIds.size > 0 && (
+              <>
+                <span style={{ fontSize: '0.82rem', color: '#92400E', fontWeight: 700, marginLeft: 4 }}>·  {selectedIds.size} total selected</span>
+                <button
+                  onClick={deleteSelected}
+                  style={{ marginLeft: 'auto', padding: '5px 16px', background: '#DC2626', color: 'white', border: 'none', borderRadius: 7, fontFamily: 'Nunito', fontWeight: 800, fontSize: '0.82rem', cursor: 'pointer' }}
+                >Delete {selectedIds.size} selected</button>
+                <button
+                  onClick={() => setSelectedIds(new Set())}
+                  style={{ padding: '5px 12px', background: 'white', color: '#7A5C3F', border: '1.5px solid #E8D5C0', borderRadius: 7, fontFamily: 'Nunito', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}
+                >Clear</button>
+              </>
+            )}
+          </div>
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {questions.map(q => {
               if (editingId === q.id) {
@@ -1794,8 +1855,15 @@ function QuestionBankReview({ idToken, onSignOut }) {
               }
 
               // Normal row
+              const isSelected = selectedIds.has(q.id)
               return (
-                <div key={q.id} style={{ background: 'white', border: '1.5px solid #E8D5C0', borderRadius: 10, padding: '12px 16px', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <div key={q.id} style={{ background: isSelected ? '#FFF7ED' : 'white', border: `1.5px solid ${isSelected ? '#FED7AA' : '#E8D5C0'}`, borderRadius: 10, padding: '12px 16px', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleSelect(q.id)}
+                    style={{ marginTop: 2, width: 16, height: 16, flexShrink: 0, cursor: 'pointer', accentColor: '#FF6B35' }}
+                  />
                   {(q.image_urls?.length ? q.image_urls[0] : q.image_url) && (
                     <div style={{ position: 'relative', flexShrink: 0 }}>
                       <img src={q.image_urls?.length ? q.image_urls[0] : q.image_url} alt="" style={{ width: 56, height: 56, borderRadius: 8, objectFit: 'cover', border: '1.5px solid #E8D5C0' }} />
