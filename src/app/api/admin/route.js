@@ -246,6 +246,15 @@ export async function GET(request) {
     return NextResponse.json({ referrals: data, total: count || 0, page, pageSize, topReferrers })
   }
 
+  if (action === 'examDates') {
+    const { data, error } = await supabase
+      .from('exam_dates')
+      .select('id, exam, label, date, end_date, tag, note, created_at')
+      .order('date', { ascending: true })
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ dates: data || [] })
+  }
+
   if (action === 'feedbacks') {
     const page     = Math.max(1, parseInt(new URL(request.url).searchParams.get('page') || '1') || 1)
     const pageSize = 30
@@ -406,6 +415,35 @@ export async function POST(request) {
     }).eq('id', questionId).select().single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ question: data })
+  }
+
+  if (action === 'createExamDate') {
+    const { exam, label, date, end_date, tag, note } = await request.json()
+    if (!exam || !label || !date || !tag) return NextResponse.json({ error: 'exam, label, date and tag are required' }, { status: 400 })
+    const { data, error } = await supabase.from('exam_dates')
+      .insert({ exam, label, date, end_date: end_date || null, tag, note: note || null })
+      .select().single()
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ date: data })
+  }
+
+  if (action === 'updateExamDate') {
+    const { id, exam, label, date, end_date, tag, note } = await request.json()
+    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+    if (!exam || !label || !date || !tag) return NextResponse.json({ error: 'exam, label, date and tag are required' }, { status: 400 })
+    const { data, error } = await supabase.from('exam_dates')
+      .update({ exam, label, date, end_date: end_date || null, tag, note: note || null })
+      .eq('id', id).select().single()
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ date: data })
+  }
+
+  if (action === 'deleteExamDate') {
+    const { id } = await request.json()
+    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+    const { error } = await supabase.from('exam_dates').delete().eq('id', id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ ok: true })
   }
 
   if (action === 'deleteQuestion') {

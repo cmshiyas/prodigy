@@ -7,17 +7,6 @@ import RankingScreen from '@/components/RankingScreen'
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
 
-// Key Australian exam dates (update yearly)
-const EXAM_KEY_DATES = [
-  { exam: 'NAPLAN',     label: 'NAPLAN Online',                     date: '2026-03-11', end: '2026-03-27', tag: 'naplan',    note: 'Years 3, 5, 7 & 9' },
-  { exam: 'OC',         label: 'OC Applications Open',              date: '2026-02-02', tag: 'oc',         note: 'NSW DoE portal' },
-  { exam: 'OC',         label: 'OC Applications Close',             date: '2026-03-27', tag: 'oc',         note: 'NSW DoE portal' },
-  { exam: 'OC',         label: 'OC Placement Test',                 date: '2026-07-23', tag: 'oc',         note: 'Year 4 students' },
-  { exam: 'Selective',  label: 'Selective Applications Open',       date: '2026-02-02', tag: 'selective',  note: 'NSW DoE portal' },
-  { exam: 'Selective',  label: 'Selective Applications Close',      date: '2026-03-27', tag: 'selective',  note: 'NSW DoE portal' },
-  { exam: 'Selective',  label: 'Selective Placement Test',          date: '2026-07-23', tag: 'selective',  note: 'Year 6 students' },
-]
-
 const EXAM_DATE_COLORS = {
   naplan:    { bg: '#EFF6FF', border: '#BFDBFE', dot: '#3B82F6' },
   oc:        { bg: '#FFF7ED', border: '#FED7AA', dot: '#F97316' },
@@ -1209,15 +1198,18 @@ function PlansScreen({ user, idToken, onHome, onReferFriend, onTierUpgrade, refe
 const COMING_SOON_EXAMS = new Set(['Selective', 'NAPLAN'])
 
 function ExamDatesPanel({ examType }) {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const [upcoming, setUpcoming] = useState([])
 
-  const upcoming = EXAM_KEY_DATES
-    .filter(d => new Date(d.date) >= today)
-    .sort((a, b) => new Date(a.date) - new Date(b.date))
+  useEffect(() => {
+    fetch('/api/exam-dates', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(data => { if (data.dates) setUpcoming(data.dates) })
+      .catch(() => {})
+  }, [])
 
   function daysUntil(dateStr) {
-    const diff = new Date(dateStr) - today
+    const now = new Date(); now.setHours(0, 0, 0, 0)
+    const diff = new Date(dateStr) - now
     const days = Math.round(diff / (1000 * 60 * 60 * 24))
     if (days === 0) return 'Today'
     if (days === 1) return 'Tomorrow'

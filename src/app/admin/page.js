@@ -448,6 +448,7 @@ function AdminPanel({ idToken, onSignOut }) {
           {tabBtn('referral', 'Referral')}
           {tabBtn('referrals', 'Referral Details')}
           {tabBtn('feedback', 'Feedback')}
+          {tabBtn('examDates', 'Exam Dates')}
         </div>
       </div>
 
@@ -889,6 +890,11 @@ function AdminPanel({ idToken, onSignOut }) {
       {/* Feedback tab */}
       {adminView === 'feedback' && (
         <FeedbackViewer idToken={idToken} />
+      )}
+
+      {/* Exam Dates tab */}
+      {adminView === 'examDates' && (
+        <ExamDatesManager idToken={idToken} />
       )}
     </div>
   )
@@ -1943,5 +1949,198 @@ export default function AdminPage() {
         </div>
       </div>
     </>
+  )
+}
+
+// ── EXAM DATES MANAGER ─────────────────────────────────────────
+
+const TAG_OPTIONS = [
+  { value: 'naplan',    label: 'NAPLAN',    color: '#3B82F6' },
+  { value: 'oc',        label: 'OC',        color: '#F97316' },
+  { value: 'selective', label: 'Selective', color: '#22C55E' },
+]
+
+const EMPTY_FORM = { exam: '', label: '', date: '', end_date: '', tag: 'naplan', note: '' }
+
+function ExamDatesManager({ idToken }) {
+  const [dates, setDates] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [editingId, setEditingId] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
+  const [showPast, setShowPast] = useState(false)
+
+  const load = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/admin?action=examDates', { headers: { Authorization: 'Bearer ' + idToken } })
+      const json = await res.json()
+      setDates(json.dates || [])
+    } catch { setDates([]) }
+    finally { setLoading(false) }
+  }
+
+  useEffect(() => { load() }, []) // eslint-disable-line
+
+  const today = new Date().toISOString().split('T')[0]
+  const visible = showPast ? dates : dates.filter(d => d.date >= today)
+
+  function startEdit(d) {
+    setEditingId(d.id)
+    setForm({ exam: d.exam, label: d.label, date: d.date, end_date: d.end_date || '', tag: d.tag, note: d.note || '' })
+    setError(null)
+  }
+
+  function cancelEdit() { setEditingId(null); setForm(EMPTY_FORM); setError(null) }
+
+  async function save() {
+    if (!form.exam.trim() || !form.label.trim() || !form.date || !form.tag) {
+      setError('Exam, Label, Date and Tag are required.'); return
+    }
+    setSaving(true); setError(null)
+    try {
+      const action = editingId ? 'updateExamDate' : 'createExamDate'
+      const body = editingId ? { id: editingId, ...form } : form
+      const res = await fetch(`/api/admin?action=${action}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+        body: JSON.stringify(body),
+      })
+      const json = await res.json()
+      if (!res.ok) { setError(json.error || 'Save failed'); return }
+      cancelEdit()
+      await load()
+    } catch (e) { setError(e.message) }
+    finally { setSaving(false) }
+  }
+
+  async function remove(id) {
+    if (!confirm('Delete this date?')) return
+    try {
+      await fetch('/api/admin?action=deleteExamDate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+        body: JSON.stringify({ id }),
+      })
+      await load()
+    } catch { /* ignore */ }
+  }
+
+  const inp = { background: '#fff', border: '1.5px solid #E8D5C0', borderRadius: 8, padding: '7px 10px', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box' }
+  const col = { flex: 1, minWidth: 120 }
+
+  return (
+    <div style={{ padding: '20px 24px' }}>
+      <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1.05rem', marginBottom: 4 }}>Exam Dates</div>
+      <div style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: 20 }}>Add and manage key exam dates shown on the student dashboard.</div>
+
+      {/* Form */}
+      <div style={{ background: '#FFF7ED', border: '1.5px solid #FED7AA', borderRadius: 12, padding: 16, marginBottom: 24 }}>
+        <div style={{ fontWeight: 800, fontSize: '0.9rem', marginBottom: 12, color: '#92400E' }}>
+          {editingId ? '✏️ Edit Date' : '➕ Add New Date'}
+        </div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+          <div style={col}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', marginBottom: 4 }}>Exam *</div>
+            <select style={inp} value={form.exam} onChange={e => setForm(f => ({ ...f, exam: e.target.value }))}>
+              <option value="">Select…</option>
+              <option>NAPLAN</option>
+              <option>OC</option>
+              <option>Selective</option>
+              <option>NAPLAN Writing</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div style={{ flex: 2, minWidth: 200 }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', marginBottom: 4 }}>Label *</div>
+            <input style={inp} placeholder="e.g. OC Placement Test" value={form.label} onChange={e => setForm(f => ({ ...f, label: e.target.value }))} />
+          </div>
+          <div style={col}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', marginBottom: 4 }}>Tag * (colour)</div>
+            <select style={inp} value={form.tag} onChange={e => setForm(f => ({ ...f, tag: e.target.value }))}>
+              {TAG_OPTIONS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+          <div style={col}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', marginBottom: 4 }}>Date *</div>
+            <input style={inp} type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
+          </div>
+          <div style={col}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', marginBottom: 4 }}>End Date (optional)</div>
+            <input style={inp} type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} />
+          </div>
+          <div style={{ flex: 2, minWidth: 200 }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', marginBottom: 4 }}>Note (optional)</div>
+            <input style={inp} placeholder="e.g. Year 4 students" value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} />
+          </div>
+        </div>
+        {error && <div style={{ color: '#DC2626', fontSize: '0.82rem', marginBottom: 8 }}>{error}</div>}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={save} disabled={saving}
+            style={{ background: '#FF6B35', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 20px', fontWeight: 700, cursor: 'pointer', fontSize: '0.85rem' }}
+          >{saving ? 'Saving…' : editingId ? 'Save Changes' : 'Add Date'}</button>
+          {editingId && (
+            <button onClick={cancelEdit} style={{ background: '#fff', border: '1.5px solid #E8D5C0', borderRadius: 8, padding: '8px 16px', fontWeight: 700, cursor: 'pointer', fontSize: '0.85rem' }}>Cancel</button>
+          )}
+        </div>
+      </div>
+
+      {/* Toggle past */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#334155' }}>{visible.length} date{visible.length !== 1 ? 's' : ''}</div>
+        <label style={{ fontSize: '0.8rem', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <input type="checkbox" checked={showPast} onChange={e => setShowPast(e.target.checked)} /> Show past dates
+        </label>
+      </div>
+
+      {loading ? (
+        <div style={{ color: '#64748b', fontSize: '0.85rem' }}>Loading…</div>
+      ) : visible.length === 0 ? (
+        <div style={{ color: '#64748b', fontSize: '0.85rem', textAlign: 'center', padding: '24px 0' }}>No dates yet — add one above.</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {visible.map(d => {
+            const tagInfo = TAG_OPTIONS.find(t => t.value === d.tag) || TAG_OPTIONS[0]
+            const isPast = d.date < today
+            return (
+              <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 12, background: isPast ? '#F8F8F8' : '#fff', border: '1.5px solid #E8D5C0', borderRadius: 10, padding: '10px 14px', opacity: isPast ? 0.6 : 1 }}>
+                <div style={{ width: 10, height: 10, borderRadius: '50%', background: tagInfo.color, flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1e293b' }}>{d.label}</div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>
+                    <span style={{ fontWeight: 600 }}>{d.exam}</span>
+                    {' · '}{new Date(d.date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {d.end_date && ` → ${new Date(d.end_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}`}
+                    {d.note && <span style={{ marginLeft: 6, background: '#F1F5F9', borderRadius: 4, padding: '1px 6px' }}>{d.note}</span>}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <button onClick={() => startEdit(d)} style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 6, padding: '4px 10px', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', color: '#1D4ED8' }}>Edit</button>
+                  <button onClick={() => remove(d.id)} style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 6, padding: '4px 10px', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', color: '#DC2626' }}>Delete</button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      <div style={{ marginTop: 24, padding: 14, background: '#F8FAFC', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: '0.8rem', color: '#64748b' }}>
+        <strong>SQL to create table (run once in Supabase SQL Editor):</strong>
+        <pre style={{ marginTop: 8, fontSize: '0.75rem', overflowX: 'auto', background: '#1e293b', color: '#e2e8f0', padding: 12, borderRadius: 8 }}>{`CREATE TABLE IF NOT EXISTS exam_dates (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  exam text NOT NULL,
+  label text NOT NULL,
+  date date NOT NULL,
+  end_date date,
+  tag text NOT NULL DEFAULT 'naplan',
+  note text,
+  created_at timestamptz DEFAULT now()
+);`}</pre>
+      </div>
+    </div>
   )
 }
