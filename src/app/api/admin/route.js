@@ -284,7 +284,7 @@ export async function GET(request) {
 
     let query = supabase
       .from('questions')
-      .select('id, topic_id, exam_type, subtopic, year_level, difficulty, question, options, correct, explanation, visual, image_url, image_urls, created_at', { count: 'exact' })
+      .select('id, topic_id, exam_type, subtopic, year_level, difficulty, question, options, correct, explanation, visual, image_url, image_urls, question_source, paper_year, created_at', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(offset, offset + pageSize - 1)
 
@@ -385,9 +385,10 @@ export async function POST(request) {
   }
 
   if (action === 'updateQuestion') {
-    const { questionId, question, options, correct, explanation, difficulty, subtopic, year_level, image_urls } = await request.json()
+    const { questionId, question, options, correct, explanation, difficulty, subtopic, year_level, image_urls, question_source, paper_year } = await request.json()
     if (!questionId) return NextResponse.json({ error: 'questionId required' }, { status: 400 })
     const urls = Array.isArray(image_urls) ? image_urls.filter(Boolean) : []
+    const source = question_source === 'past_paper' ? 'past_paper' : 'sample'
     const { data, error } = await supabase.from('questions').update({
       question,
       options,
@@ -398,6 +399,8 @@ export async function POST(request) {
       year_level: year_level || null,
       image_url: urls[0] || null,
       image_urls: urls.length > 0 ? urls : null,
+      question_source: source,
+      paper_year: source === 'past_paper' ? (paper_year || null) : null,
     }).eq('id', questionId).select().single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ question: data })
@@ -472,6 +475,8 @@ export async function POST(request) {
     const examType = formData.get('examType')?.toString() || ''
     const topicId = formData.get('topicId')?.toString() || ''
     const yearLevel = formData.get('yearLevel')?.toString() || ''
+    const questionSource = formData.get('questionSource')?.toString() === 'past_paper' ? 'past_paper' : 'sample'
+    const paperYear = formData.get('paperYear')?.toString() || ''
     const file = formData.get('file')
     const validExamIds = EXAM_TYPES.map(item => item.id)
 
@@ -619,6 +624,8 @@ ${trimmed}`
         explanation: q.explanation || '',
         difficulty: q.difficulty && ['easy', 'medium', 'hard'].includes(q.difficulty) ? q.difficulty : 'medium',
         year_level: yearLevel || null,
+        question_source: questionSource,
+        paper_year: questionSource === 'past_paper' ? (paperYear || null) : null,
       }
       const { error: insertError } = await supabase.from('questions').insert(insert)
       if (insertError) {
@@ -753,7 +760,8 @@ Respond with ONLY valid JSON (no markdown, no prose):
   }
 
   if (action === 'uploadQuestions') {
-    const { examType, yearLevel, questions } = await request.json()
+    const { examType, yearLevel, questions, questionSource, paperYear } = await request.json()
+    const uploadSource = questionSource === 'past_paper' ? 'past_paper' : 'sample'
     const validExamIds = EXAM_TYPES.map(item => item.id)
     if (!validExamIds.includes(examType)) {
       return NextResponse.json({ error: 'Invalid exam type' }, { status: 400 })
@@ -816,6 +824,8 @@ Respond with ONLY valid JSON (no markdown, no prose):
         explanation: explanation.trim(),
         difficulty,
         year_level: yearLevel || null,
+        question_source: uploadSource,
+        paper_year: uploadSource === 'past_paper' ? (paperYear || null) : null,
       })
 
       if (insertError) {

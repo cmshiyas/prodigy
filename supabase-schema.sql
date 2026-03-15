@@ -125,6 +125,8 @@ alter table questions add column if not exists difficulty text not null check (d
 alter table questions add column if not exists created_at timestamptz default now();
 alter table questions add column if not exists year_level text;
 create index if not exists questions_year_level_idx on questions(year_level);
+alter table questions add column if not exists question_source text check (question_source in ('sample', 'past_paper')) default 'sample';
+alter table questions add column if not exists paper_year text;
 
 -- If questions table already exists, ensure created_by column exists for tracking question creators
 alter table questions add column if not exists created_by uuid references users(id) on delete set null;

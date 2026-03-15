@@ -307,11 +307,15 @@ function AdminPanel({ idToken, onSignOut }) {
   const [uploadFile, setUploadFile] = useState(null)
   const [uploadExamType, setUploadExamType] = useState('OC')
   const [uploadYearLevel, setUploadYearLevel] = useState('')
+  const [uploadQuestionSource, setUploadQuestionSource] = useState('sample')
+  const [uploadPaperYear, setUploadPaperYear] = useState('')
   const [uploadStatus, setUploadStatus] = useState('')
   const [uploadPdfFile, setUploadPdfFile] = useState(null)
   const [uploadPdfExamType, setUploadPdfExamType] = useState('OC')
   const [uploadPdfTopicId, setUploadPdfTopicId] = useState('')
   const [uploadPdfYearLevel, setUploadPdfYearLevel] = useState('')
+  const [uploadPdfQuestionSource, setUploadPdfQuestionSource] = useState('sample')
+  const [uploadPdfPaperYear, setUploadPdfPaperYear] = useState('')
   const [uploadPdfStatus, setUploadPdfStatus] = useState('')
 
   const [genExamType, setGenExamType] = useState('OC')
@@ -432,7 +436,7 @@ function AdminPanel({ idToken, onSignOut }) {
       const res = await fetch('/api/admin?action=uploadQuestions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
-        body: JSON.stringify({ examType: uploadExamType, yearLevel: uploadYearLevel, questions: questionData }),
+        body: JSON.stringify({ examType: uploadExamType, yearLevel: uploadYearLevel, questions: questionData, questionSource: uploadQuestionSource, paperYear: uploadQuestionSource === 'past_paper' ? uploadPaperYear : '' }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Upload failed')
@@ -440,6 +444,8 @@ function AdminPanel({ idToken, onSignOut }) {
       setUploadStatus(`Uploaded ${data.inserted || 0} questions. ${errCount > 0 ? `${errCount} records failed.` : 'Done.'}`)
       setUploadFile(null)
       setUploadYearLevel('')
+      setUploadQuestionSource('sample')
+      setUploadPaperYear('')
       document.getElementById('question-upload-input').value = ''
       loadQuizBank()
     } catch (err) { setUploadStatus('Upload error: ' + err.message) }
@@ -453,6 +459,8 @@ function AdminPanel({ idToken, onSignOut }) {
       formData.append('examType', uploadPdfExamType)
       if (uploadPdfTopicId) formData.append('topicId', uploadPdfTopicId)
       if (uploadPdfYearLevel) formData.append('yearLevel', uploadPdfYearLevel)
+      formData.append('questionSource', uploadPdfQuestionSource)
+      if (uploadPdfQuestionSource === 'past_paper' && uploadPdfPaperYear) formData.append('paperYear', uploadPdfPaperYear)
       formData.append('file', uploadPdfFile)
       const res = await fetch('/api/admin?action=uploadPdf', { method: 'POST', body: formData, headers: { Authorization: 'Bearer ' + idToken } })
       const data = await res.json()
@@ -462,6 +470,8 @@ function AdminPanel({ idToken, onSignOut }) {
       setUploadPdfStatus(`Extracted topics: ${topics}. Inserted: ${data.inserted || 0}. Skipped: ${data.skipped || 0}. Errors: ${errors}.`)
       setUploadPdfFile(null)
       setUploadPdfYearLevel('')
+      setUploadPdfQuestionSource('sample')
+      setUploadPdfPaperYear('')
       document.getElementById('pdf-upload-input').value = ''
       loadQuizBank()
     } catch (err) { setUploadPdfStatus('PDF upload failed: ' + err.message) }
@@ -625,6 +635,18 @@ function AdminPanel({ idToken, onSignOut }) {
                 <option value="">All year levels</option>
                 {(EXAM_YEAR_LEVELS[uploadExamType] || []).map(y => <option key={y.value} value={y.value}>{y.label}</option>)}
               </select>
+              <select value={uploadQuestionSource} onChange={e => { setUploadQuestionSource(e.target.value); setUploadPaperYear('') }} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white' }}>
+                <option value="sample">Sample Test</option>
+                <option value="past_paper">Past Year Paper</option>
+              </select>
+              {uploadQuestionSource === 'past_paper' && (
+                <input
+                  value={uploadPaperYear}
+                  onChange={e => setUploadPaperYear(e.target.value)}
+                  placeholder="Year (e.g. 2023)"
+                  style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white', width: 130, fontFamily: 'Nunito' }}
+                />
+              )}
               <input id="question-upload-input" type="file" accept="application/json" onChange={e => setUploadFile(e.target.files?.[0] || null)} style={{ padding: '6px 8px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white' }} />
               <button style={{ padding: '7px 12px', background: '#FF6B35', color: 'white', border: 'none', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 800, cursor: 'pointer' }} onClick={uploadQuestions}>Upload</button>
             </div>
@@ -645,6 +667,18 @@ function AdminPanel({ idToken, onSignOut }) {
                 <option value="">All year levels</option>
                 {(EXAM_YEAR_LEVELS[uploadPdfExamType] || []).map(y => <option key={y.value} value={y.value}>{y.label}</option>)}
               </select>
+              <select value={uploadPdfQuestionSource} onChange={e => { setUploadPdfQuestionSource(e.target.value); setUploadPdfPaperYear('') }} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white' }}>
+                <option value="sample">Sample Test</option>
+                <option value="past_paper">Past Year Paper</option>
+              </select>
+              {uploadPdfQuestionSource === 'past_paper' && (
+                <input
+                  value={uploadPdfPaperYear}
+                  onChange={e => setUploadPdfPaperYear(e.target.value)}
+                  placeholder="Year (e.g. 2023)"
+                  style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white', width: 130, fontFamily: 'Nunito' }}
+                />
+              )}
               <input id="pdf-upload-input" type="file" accept="application/pdf" onChange={e => setUploadPdfFile(e.target.files?.[0] || null)} style={{ padding: '6px 8px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white' }} />
               <button style={{ padding: '7px 12px', background: '#FF6B35', color: 'white', border: 'none', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 800, cursor: 'pointer' }} onClick={uploadPdf}>Upload PDF</button>
             </div>
@@ -1500,6 +1534,8 @@ function QuestionBankReview({ idToken, onSignOut }) {
       difficulty: q.difficulty || 'medium',
       subtopic: q.subtopic || '',
       year_level: q.year_level || '',
+      question_source: q.question_source || 'sample',
+      paper_year: q.paper_year || '',
       image_urls: existingUrls,
     })
   }
@@ -1540,6 +1576,8 @@ function QuestionBankReview({ idToken, onSignOut }) {
           difficulty: editForm.difficulty,
           subtopic: editForm.subtopic,
           year_level: editForm.year_level,
+          question_source: editForm.question_source,
+          paper_year: editForm.question_source === 'past_paper' ? editForm.paper_year : '',
           image_urls: allUrls,
         }),
       })
@@ -1790,6 +1828,19 @@ function QuestionBankReview({ idToken, onSignOut }) {
                         <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 3 }}>Year Level</div>
                         <input value={editForm.year_level} placeholder="e.g. 4" onChange={e => setEditForm(f => ({ ...f, year_level: e.target.value }))} style={{ ...inputStyle, width: '100%' }} />
                       </div>
+                      <div style={{ flex: 1, minWidth: 120 }}>
+                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 3 }}>Source Type</div>
+                        <select value={editForm.question_source} onChange={e => setEditForm(f => ({ ...f, question_source: e.target.value, paper_year: '' }))} style={{ ...inputStyle, width: '100%', background: 'white' }}>
+                          <option value="sample">Sample Test</option>
+                          <option value="past_paper">Past Year Paper</option>
+                        </select>
+                      </div>
+                      {editForm.question_source === 'past_paper' && (
+                        <div style={{ flex: 1, minWidth: 100 }}>
+                          <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 3 }}>Paper Year</div>
+                          <input value={editForm.paper_year} placeholder="e.g. 2023" onChange={e => setEditForm(f => ({ ...f, paper_year: e.target.value }))} style={{ ...inputStyle, width: '100%' }} />
+                        </div>
+                      )}
                     </div>
 
                     {/* Multi-image upload */}
@@ -1882,6 +1933,10 @@ function QuestionBankReview({ idToken, onSignOut }) {
                       {q.subtopic && <span style={{ fontSize: '0.72rem', padding: '1px 7px', borderRadius: 20, background: '#F3F4F6', color: '#374151' }}>{q.subtopic}</span>}
                       {q.difficulty && <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '1px 7px', borderRadius: 20, background: '#F9FAFB', color: diffColors[q.difficulty] || '#374151' }}>{q.difficulty}</span>}
                       {q.year_level && <span style={{ fontSize: '0.72rem', padding: '1px 7px', borderRadius: 20, background: '#F3F4F6', color: '#374151' }}>Yr {q.year_level}</span>}
+                      {q.question_source === 'past_paper'
+                        ? <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '1px 7px', borderRadius: 20, background: '#FEF3C7', color: '#92400E' }}>Past Paper{q.paper_year ? ` ${q.paper_year}` : ''}</span>
+                        : <span style={{ fontSize: '0.72rem', padding: '1px 7px', borderRadius: 20, background: '#F0F9FF', color: '#0369A1' }}>Sample</span>
+                      }
                       {(q.image_urls?.length || q.image_url) && <span style={{ fontSize: '0.72rem', padding: '1px 7px', borderRadius: 20, background: '#ECFDF5', color: '#059669', fontWeight: 700 }}>📷 {q.image_urls?.length > 1 ? `${q.image_urls.length} images` : 'Image'}</span>}
                     </div>
                   </div>
