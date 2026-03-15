@@ -742,6 +742,7 @@ const STREAK_CONFIG = {
 function ReferralModal({ user, idToken, referralConfig = {}, onClose }) {
   const [copied, setCopied] = useState(false)
   const [referralCount, setReferralCount] = useState(null)
+  const [countError, setCountError] = useState(false)
   const referralLink = typeof window !== 'undefined'
     ? `${window.location.origin}?ref=${user.referral_code}`
     : `https://www.selfpaced.com.au?ref=${user.referral_code}`
@@ -751,13 +752,20 @@ function ReferralModal({ user, idToken, referralConfig = {}, onClose }) {
   const goldBenefit     = referralConfig.goldBenefit     || 'Free Gold access — permanently'
   const platinumBenefit = referralConfig.platinumBenefit || 'Free Platinum access — permanently'
 
-  useEffect(() => {
+  const fetchCount = () => {
     if (!idToken) return
+    setCountError(false)
+    setReferralCount(null)
     fetch('/api/referral', { headers: { Authorization: 'Bearer ' + idToken } })
       .then(r => r.json())
-      .then(data => { if (data.referral_count !== undefined) setReferralCount(data.referral_count) })
-      .catch(() => setReferralCount(0))
-  }, [idToken])
+      .then(data => {
+        if (data.referral_count !== undefined) setReferralCount(data.referral_count)
+        else setCountError(true)
+      })
+      .catch(() => setCountError(true))
+  }
+
+  useEffect(() => { fetchCount() }, [idToken]) // eslint-disable-line
 
   function handleCopy() {
     navigator.clipboard.writeText(referralLink).then(() => {
@@ -776,7 +784,11 @@ function ReferralModal({ user, idToken, referralConfig = {}, onClose }) {
           We're in <strong>beta</strong> — and you can unlock Gold or Platinum access completely free, just by inviting friends. No credit card. No catch.
         </div>
         <div className="referral-modal-stat">
-          <div className="referral-modal-stat-num">{referralCount === null ? '…' : referralCount}</div>
+          {countError ? (
+            <button onClick={fetchCount} style={{ background: 'none', border: '1.5px solid #e2e8f0', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', fontSize: '0.8rem', color: '#64748b' }}>↺ Retry</button>
+          ) : (
+            <div className="referral-modal-stat-num">{referralCount === null ? '…' : referralCount}</div>
+          )}
           <div className="referral-modal-stat-label">friend{referralCount !== 1 ? 's' : ''} referred<br/>so far</div>
         </div>
         <div className="trial-referral-tiers" style={{ marginBottom: 12 }}>

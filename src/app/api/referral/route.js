@@ -16,14 +16,17 @@ export async function GET(request) {
       .from('users').select('id, referral_code').eq('email', payload.email).single()
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-    const [{ count }, config] = await Promise.all([
-      supabase.from('users').select('id', { count: 'exact', head: true }).eq('referred_by', user.id),
+    // Fetch referred users as rows (more reliable than head:true count)
+    const [{ data: referredUsers, error: countError }, config] = await Promise.all([
+      supabase.from('users').select('id').eq('referred_by', user.id),
       getReferralConfig(supabase),
     ])
 
+    if (countError) console.error('Referral count error:', countError.message)
+
     return NextResponse.json({
       referral_code: user.referral_code,
-      referral_count: count || 0,
+      referral_count: referredUsers?.length ?? 0,
       goldCount: config.goldCount,
       platinumCount: config.platinumCount,
       goldBenefit: config.goldBenefit,

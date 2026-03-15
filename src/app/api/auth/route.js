@@ -80,8 +80,9 @@ async function checkAndUpgradeReferrer(supabase, referrer) {
   // Don't touch admins or users already on platinum
   if (referrer.tier === 'admin' || referrer.tier === 'platinum') return
 
-  const { count } = await supabase
-    .from('users').select('id', { count: 'exact', head: true }).eq('referred_by', referrer.id)
+  const { data: referredRows } = await supabase
+    .from('users').select('id').eq('referred_by', referrer.id)
+  const count = referredRows?.length ?? 0
 
   const { goldCount, platinumCount } = await getReferralConfig(supabase)
 
@@ -106,8 +107,9 @@ async function respond(supabase, user) {
 
   // Check if a promo-based tier upgrade has expired
   if (user.promo_expires_at && new Date(user.promo_expires_at) < new Date() && user.tier !== 'admin') {
-    const { count: refCount } = await supabase
-      .from('users').select('id', { count: 'exact', head: true }).eq('referred_by', user.id)
+    const { data: refRows } = await supabase
+      .from('users').select('id').eq('referred_by', user.id)
+    const refCount = refRows?.length ?? 0
     const { goldCount, platinumCount } = await getReferralConfig(supabase)
     let revertTier = 'silver'
     if ((refCount || 0) >= platinumCount) revertTier = 'platinum'
