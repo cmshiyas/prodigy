@@ -3,6 +3,8 @@ import { verifyGoogleToken } from '@/lib/google'
 import { getSupabase } from '@/lib/supabase'
 import { EXAM_TYPES } from '@/lib/constants'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request) {
   const authHeader = request.headers.get('authorization')
   if (!authHeader?.startsWith('Bearer ')) {
@@ -63,7 +65,10 @@ export async function GET(request) {
       }
     })
 
-    return NextResponse.json({ subtopicStats, topicStats, _debug_user_id: user.id, _debug_email: user.email })
+    return NextResponse.json(
+      { subtopicStats, topicStats, _debug_user_id: user.id, _debug_email: user.email },
+      { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } }
+    )
   } catch (err) {
     console.error('Subtopic performance API error:', err.message)
     return NextResponse.json({ error: err.message }, { status: 500 })

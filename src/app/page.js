@@ -1697,7 +1697,8 @@ export default function App() {
       if (!session?.idToken) return
       try {
         const res = await fetch(`/api/subtopic-performance?examType=${encodeURIComponent(examType)}`, {
-          headers: { 'Authorization': 'Bearer ' + session.idToken }
+          headers: { 'Authorization': 'Bearer ' + session.idToken },
+          cache: 'no-store',
         })
         const data = await res.json()
         if (res.ok && data.subtopicStats) {
