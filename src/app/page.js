@@ -1895,6 +1895,11 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
           <button className="nav-btn" onClick={() => setScreen('history')}>History</button>
           <button className="nav-btn" onClick={() => setScreen('ranking')}>Ranking</button>
           <button className="nav-btn active">Plans</button>
+          <div className="user-pill">
+            {session.user.picture && <img src={session.user.picture} className="user-avatar" alt="" />}
+            <span className="user-first-name">{session.user.name.split(' ')[0]}</span>
+            <span className={`tier-badge ${TIER_CLASSES[session.user.tier] || 'tier-silver'}`}>{TIER_LABELS[session.user.tier] || session.user.tier}</span>
+          </div>
         </div>
       </header>
       <div style={{ maxWidth: 1100, margin: '2rem auto', padding: '0 1.5rem' }}>
