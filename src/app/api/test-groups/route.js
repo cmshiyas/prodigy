@@ -56,10 +56,11 @@ export async function GET(request) {
         }),
     }))
 
-    // Sort: past_paper first (newest year first), then sample
+    // Sort: past_paper first (newest year first), then practice tests by number ascending
     groups.sort((a, b) => {
       if (a.question_source !== b.question_source) return a.question_source === 'past_paper' ? -1 : 1
-      if (a.paper_year && b.paper_year) return b.paper_year.localeCompare(a.paper_year)
+      if (a.question_source === 'past_paper' && a.paper_year && b.paper_year) return b.paper_year.localeCompare(a.paper_year)
+      if (a.question_source === 'sample') return parseInt(a.paper_year || '0') - parseInt(b.paper_year || '0')
       return 0
     })
 

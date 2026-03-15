@@ -1314,32 +1314,47 @@ function HomeScreen({ user, examType, onExamTypeChange, yearLevel, onYearLevelCh
         </div>
       </div>
 
-      {testGroups.length > 0 && onTestTileClick && (
-        <div style={{ marginBottom: 4 }}>
-          <div style={{ fontFamily: 'Nunito', fontWeight: 800, fontSize: '0.95rem', marginBottom: 4, color: '#1E293B' }}>Practice Tests</div>
-          <div style={{ fontSize: '0.8rem', color: '#64748B', marginBottom: 14 }}>Attempt a full test paper by topic.</div>
-          {testGroups.map((g, gi) => {
-            const isPast = g.question_source === 'past_paper'
-            const groupLabel = isPast ? `📄 ${g.paper_year || 'Past Paper'}` : '🧪 Sample Test'
-            return (
-              <div key={gi} className={`paper-group${isPast ? ' paper-group--past' : ' paper-group--sample'}`}>
-                <div className="paper-group-header">
-                  <span>{groupLabel}</span>
-                  <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#94A3B8' }}>{g.total_count} questions</span>
-                </div>
+      {testGroups.length > 0 && onTestTileClick && (() => {
+        // Invert: build topic → [{ group, count }] map
+        const topicMap = {}
+        for (const g of testGroups) {
+          for (const t of g.topics) {
+            if (!topicMap[t.topic_id]) topicMap[t.topic_id] = { topic_name: t.topic_name, tests: [] }
+            topicMap[t.topic_id].tests.push({ group: g, count: t.count })
+          }
+        }
+        const topicOrder = (EXAM_TOPICS[examType] || []).map(t => t.id)
+        const topicEntries = Object.entries(topicMap).sort(([a], [b]) => {
+          const ai = topicOrder.indexOf(a), bi = topicOrder.indexOf(b)
+          return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi)
+        })
+        return (
+          <div style={{ marginBottom: 4 }}>
+            <div style={{ fontFamily: 'Nunito', fontWeight: 800, fontSize: '0.95rem', marginBottom: 4, color: '#1E293B' }}>Practice Tests</div>
+            <div style={{ fontSize: '0.8rem', color: '#64748B', marginBottom: 14 }}>Select a topic to see available tests and past papers.</div>
+            {topicEntries.map(([topicId, { topic_name, tests }]) => (
+              <div key={topicId} className="paper-group paper-group--sample" style={{ marginBottom: 10 }}>
+                <div className="paper-group-header">{topic_name}</div>
                 <div className="paper-topic-tiles">
-                  {g.topics.map((t, ti) => (
-                    <button key={ti} className="paper-topic-tile" onClick={() => onTestTileClick(g, t)}>
-                      <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#1E293B', marginBottom: 2 }}>{t.topic_name}</div>
-                      <div style={{ fontSize: '0.73rem', color: '#64748B' }}>{t.count} questions</div>
-                    </button>
-                  ))}
+                  {tests.map((item, ti) => {
+                    const isPast = item.group.question_source === 'past_paper'
+                    const label = isPast
+                      ? `📄 ${item.group.paper_year || 'Past Paper'}`
+                      : `📋 Practice Test ${item.group.paper_year || ''}`
+                    const topic = { topic_id: topicId, topic_name, count: item.count }
+                    return (
+                      <button key={ti} className="paper-topic-tile" onClick={() => onTestTileClick(item.group, topic)}>
+                        <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#1E293B', marginBottom: 2 }}>{label}</div>
+                        <div style={{ fontSize: '0.73rem', color: '#64748B' }}>{item.count} questions</div>
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
-            )
-          })}
-        </div>
-      )}
+            ))}
+          </div>
+        )
+      })()}
     </div>
   )
 }
