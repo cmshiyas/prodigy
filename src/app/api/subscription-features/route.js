@@ -20,11 +20,16 @@ export async function GET() {
   const { data, error } = await supabase.from('config').select('key, value')
 
   if (error) console.error('[subscription-features] config fetch error:', error)
-  console.log('[subscription-features] raw row count:', data?.length, '| sample:', JSON.stringify(data?.slice(0, 3)))
+
+  // Targeted check — can the client see this specific row?
+  const { data: specificRow, error: specificErr } = await supabase
+    .from('config').select('key, value').eq('key', 'question_limit_silver')
+
+  // Check total row count via count query
+  const { count } = await supabase.from('config').select('*', { count: 'exact', head: true })
 
   const map = {}
   ;(data || []).forEach(({ key, value }) => { map[key] = value })
-  console.log('[subscription-features] all keys in map:', Object.keys(map))
 
   const questionLimits = {}
   TIERS.forEach(tier => {
@@ -45,7 +50,14 @@ export async function GET() {
     })
   })
 
-  return NextResponse.json({ questionLimits, features, _debug: { rowCount: data?.length ?? null, error: error?.message ?? null, allKeys: Object.keys(map) } }, {
+  return NextResponse.json({ questionLimits, features, _debug: {
+    rowsReturned: data?.length ?? null,
+    totalCountInDB: count,
+    specificRowFound: specificRow,
+    specificRowError: specificErr?.message ?? null,
+    queryError: error?.message ?? null,
+    allKeys: Object.keys(map),
+  } }, {
     headers: { 'Cache-Control': 'no-store' }
   })
 }
