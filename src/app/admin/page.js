@@ -267,17 +267,24 @@ function SubscriptionFeaturesEditor({ idToken }) {
   }
 
   const saveAll = async () => {
+    if (!values) return
     setSavingAll(true)
     try {
-      await Promise.all(Object.keys(values).map(key =>
-        fetch('/api/admin?action=config', {
+      const results = await Promise.all(Object.keys(values).map(async key => {
+        const res = await fetch('/api/admin?action=config', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
           body: JSON.stringify({ key, value: values[key] }),
         })
-      ))
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          throw new Error(`Failed to save "${key}": ${err.error || res.status}`)
+        }
+        return key
+      }))
+      console.log('[saveAll] saved', results.length, 'keys:', results)
       setSavedAll(true); setTimeout(() => setSavedAll(false), 2000)
-    } catch (err) { alert('Failed: ' + err.message) }
+    } catch (err) { alert(err.message) }
     finally { setSavingAll(false) }
   }
 

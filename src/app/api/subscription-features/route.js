@@ -45,7 +45,7 @@ export async function GET() {
     })
   })
 
-  return NextResponse.json({ questionLimits, features, _debug: { rowCount: data?.length ?? null, error: error?.message ?? null, sampleKeys: Object.keys(map).slice(0, 10) } }, {
+  return NextResponse.json({ questionLimits, features, _debug: { rowCount: data?.length ?? null, error: error?.message ?? null, allKeys: Object.keys(map) } }, {
     headers: { 'Cache-Control': 'no-store' }
   })
 }
