@@ -1215,7 +1215,34 @@ function ExamDatesPanel({ examType }) {
   )
 }
 
-function HomeScreen({ user, examType, onExamTypeChange, yearLevel, onYearLevelChange, score, totalAnswered, topicStats, subtopicStats, onSelectTopic, onUpgrade, canAccessAllExams = true }) {
+function TestTile({ group, onSelectTest }) {
+  const isPast = group.question_source === 'past_paper'
+  return (
+    <button
+      onClick={() => onSelectTest(group.question_source, group.paper_year)}
+      style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+        padding: '14px 16px', borderRadius: 12, cursor: 'pointer', textAlign: 'left',
+        border: isPast ? '1.5px solid #FDE68A' : '1.5px solid #BAE6FD',
+        background: isPast ? '#FFFBEB' : '#F0F9FF',
+        transition: 'transform 0.12s, box-shadow 0.12s',
+        minWidth: 140, flex: '1 1 140px',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.10)' }}
+      onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '' }}
+    >
+      <div style={{ fontSize: '1.4rem', marginBottom: 6 }}>{isPast ? '📄' : '📝'}</div>
+      <div style={{ fontFamily: 'Nunito', fontWeight: 800, fontSize: '0.9rem', color: isPast ? '#92400E' : '#0369A1', lineHeight: 1.3 }}>
+        {isPast ? (group.paper_year ? `${group.paper_year} Past Paper` : 'Past Year Paper') : 'Sample Test'}
+      </div>
+      <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: 4, fontWeight: 600 }}>
+        {group.count} question{group.count !== 1 ? 's' : ''}
+      </div>
+    </button>
+  )
+}
+
+function HomeScreen({ user, examType, onExamTypeChange, yearLevel, onYearLevelChange, score, totalAnswered, topicStats, subtopicStats, onSelectTopic, onUpgrade, canAccessAllExams = true, testGroups = [], onSelectTest }) {
   const totalCorrect = Object.values(topicStats).reduce((a, v) => a + v.correct, 0)
   const topicList = EXAM_TOPICS[examType] || EXAM_TOPICS.OC
   const [showComingSoon, setShowComingSoon] = useState(null) // stores the exam label
@@ -1313,6 +1340,18 @@ function HomeScreen({ user, examType, onExamTypeChange, yearLevel, onYearLevelCh
           <div className="stat-box"><div className="stat-num" style={{ color: 'var(--accent)' }}>{score}</div><div className="stat-label">Points</div></div>
         </div>
       </div>
+
+      {testGroups.length > 0 && onSelectTest && (
+        <div style={{ marginBottom: 4 }}>
+          <div style={{ fontFamily: 'Nunito', fontWeight: 800, fontSize: '0.95rem', marginBottom: 4, color: '#1E293B' }}>Practice Tests</div>
+          <div style={{ fontSize: '0.8rem', color: '#64748B', marginBottom: 12 }}>Pick a test to practice questions from that paper.</div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            {testGroups.map((g, i) => (
+              <TestTile key={i} group={g} onSelectTest={onSelectTest} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -1551,6 +1590,8 @@ export default function App() {
   const [referralCount, setReferralCount] = useState(0)
   const [referralConfig, setReferralConfig] = useState({ goldCount: 3, platinumCount: 5, goldBenefit: 'Free Gold access — permanently', platinumBenefit: 'Free Platinum access — permanently' })
   const [subscriptionFeatures, setSubscriptionFeatures] = useState(null)
+  const [testFilter, setTestFilter] = useState(null) // { source, paper_year, label } | null
+  const [testGroups, setTestGroups] = useState([])
 
   const baseTopics = EXAM_TOPICS[examType] || EXAM_TOPICS.OC
   const currentTopics = baseTopics.map(t => ({ ...t, subtopics: dynamicSubtopics[t.id] || [] }))
@@ -1650,6 +1691,13 @@ export default function App() {
     })
       .then(r => r.json())
       .then(data => { if (data.subtopics) setDynamicSubtopics(data.subtopics) })
+      .catch(() => {})
+
+    fetch(`/api/test-groups?examType=${encodeURIComponent(examType)}`, {
+      headers: { Authorization: 'Bearer ' + session.idToken }
+    })
+      .then(r => r.json())
+      .then(data => { if (data.groups) setTestGroups(data.groups) })
       .catch(() => {})
   }, [examType, session?.idToken])
 
@@ -1759,18 +1807,25 @@ export default function App() {
     setShowProfileMenu(prev => !prev)
   }
 
-  async function generateQuestion(topicId, subtopic = null) {
+  async function generateQuestion(topicId, subtopic = null, incomingTestFilter = undefined) {
+    // incomingTestFilter is used when starting a test from a tile; otherwise use existing testFilter state
+    const activeTestFilter = incomingTestFilter !== undefined ? incomingTestFilter : testFilter
+
     // Start quiz session tracking if not already started
     if (!quizSessionStartTime) {
       setQuizSessionStartTime(Date.now())
       setQuizTopicsAttempted(new Set())
     }
-    // Add topic to attempted topics
-    setQuizTopicsAttempted(prev => new Set([...prev, currentTopics.find(t => t.id === topicId)?.name]))
 
-    const topic = currentTopics.find(t => t.id === topicId)
-    setCurrentTopic(topicId)
-    setCurrentSubtopic(subtopic)
+    if (activeTestFilter) {
+      setCurrentTopic('__test__')
+      setCurrentSubtopic(null)
+    } else {
+      // Add topic to attempted topics
+      setQuizTopicsAttempted(prev => new Set([...prev, currentTopics.find(t => t.id === topicId)?.name]))
+      setCurrentTopic(topicId)
+      setCurrentSubtopic(subtopic)
+    }
     setQuestion(null)
     setQuestionError(null)
     setLoadingQuestion(true)
@@ -1790,8 +1845,10 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.idToken },
         body: JSON.stringify({
-          topicId,
-          subtopic,
+          ...(activeTestFilter
+            ? { questionSource: activeTestFilter.source, paperYear: activeTestFilter.paper_year }
+            : { topicId, subtopic }
+          ),
           examType,
           // Only send yearLevel for multi-year-level exams (NAPLAN, Selective)
           yearLevel: (EXAM_YEAR_LEVELS[examType]?.length > 1) ? yearLevel : undefined,
@@ -1989,6 +2046,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
     setCurrentTopic(null)
     setQuestion(null)
     setQuestionError(null)
+    setTestFilter(null)
   }
 
   // ── RENDER SCREENS ──────────────────────────────────────────
@@ -2149,6 +2207,12 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
                   onSelectTopic={generateQuestion}
                   onUpgrade={() => setScreen('plans')}
                   canAccessAllExams={perms.all_exams}
+                  testGroups={testGroups}
+                  onSelectTest={(source, paper_year) => {
+                    const filter = { source, paper_year }
+                    setTestFilter(filter)
+                    generateQuestion(null, null, filter)
+                  }}
                 />
                 <ExamDatesPanel examType={examType} />
               </div>
@@ -2158,7 +2222,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
             {loadingQuestion && (
               <div className="loading-card">
                 <div className="spinner" />
-                <div className="loading-text">Loading your next {currentTopics.find(t => t.id === currentTopic)?.name} question...</div>
+                <div className="loading-text">Loading your next {currentTopic === '__test__' ? (testFilter ? (testFilter.source === 'past_paper' ? (testFilter.paper_year ? `${testFilter.paper_year} Past Paper` : 'Past Paper') : 'Sample Test') : 'practice') : currentTopics.find(t => t.id === currentTopic)?.name} question...</div>
               </div>
             )}
 
@@ -2234,7 +2298,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
                 currentSubtopic={currentSubtopic}
                 onSubtopicChange={(sub) => generateQuestion(currentTopic, sub)}
                 onAnswer={handleAnswer}
-                onNext={() => generateQuestion(currentTopic, currentSubtopic)}
+                onNext={() => testFilter ? generateQuestion(null, null, testFilter) : generateQuestion(currentTopic, currentSubtopic)}
                 onHome={() => { saveQuizAttempt(); resetQuizSession(); setScreen('app') }}
                 barProgress={barProgress}
               />

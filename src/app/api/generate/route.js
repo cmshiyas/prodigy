@@ -49,24 +49,27 @@ export async function POST(request) {
     }
 
     const body = await request.json()
-    const { topicId, examType, subtopic, yearLevel } = body
+    const { topicId, examType, subtopic, yearLevel, questionSource, paperYear } = body
     const validExamIds = EXAM_TYPES.map(item => item.id)
     const exam = validExamIds.includes(examType) ? examType : 'OC'
 
-    if (!topicId) {
-      return NextResponse.json({ error: 'topicId is required' }, { status: 400 })
+    if (!topicId && !questionSource) {
+      return NextResponse.json({ error: 'topicId or questionSource is required' }, { status: 400 })
     }
 
     // Use the exact subtopic when specified; null means all subtopics for the topic
     const resolvedSubtopic = subtopic || null
 
-    // Fetch question IDs the user has already answered for this specific topic + exam
-    const { data: attemptedResponses, error: attemptedError } = await supabase
+    // Fetch question IDs the user has already answered for this exam
+    let attemptedQuery = supabase
       .from('question_responses')
       .select('question_id, questions!inner(topic_id, exam_type)')
       .eq('user_id', user.id)
-      .eq('questions.topic_id', topicId)
       .eq('questions.exam_type', exam)
+
+    if (topicId) attemptedQuery = attemptedQuery.eq('questions.topic_id', topicId)
+
+    const { data: attemptedResponses, error: attemptedError } = await attemptedQuery
 
     if (attemptedError) {
       console.error('Failed to fetch attempted responses:', attemptedError)
@@ -80,9 +83,17 @@ export async function POST(request) {
     let questionQuery = supabase
       .from('questions')
       .select('*')
-      .eq('topic_id', topicId)
       .eq('exam_type', exam)
       .limit(100)
+
+    if (topicId) questionQuery = questionQuery.eq('topic_id', topicId)
+
+    if (questionSource) {
+      questionQuery = questionQuery.eq('question_source', questionSource)
+      if (questionSource === 'past_paper' && paperYear) {
+        questionQuery = questionQuery.eq('paper_year', paperYear)
+      }
+    }
 
     if (resolvedSubtopic) {
       questionQuery = questionQuery.eq('subtopic', resolvedSubtopic)
@@ -106,12 +117,17 @@ export async function POST(request) {
     }
 
     if (!unansweredQuestions || unansweredQuestions.length === 0) {
-      // Check if ANY questions exist for this topic (answered or not) to give the right message
-      const { count } = await supabase
+      // Check if ANY questions exist for this filter (answered or not)
+      let countQuery = supabase
         .from('questions')
         .select('id', { count: 'exact', head: true })
-        .eq('topic_id', topicId)
         .eq('exam_type', exam)
+      if (topicId) countQuery = countQuery.eq('topic_id', topicId)
+      if (questionSource) {
+        countQuery = countQuery.eq('question_source', questionSource)
+        if (questionSource === 'past_paper' && paperYear) countQuery = countQuery.eq('paper_year', paperYear)
+      }
+      const { count } = await countQuery
 
       if ((count || 0) === 0) {
         return NextResponse.json({
@@ -141,6 +157,8 @@ export async function POST(request) {
       topicId: question.topic_id,
       subtopic: question.subtopic || null,
       year_level: question.year_level || null,
+      question_source: question.question_source || 'sample',
+      paper_year: question.paper_year || null,
       image_url: question.image_url || null,
       image_urls: question.image_urls?.length ? question.image_urls : (question.image_url ? [question.image_url] : []),
       _usage: { tier: user.tier },
