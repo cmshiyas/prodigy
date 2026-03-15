@@ -1215,34 +1215,7 @@ function ExamDatesPanel({ examType }) {
   )
 }
 
-function TestTile({ group, onSelectTest }) {
-  const isPast = group.question_source === 'past_paper'
-  return (
-    <button
-      onClick={() => onSelectTest(group.question_source, group.paper_year)}
-      style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
-        padding: '14px 16px', borderRadius: 12, cursor: 'pointer', textAlign: 'left',
-        border: isPast ? '1.5px solid #FDE68A' : '1.5px solid #BAE6FD',
-        background: isPast ? '#FFFBEB' : '#F0F9FF',
-        transition: 'transform 0.12s, box-shadow 0.12s',
-        minWidth: 140, flex: '1 1 140px',
-      }}
-      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.10)' }}
-      onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '' }}
-    >
-      <div style={{ fontSize: '1.4rem', marginBottom: 6 }}>{isPast ? '📄' : '📝'}</div>
-      <div style={{ fontFamily: 'Nunito', fontWeight: 800, fontSize: '0.9rem', color: isPast ? '#92400E' : '#0369A1', lineHeight: 1.3 }}>
-        {isPast ? (group.paper_year ? `${group.paper_year} Past Paper` : 'Past Year Paper') : 'Sample Test'}
-      </div>
-      <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: 4, fontWeight: 600 }}>
-        {group.count} question{group.count !== 1 ? 's' : ''}
-      </div>
-    </button>
-  )
-}
-
-function HomeScreen({ user, examType, onExamTypeChange, yearLevel, onYearLevelChange, score, totalAnswered, topicStats, subtopicStats, onSelectTopic, onUpgrade, canAccessAllExams = true, testGroups = [], onSelectTest }) {
+function HomeScreen({ user, examType, onExamTypeChange, yearLevel, onYearLevelChange, score, totalAnswered, topicStats, subtopicStats, onSelectTopic, onUpgrade, canAccessAllExams = true, testGroups = [], onTestTileClick }) {
   const totalCorrect = Object.values(topicStats).reduce((a, v) => a + v.correct, 0)
   const topicList = EXAM_TOPICS[examType] || EXAM_TOPICS.OC
   const [showComingSoon, setShowComingSoon] = useState(null) // stores the exam label
@@ -1341,15 +1314,30 @@ function HomeScreen({ user, examType, onExamTypeChange, yearLevel, onYearLevelCh
         </div>
       </div>
 
-      {testGroups.length > 0 && onSelectTest && (
+      {testGroups.length > 0 && onTestTileClick && (
         <div style={{ marginBottom: 4 }}>
           <div style={{ fontFamily: 'Nunito', fontWeight: 800, fontSize: '0.95rem', marginBottom: 4, color: '#1E293B' }}>Practice Tests</div>
-          <div style={{ fontSize: '0.8rem', color: '#64748B', marginBottom: 12 }}>Pick a test to practice questions from that paper.</div>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            {testGroups.map((g, i) => (
-              <TestTile key={i} group={g} onSelectTest={onSelectTest} />
-            ))}
-          </div>
+          <div style={{ fontSize: '0.8rem', color: '#64748B', marginBottom: 14 }}>Attempt a full test paper by topic.</div>
+          {testGroups.map((g, gi) => {
+            const isPast = g.question_source === 'past_paper'
+            const groupLabel = isPast ? `📄 ${g.paper_year || 'Past Paper'}` : '🧪 Sample Test'
+            return (
+              <div key={gi} className={`paper-group${isPast ? ' paper-group--past' : ' paper-group--sample'}`}>
+                <div className="paper-group-header">
+                  <span>{groupLabel}</span>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#94A3B8' }}>{g.total_count} questions</span>
+                </div>
+                <div className="paper-topic-tiles">
+                  {g.topics.map((t, ti) => (
+                    <button key={ti} className="paper-topic-tile" onClick={() => onTestTileClick(g, t)}>
+                      <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#1E293B', marginBottom: 2 }}>{t.topic_name}</div>
+                      <div style={{ fontSize: '0.73rem', color: '#64748B' }}>{t.count} questions</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
@@ -1547,6 +1535,186 @@ function QuestionView({ question, questionNumber, topicStats, examType, onAnswer
 
 // ── MAIN APP ──────────────────────────────────────────────────
 
+// ── PRACTICE TEST COMPONENTS ──────────────────────────────────
+
+function TestConfirmModal({ group, topic, onConfirm, onCancel }) {
+  const isPast = group.question_source === 'past_paper'
+  const paperLabel = isPast ? `${group.paper_year || 'Past Paper'} Past Paper` : 'Sample Test'
+  return (
+    <div className="test-confirm-backdrop" onClick={onCancel}>
+      <div className="test-confirm-modal" onClick={e => e.stopPropagation()}>
+        <button style={{ position: 'absolute', top: 12, right: 14, background: 'none', border: 'none', fontSize: '1.1rem', cursor: 'pointer', color: '#94A3B8' }} onClick={onCancel}>✕</button>
+        <div style={{ fontSize: '2rem', marginBottom: 10 }}>📝</div>
+        <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#1E293B', marginBottom: 6 }}>Start Test</div>
+        <div style={{ fontSize: '0.88rem', color: '#475569', marginBottom: 4 }}><strong>{paperLabel}</strong></div>
+        <div style={{ fontSize: '0.88rem', color: '#475569', marginBottom: 16 }}>Topic: <strong>{topic.topic_name}</strong></div>
+        <div style={{ fontSize: '0.82rem', color: '#64748B', marginBottom: 20 }}>{topic.count} questions · Work through them all at your own pace</div>
+        <button className="btn btn-primary" style={{ width: '100%', marginBottom: 8 }} onClick={onConfirm}>▶ Start Test</button>
+        <button className="btn btn-secondary" style={{ width: '100%' }} onClick={onCancel}>Cancel</button>
+      </div>
+    </div>
+  )
+}
+
+function TestSession({ questions, label, idToken, onFinish }) {
+  const [current, setCurrent] = useState(0)
+  const [answers, setAnswers] = useState({})
+  const [revealed, setRevealed] = useState({})
+
+  const q = questions[current]
+  const totalQ = questions.length
+  const answered = Object.keys(answers).length
+  const pct = Math.round((answered / totalQ) * 100)
+
+  function selectAnswer(idx) {
+    if (revealed[current]) return
+    setAnswers(prev => ({ ...prev, [current]: idx }))
+    setRevealed(prev => ({ ...prev, [current]: true }))
+    if (q.id && idToken) {
+      fetch('/api/record-response', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken },
+        body: JSON.stringify({ questionId: q.id, selectedOption: idx, responseTimeSeconds: null }),
+      }).catch(() => {})
+    }
+  }
+
+  return (
+    <div className="question-card" style={{ paddingBottom: 24 }}>
+      <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748B', marginBottom: 10 }}>{label}</div>
+      <div className="test-progress-wrap">
+        <div className="test-progress-row">
+          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748B' }}>Question {current + 1} of {totalQ}</span>
+          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748B' }}>{answered} answered</span>
+        </div>
+        <div className="test-progress-track">
+          <div className="test-progress-fill" style={{ width: pct + '%' }} />
+        </div>
+      </div>
+
+      <div className="question-body">
+        {q.visual && <pre className="visual-block">{q.visual}</pre>}
+        {q.image_urls?.length > 0 && (
+          <div style={{ marginBottom: 12 }}>
+            {q.image_urls.map((url, i) => (
+              <img key={i} src={url} alt="Question visual" style={{ maxWidth: '100%', borderRadius: 8, marginBottom: 6 }} />
+            ))}
+          </div>
+        )}
+        <div className="question-text">{q.question}</div>
+        <div className="options-list">
+          {q.options.map((opt, i) => {
+            const isSelected = answers[current] === i
+            const isCorrect = i === q.correct
+            let cls = 'option-btn'
+            if (revealed[current]) {
+              if (isCorrect) cls += ' option-correct'
+              else if (isSelected) cls += ' option-wrong'
+            } else if (isSelected) {
+              cls += ' option-selected'
+            }
+            return (
+              <button key={i} className={cls} onClick={() => selectAnswer(i)} disabled={!!revealed[current]}>
+                <span className="option-letter">{String.fromCharCode(65 + i)}</span>
+                <span>{opt}</span>
+              </button>
+            )
+          })}
+        </div>
+        {revealed[current] && q.explanation && (
+          <div className="explanation-box">
+            <strong>Explanation:</strong> {q.explanation}
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', gap: 10, marginTop: 16, justifyContent: 'space-between', alignItems: 'center' }}>
+        <button className="btn btn-secondary" onClick={() => setCurrent(c => c - 1)} disabled={current === 0}>← Prev</button>
+        {current < totalQ - 1 ? (
+          <button className="btn btn-primary" onClick={() => setCurrent(c => c + 1)}>Next →</button>
+        ) : (
+          answered === totalQ
+            ? <button className="btn btn-primary" style={{ background: 'var(--green)' }} onClick={() => onFinish(answers)}>Submit & See Results</button>
+            : <button className="btn btn-primary" onClick={() => {
+                // Jump to first unanswered
+                const firstUnanswered = questions.findIndex((_, i) => answers[i] === undefined)
+                if (firstUnanswered !== -1) setCurrent(firstUnanswered)
+              }}>Go to Unanswered</button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function TestResultsScreen({ questions, answers, label, onReturnHome }) {
+  const totalQ = questions.length
+  const correct = questions.filter((q, i) => answers[i] === q.correct).length
+  const pct = Math.round((correct / totalQ) * 100)
+  const pass = pct >= 60
+  const [reviewMode, setReviewMode] = useState(false)
+  const wrongQuestions = questions.map((q, i) => ({ q, i })).filter(({ i }) => answers[i] !== questions[i].correct)
+
+  if (reviewMode) {
+    return (
+      <div className="question-card">
+        <div style={{ fontWeight: 800, fontSize: '1rem', color: '#1E293B', marginBottom: 16 }}>
+          ❌ Reviewing Wrong Answers ({wrongQuestions.length})
+        </div>
+        {wrongQuestions.map(({ q, i }) => (
+          <div key={i} style={{ marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid var(--border)' }}>
+            <div style={{ fontWeight: 600, fontSize: '0.88rem', marginBottom: 6, color: '#1E293B' }}>Q{i + 1}: {q.question}</div>
+            {q.visual && <pre className="visual-block" style={{ fontSize: '0.78rem' }}>{q.visual}</pre>}
+            <div style={{ fontSize: '0.82rem', color: 'var(--red)', marginBottom: 2 }}>
+              ✗ Your answer: {q.options[answers[i]] ?? '(not answered)'}
+            </div>
+            <div className="test-result-correct-ans">✓ Correct: {q.options[q.correct]}</div>
+            {q.explanation && (
+              <div style={{ fontSize: '0.82rem', color: '#475569', marginTop: 6, lineHeight: 1.5 }}>{q.explanation}</div>
+            )}
+          </div>
+        ))}
+        <button className="btn btn-secondary" style={{ width: '100%', marginTop: 8 }} onClick={() => setReviewMode(false)}>← Back to Results</button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="question-card">
+      <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748B', marginBottom: 12 }}>{label}</div>
+      <div className="test-results-header">
+        <div className={`test-score-ring${pass ? ' test-score-ring--pass' : ' test-score-ring--fail'}`}>
+          <span style={{ fontSize: '1.6rem', fontWeight: 900 }}>{pct}%</span>
+          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: pass ? '#166534' : '#991B1B', marginTop: 2 }}>{pass ? 'PASS' : 'KEEP TRYING'}</span>
+        </div>
+        <div style={{ fontSize: '0.92rem', color: '#64748B', marginTop: 10 }}>{correct} out of {totalQ} correct</div>
+      </div>
+      <div style={{ margin: '20px 0' }}>
+        {questions.map((q, i) => {
+          const isCorrect = answers[i] === q.correct
+          return (
+            <div key={i} className="test-result-row">
+              <span className={`test-result-icon${isCorrect ? ' test-result-icon--correct' : ' test-result-icon--wrong'}`}>
+                {isCorrect ? '✓' : '✗'}
+              </span>
+              <span style={{ fontSize: '0.82rem', color: '#475569', flex: 1 }}>
+                Q{i + 1}: {q.question.slice(0, 72)}{q.question.length > 72 ? '…' : ''}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+      <div style={{ display: 'flex', gap: 10, flexDirection: 'column' }}>
+        {wrongQuestions.length > 0 && (
+          <button className="btn btn-primary" style={{ background: '#EF4444' }} onClick={() => setReviewMode(true)}>
+            Review Wrong Answers ({wrongQuestions.length})
+          </button>
+        )}
+        <button className="btn btn-secondary" onClick={onReturnHome}>← Back to Home</button>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
   // Initialize session from localStorage if available
   const getInitialSession = () => {
@@ -1592,6 +1760,9 @@ export default function App() {
   const [subscriptionFeatures, setSubscriptionFeatures] = useState(null)
   const [testFilter, setTestFilter] = useState(null) // { source, paper_year, label } | null
   const [testGroups, setTestGroups] = useState([])
+  const [confirmModal, setConfirmModal] = useState(null) // { group, topic } | null
+  const [testSession, setTestSession] = useState(null)   // { questions, label } | null
+  const [testResults, setTestResults] = useState(null)   // { questions, answers, label } | null
 
   const baseTopics = EXAM_TOPICS[examType] || EXAM_TOPICS.OC
   const currentTopics = baseTopics.map(t => ({ ...t, subtopics: dynamicSubtopics[t.id] || [] }))
@@ -2049,6 +2220,34 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
     setTestFilter(null)
   }
 
+  function openTestConfirmModal(group, topic) {
+    setConfirmModal({ group, topic })
+  }
+
+  async function startTestSession(group, topic) {
+    setConfirmModal(null)
+    const params = new URLSearchParams({ examType, source: group.question_source, topicId: topic.topic_id })
+    if (group.question_source === 'past_paper' && group.paper_year) params.set('paperYear', group.paper_year)
+    try {
+      const res = await fetch(`/api/test-questions?${params}`, {
+        headers: { Authorization: 'Bearer ' + session.idToken }
+      })
+      const data = await res.json()
+      if (!res.ok || !data.questions?.length) {
+        alert(data.error || 'No questions found for this test.')
+        return
+      }
+      const isPast = group.question_source === 'past_paper'
+      const label = isPast
+        ? `${group.paper_year || 'Past Paper'} Past Paper — ${topic.topic_name}`
+        : `Sample Test — ${topic.topic_name}`
+      setTestSession({ questions: data.questions, label })
+      setTestResults(null)
+    } catch {
+      alert('Failed to load test questions. Please try again.')
+    }
+  }
+
   // ── RENDER SCREENS ──────────────────────────────────────────
   if (screen === 'landing') return <LandingScreen onSignIn={() => setScreen('auth')} referralConfig={referralConfig} subscriptionFeatures={subscriptionFeatures} />
   if (screen === 'auth') return <AuthScreen />
@@ -2167,6 +2366,14 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
       </header>
 
       <StreakCelebration celebration={celebration} />
+      {confirmModal && (
+        <TestConfirmModal
+          group={confirmModal.group}
+          topic={confirmModal.topic}
+          onConfirm={() => startTestSession(confirmModal.group, confirmModal.topic)}
+          onCancel={() => setConfirmModal(null)}
+        />
+      )}
       {showReferralModal && session.user?.referral_code && (
         <ReferralModal user={session.user} idToken={session.idToken} referralConfig={referralConfig} onClose={() => setShowReferralModal(false)} />
       )}
@@ -2191,8 +2398,31 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
           />
           </div>
           <div className="main">
+            {/* Test Session */}
+            {testSession && !testResults && (
+              <TestSession
+                questions={testSession.questions}
+                label={testSession.label}
+                idToken={session.idToken}
+                onFinish={answers => {
+                  setTestResults({ questions: testSession.questions, answers, label: testSession.label })
+                  setTestSession(null)
+                }}
+              />
+            )}
+
+            {/* Test Results */}
+            {testResults && (
+              <TestResultsScreen
+                questions={testResults.questions}
+                answers={testResults.answers}
+                label={testResults.label}
+                onReturnHome={() => setTestResults(null)}
+              />
+            )}
+
             {/* Home */}
-            {!currentTopic && !loadingQuestion && (
+            {!testSession && !testResults && !currentTopic && !loadingQuestion && (
               <div className="home-with-dates">
                 <HomeScreen
                   user={user}
@@ -2208,18 +2438,14 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
                   onUpgrade={() => setScreen('plans')}
                   canAccessAllExams={perms.all_exams}
                   testGroups={testGroups}
-                  onSelectTest={(source, paper_year) => {
-                    const filter = { source, paper_year }
-                    setTestFilter(filter)
-                    generateQuestion(null, null, filter)
-                  }}
+                  onTestTileClick={openTestConfirmModal}
                 />
                 <ExamDatesPanel examType={examType} />
               </div>
             )}
 
             {/* Loading */}
-            {loadingQuestion && (
+            {!testSession && !testResults && loadingQuestion && (
               <div className="loading-card">
                 <div className="spinner" />
                 <div className="loading-text">Loading your next {currentTopic === '__test__' ? (testFilter ? (testFilter.source === 'past_paper' ? (testFilter.paper_year ? `${testFilter.paper_year} Past Paper` : 'Past Paper') : 'Sample Test') : 'practice') : currentTopics.find(t => t.id === currentTopic)?.name} question...</div>
@@ -2227,7 +2453,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
             )}
 
             {/* Error */}
-            {!loadingQuestion && questionError && (
+            {!testSession && !testResults && !loadingQuestion && questionError && (
               <div className="question-card">
                 <div className="question-body">
                   {questionError.startsWith('QUESTION_LIMIT:') ? (
@@ -2287,7 +2513,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
             )}
 
             {/* Question */}
-            {!loadingQuestion && !questionError && question && (
+            {!testSession && !testResults && !loadingQuestion && !questionError && question && (
               <QuestionView
                 question={question}
                 questionNumber={totalAnswered + 1}
