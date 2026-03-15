@@ -31,7 +31,7 @@ export async function GET(request) {
       .eq('topic_id', topicId)
       .eq('question_source', source)
 
-    if (source === 'past_paper' && paperYear) {
+    if (paperYear) {
       query = query.eq('paper_year', paperYear)
     }
 

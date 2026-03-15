@@ -2239,7 +2239,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
   async function startTestSession(group, topic) {
     setConfirmModal(null)
     const params = new URLSearchParams({ examType, source: group.question_source, topicId: topic.topic_id })
-    if (group.question_source === 'past_paper' && group.paper_year) params.set('paperYear', group.paper_year)
+    if (group.paper_year) params.set('paperYear', group.paper_year)
     try {
       const res = await fetch(`/api/test-questions?${params}`, {
         headers: { Authorization: 'Bearer ' + session.idToken }
@@ -2252,7 +2252,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
       const isPast = group.question_source === 'past_paper'
       const label = isPast
         ? `${group.paper_year || 'Past Paper'} Past Paper — ${topic.topic_name}`
-        : `Sample Test — ${topic.topic_name}`
+        : `Practice Test${group.paper_year ? ` #${group.paper_year}` : ''} — ${topic.topic_name}`
       setTestSession({ questions: data.questions, label })
       setTestResults(null)
     } catch {
