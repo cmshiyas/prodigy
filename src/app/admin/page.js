@@ -229,6 +229,8 @@ function SubscriptionFeaturesEditor({ idToken }) {
   const [values, setValues] = useState(null)
   const [saving, setSaving] = useState(null)
   const [saved, setSaved]   = useState(null)
+  const [savingAll, setSavingAll] = useState(false)
+  const [savedAll, setSavedAll]   = useState(false)
 
   useEffect(() => {
     fetch('/api/admin?action=config', { headers: { Authorization: 'Bearer ' + idToken } })
@@ -264,11 +266,33 @@ function SubscriptionFeaturesEditor({ idToken }) {
     saveKey(key, newVal)
   }
 
+  const saveAll = async () => {
+    setSavingAll(true)
+    try {
+      await Promise.all(Object.keys(values).map(key =>
+        fetch('/api/admin?action=config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+          body: JSON.stringify({ key, value: values[key] }),
+        })
+      ))
+      setSavedAll(true); setTimeout(() => setSavedAll(false), 2000)
+    } catch (err) { alert('Failed: ' + err.message) }
+    finally { setSavingAll(false) }
+  }
+
   if (!values) return <div style={{ padding: 24, color: '#64748b' }}>Loading subscription config...</div>
 
   return (
     <div style={{ padding: '20px 24px' }}>
-      <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1.05rem', marginBottom: 4 }}>Subscription Plan Features</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+        <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1.05rem' }}>Subscription Plan Features</div>
+        <button
+          onClick={saveAll}
+          disabled={savingAll}
+          style={{ padding: '4px 14px', fontSize: '0.78rem', background: savedAll ? '#22C55E' : '#334155', color: 'white', border: 'none', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 800, cursor: 'pointer' }}
+        >{savingAll ? 'Saving…' : savedAll ? '✓ Saved All' : 'Save All'}</button>
+      </div>
       <div style={{ fontSize: '0.8rem', color: '#7A5C3F', marginBottom: 20 }}>Configure daily question limits and feature access per tier. Changes take effect immediately.</div>
 
       {/* Question Limits */}
