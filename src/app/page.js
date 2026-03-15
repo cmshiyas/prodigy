@@ -761,9 +761,9 @@ function ReferralModal({ user, idToken, referralConfig = {}, onClose }) {
       <div className="trial-modal">
         <button className="trial-modal-close" onClick={onClose}>✕</button>
         <div className="trial-modal-icon">🎁</div>
-        <div className="trial-modal-title">Refer a Friend</div>
+        <div className="trial-modal-title">Get Premium — Free!</div>
         <div className="trial-modal-body">
-          Share your link — when a friend signs up, you both help grow the community!
+          We're in <strong>beta</strong> — and you can unlock Gold or Platinum access completely free, just by inviting friends. No credit card. No catch.
         </div>
         <div className="referral-modal-stat">
           <div className="referral-modal-stat-num">{referralCount === null ? '…' : referralCount}</div>
@@ -1019,7 +1019,6 @@ function PlansScreen({ user, idToken, onHome, onReferFriend, onTierUpgrade, refe
   const [promoCode, setPromoCode] = useState('')
   const [promoStatus, setPromoStatus] = useState(null)
   const [promoLoading, setPromoLoading] = useState(false)
-  const [checkoutLoading, setCheckoutLoading] = useState(null) // tier being loaded
 
   async function redeemPromo() {
     if (!promoCode.trim()) return
@@ -1046,22 +1045,6 @@ function PlansScreen({ user, idToken, onHome, onReferFriend, onTierUpgrade, refe
     }
   }
 
-  async function startCheckout(tier) {
-    setCheckoutLoading(tier)
-    try {
-      const res = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
-        body: JSON.stringify({ tier }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      window.location.href = data.url
-    } catch (err) {
-      alert('Could not start checkout: ' + err.message)
-      setCheckoutLoading(null)
-    }
-  }
 
   return (
     <div className="plans-screen">
@@ -1111,10 +1094,9 @@ function PlansScreen({ user, idToken, onHome, onReferFriend, onTierUpgrade, refe
                 <button
                   className={`btn btn-primary plan-upgrade-btn${plan.tier === 'platinum' ? ' plan-upgrade-btn--platinum' : ''}`}
                   style={plan.tier === 'gold' ? { background: '#F59E0B', borderColor: '#F59E0B', color: '#fff' } : {}}
-                  onClick={() => startCheckout(plan.tier)}
-                  disabled={checkoutLoading === plan.tier}
+                  onClick={() => onReferFriend && onReferFriend()}
                 >
-                  {checkoutLoading === plan.tier ? 'Redirecting...' : `Upgrade to ${plan.label}`}
+                  🎁 Get {plan.label} Free
                 </button>
               )}
             </div>
@@ -1145,7 +1127,7 @@ function PlansScreen({ user, idToken, onHome, onReferFriend, onTierUpgrade, refe
       </div>
 
       <p className="plans-note">
-        Invite friends using your referral link and unlock free premium access — {goldCount} friends gets you Gold ({goldBenefit}), {platinumCount} friends gets you Platinum ({platinumBenefit}). Subscriptions are billed monthly and can be cancelled anytime.
+        🚀 We're in beta! Invite friends using your referral link to unlock premium access for free — {goldCount} friend{goldCount !== 1 ? 's' : ''} gets you Gold, {platinumCount} get{platinumCount === 1 ? 's' : ''} you Platinum. No payment needed during beta.
       </p>
       {showTrialModal && <TrialModal onClose={() => setShowTrialModal(false)} onReferFriend={onReferFriend} idToken={idToken} onTierUpgrade={onTierUpgrade} referralConfig={referralConfig} />}
     </div>
@@ -1892,14 +1874,17 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
   if (screen === 'auth') return <AuthScreen />
   if (screen === 'pending') return <PendingScreen email={session.user?.email} onSignOut={handleSignOut} />
   if (screen === 'rejected') return <RejectedScreen onSignOut={handleSignOut} />
-  if (screen === 'history') return <HistoryScreen user={session.user} idToken={session.idToken} examType={examType} onExamTypeChange={setExamType} onHome={() => setScreen('app')} onRanking={() => setScreen('ranking')} />
-  if (screen === 'ranking') return <RankingScreen user={session.user} idToken={session.idToken} onHome={() => setScreen('app')} onHistory={() => setScreen('history')} />
+  if (screen === 'history') return <HistoryScreen user={session.user} idToken={session.idToken} examType={examType} onExamTypeChange={setExamType} onHome={() => setScreen('app')} onRanking={() => setScreen('ranking')} onPlans={() => setScreen('plans')} />
+  if (screen === 'ranking') return <RankingScreen user={session.user} idToken={session.idToken} onHome={() => setScreen('app')} onHistory={() => setScreen('history')} onPlans={() => setScreen('plans')} />
   if (screen === 'plans') return (
     <div>
       <header>
         <div className="logo" style={{ cursor: 'pointer' }} onClick={() => setScreen('app')}>Self Paced Learning <span>Practice · Consistency · Feedback</span></div>
         <div className="header-right">
           <button className="nav-btn" onClick={() => setScreen('app')}>Home</button>
+          <button className="nav-btn" onClick={() => setScreen('history')}>History</button>
+          <button className="nav-btn" onClick={() => setScreen('ranking')}>Ranking</button>
+          <button className="nav-btn active">Plans</button>
         </div>
       </header>
       <div style={{ maxWidth: 1100, margin: '2rem auto', padding: '0 1.5rem' }}>

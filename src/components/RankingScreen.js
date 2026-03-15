@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { EXAM_TYPES } from '../lib/constants'
 
-export default function RankingScreen({ user, idToken, onHome, onHistory }) {
+export default function RankingScreen({ user, idToken, onHome, onHistory, onPlans }) {
   const [rankings, setRankings] = useState([])
   const [subtopicStats, setSubtopicStats] = useState({})
   const [examType, setExamType] = useState('OC')
@@ -42,42 +42,48 @@ export default function RankingScreen({ user, idToken, onHome, onHistory }) {
     }
   }
 
+  const NavHeader = () => (
+    <header>
+      <div className="logo" onClick={onHome} style={{ cursor: 'pointer' }}>Self Paced Learning <span>Practice · Consistency · Feedback</span></div>
+      <div className="header-right">
+        <button className="nav-btn" onClick={onHome}>Home</button>
+        <button className="nav-btn" onClick={onHistory}>History</button>
+        <button className="nav-btn active">Ranking</button>
+        {!user.is_admin && <button className="nav-btn nav-btn--plans" onClick={onPlans}>Plans</button>}
+        <div className="user-pill">
+          {user.picture && <img src={user.picture} className="user-avatar" alt="" />}
+          <span>{user.name.split(' ')[0]}</span>
+        </div>
+      </div>
+    </header>
+  )
+
+  const ExamFilter = () => (
+    <div style={{ margin: '16px 0', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      {EXAM_TYPES.map(item => (
+        <button
+          key={item.id}
+          onClick={() => setExamType(item.id)}
+          style={{
+            border: '1.5px solid #E5E7EB',
+            borderRadius: 999,
+            padding: '6px 12px',
+            background: examType === item.id ? '#FFEDD5' : 'white',
+            fontWeight: 700,
+            cursor: 'pointer'
+          }}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+  )
+
   if (loading) {
     return (
       <div>
-        {/* HEADER */}
-        <header>
-          <div className="logo" onClick={onHome} style={{ cursor: 'pointer' }}>Self Paced Learning <span>Practice · Consistency · Feedback</span></div>
-          <div className="header-right">
-            <button className="nav-btn" onClick={onHome}>Home</button>
-            <button className="nav-btn" onClick={onHistory}>History</button>
-            <button className="nav-btn active">Ranking</button>
-            <div className="user-pill">
-              {user.picture && <img src={user.picture} className="user-avatar" alt="" />}
-              <span>{user.name.split(' ')[0]}</span>
-            </div>
-          </div>
-        </header>
-
-        <div style={{ margin: '16px 0', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {EXAM_TYPES.map(item => (
-            <button
-              key={item.id}
-              onClick={() => setExamType(item.id)}
-              style={{
-                border: '1.5px solid #E5E7EB',
-                borderRadius: 999,
-                padding: '6px 12px',
-                background: examType === item.id ? '#FFEDD5' : 'white',
-                fontWeight: 700,
-                cursor: 'pointer'
-              }}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-
+        <NavHeader />
+        <ExamFilter />
         <div className="screen">
           <div className="loading">Loading rankings...</div>
         </div>
@@ -87,21 +93,9 @@ export default function RankingScreen({ user, idToken, onHome, onHistory }) {
 
   return (
     <div>
-      {/* HEADER */}
-      <header>
-        <div className="logo" onClick={onHome} style={{ cursor: 'pointer' }}>Self Paced Learning <span>Practice · Consistency · Feedback</span></div>
-        <div className="header-right">
-          <button className="nav-btn" onClick={onHome}>Home</button>
-          <button className="nav-btn" onClick={onHistory}>History</button>
-          <button className="nav-btn active">Ranking</button>
-          <div className="user-pill">
-            {user.picture && <img src={user.picture} className="user-avatar" alt="" />}
-            <span>{user.name.split(' ')[0]}</span>
-          </div>
-        </div>
-      </header>
-
+      <NavHeader />
       <div className="screen">
+        <ExamFilter />
         <div className="ranking-container">
           {rankings.length === 0 ? (
             <div className="empty-state">

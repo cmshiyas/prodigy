@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { EXAM_TYPES } from '../lib/constants'
 
-export default function HistoryScreen({ user, idToken, examType, onExamTypeChange, onHome, onRanking }) {
+export default function HistoryScreen({ user, idToken, examType, onExamTypeChange, onHome, onRanking, onPlans }) {
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -25,42 +25,49 @@ export default function HistoryScreen({ user, idToken, examType, onExamTypeChang
     }
   }
 
+  const NavHeader = () => (
+    <header>
+      <div className="logo" onClick={onHome} style={{ cursor: 'pointer' }}>Self Paced Learning <span>Practice · Consistency · Feedback</span></div>
+      <div className="header-right">
+        <button className="nav-btn" onClick={onHome}>Home</button>
+        <button className="nav-btn active">History</button>
+        <button className="nav-btn" onClick={onRanking}>Ranking</button>
+        {!user.is_admin && <button className="nav-btn nav-btn--plans" onClick={onPlans}>Plans</button>}
+        <div className="user-pill">
+          {user.picture && <img src={user.picture} className="user-avatar" alt="" />}
+          <span>{user.name.split(' ')[0]}</span>
+        </div>
+      </div>
+    </header>
+  )
+
+  const ExamFilter = () => (
+    <div style={{ margin: '16px 0', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      {EXAM_TYPES.map(item => (
+        <button
+          key={item.id}
+          onClick={() => onExamTypeChange(item.id)}
+          style={{
+            border: '1.5px solid #E5E7EB',
+            borderRadius: 999,
+            padding: '6px 12px',
+            background: examType === item.id ? '#FFEDD5' : 'white',
+            fontWeight: 700,
+            cursor: 'pointer'
+          }}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+  )
+
   if (loading) {
     return (
       <div>
-        {/* HEADER */}
-        <header>
-          <div className="logo" onClick={onHome} style={{ cursor: 'pointer' }}>Self Paced Learning <span>Practice · Consistency · Feedback</span></div>
-          <div className="header-right">
-            <button className="nav-btn" onClick={onHome}>Home</button>
-            <button className="nav-btn active">History</button>
-            <button className="nav-btn" onClick={onRanking}>Ranking</button>
-            <div className="user-pill">
-              {user.picture && <img src={user.picture} className="user-avatar" alt="" />}
-              <span>{user.name.split(' ')[0]}</span>
-            </div>
-          </div>
-        </header>
-
+        <NavHeader />
         <div className="screen">
-          <div style={{ margin: '16px 0', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {EXAM_TYPES.map(item => (
-              <button
-                key={item.id}
-                onClick={() => onExamTypeChange(item.id)}
-                style={{
-                  border: '1.5px solid #E5E7EB',
-                  borderRadius: 999,
-                  padding: '6px 12px',
-                  background: examType === item.id ? '#FFEDD5' : 'white',
-                  fontWeight: 700,
-                  cursor: 'pointer'
-                }}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
+          <ExamFilter />
           <div className="loading">Loading history...</div>
         </div>
       </div>
@@ -69,39 +76,9 @@ export default function HistoryScreen({ user, idToken, examType, onExamTypeChang
 
   return (
     <div>
-      {/* HEADER */}
-      <header>
-        <div className="logo" onClick={onHome} style={{ cursor: 'pointer' }}>Self Paced Learning <span>Practice · Consistency · Feedback</span></div>
-        <div className="header-right">
-          <button className="nav-btn" onClick={onHome}>Home</button>
-          <button className="nav-btn active">History</button>
-          <button className="nav-btn" onClick={onRanking}>Ranking</button>
-          <div className="user-pill">
-            {user.picture && <img src={user.picture} className="user-avatar" alt="" />}
-            <span>{user.name.split(' ')[0]}</span>
-          </div>
-        </div>
-      </header>
-
+      <NavHeader />
       <div className="screen">
-        <div style={{ margin: '16px 0', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {EXAM_TYPES.map(item => (
-            <button
-              key={item.id}
-              onClick={() => onExamTypeChange(item.id)}
-              style={{
-                border: '1.5px solid #E5E7EB',
-                borderRadius: 999,
-                padding: '6px 12px',
-                background: examType === item.id ? '#FFEDD5' : 'white',
-                fontWeight: 700,
-                cursor: 'pointer'
-              }}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+        <ExamFilter />
         <div className="history-container">
           {history.length === 0 ? (
             <div className="empty-state">
