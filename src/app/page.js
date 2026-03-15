@@ -1256,7 +1256,7 @@ function ExamDatesPanel({ examType }) {
   )
 }
 
-function HomeScreen({ user, examType, onExamTypeChange, yearLevel, onYearLevelChange, score, totalAnswered, topicStats, subtopicStats, onSelectTopic, onUpgrade }) {
+function HomeScreen({ user, examType, onExamTypeChange, yearLevel, onYearLevelChange, score, totalAnswered, topicStats, subtopicStats, onSelectTopic, onUpgrade, canAccessAllExams = true }) {
   const totalCorrect = Object.values(topicStats).reduce((a, v) => a + v.correct, 0)
   const topicList = EXAM_TOPICS[examType] || EXAM_TOPICS.OC
   const [showComingSoon, setShowComingSoon] = useState(null) // stores the exam label
@@ -1284,19 +1284,23 @@ function HomeScreen({ user, examType, onExamTypeChange, yearLevel, onYearLevelCh
       <div className="exam-row" style={{ marginBottom: 16 }}>
         {EXAM_TYPES.map(item => {
           const comingSoon = COMING_SOON_EXAMS.has(item.id)
+          const locked = !canAccessAllExams && item.id !== 'OC'
           return (
             <button
               key={item.id}
               onClick={() => {
+                if (locked) { onUpgrade(); return }
                 if (comingSoon) { setShowComingSoon(item.label); return }
                 onExamTypeChange(item.id)
                 if (typeof window !== 'undefined') localStorage.setItem('oc-trainer-examType', item.id)
               }}
-              className={`exam-chip${examType === item.id ? ' active' : ''}${comingSoon ? ' exam-chip--soon' : ''}`}
+              className={`exam-chip${examType === item.id ? ' active' : ''}${comingSoon ? ' exam-chip--soon' : ''}${locked ? ' exam-chip--locked' : ''}`}
               style={{ marginRight: 8 }}
-              title={comingSoon ? 'Coming soon' : undefined}
+              title={locked ? 'Upgrade to Gold or above' : comingSoon ? 'Coming soon' : undefined}
             >
-              {item.label}{comingSoon && <span className="exam-chip-soon-badge">Soon</span>}
+              {item.label}
+              {locked && <span className="exam-chip-lock-badge">🔒</span>}
+              {!locked && comingSoon && <span className="exam-chip-soon-badge">Soon</span>}
             </button>
           )
         })}
@@ -1587,6 +1591,7 @@ export default function App() {
   const [showReferralModal, setShowReferralModal] = useState(false)
   const [referralCount, setReferralCount] = useState(0)
   const [referralConfig, setReferralConfig] = useState({ goldCount: 3, platinumCount: 5, goldBenefit: 'Free Gold access — permanently', platinumBenefit: 'Free Platinum access — permanently' })
+  const [subscriptionFeatures, setSubscriptionFeatures] = useState(null)
 
   const baseTopics = EXAM_TOPICS[examType] || EXAM_TOPICS.OC
   const currentTopics = baseTopics.map(t => ({ ...t, subtopics: dynamicSubtopics[t.id] || [] }))
@@ -1644,6 +1649,14 @@ export default function App() {
     fetch('/api/public-config')
       .then(r => r.json())
       .then(data => { if (data.goldCount) setReferralConfig(data) })
+      .catch(() => {})
+  }, [])
+
+  // Fetch subscription features at mount (public, no auth)
+  useEffect(() => {
+    fetch('/api/subscription-features', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(data => { if (data.features) setSubscriptionFeatures(data) })
       .catch(() => {})
   }, [])
 
@@ -2061,7 +2074,15 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
   )
 
   const { user, tokensUsedToday } = session
-  const perms = TIER_PERMISSIONS[user.tier] || TIER_PERMISSIONS.silver
+  const dbFeatures = subscriptionFeatures?.features?.[user.tier]
+  const fallbackPerms = TIER_PERMISSIONS[user.tier] || TIER_PERMISSIONS.silver
+  const perms = {
+    subtopics: dbFeatures ? dbFeatures.analytics  : fallbackPerms.subtopics,
+    history:   dbFeatures ? dbFeatures.history     : fallbackPerms.history,
+    ranking:   fallbackPerms.ranking,
+    streaks:   fallbackPerms.streaks,
+    all_exams: dbFeatures ? dbFeatures.all_exams   : (user.tier !== 'silver'),
+  }
 
   return (
     <div>
@@ -2168,6 +2189,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
                   subtopicStats={subtopicStats}
                   onSelectTopic={generateQuestion}
                   onUpgrade={() => setScreen('plans')}
+                  canAccessAllExams={perms.all_exams}
                 />
                 <ExamDatesPanel examType={examType} />
               </div>
