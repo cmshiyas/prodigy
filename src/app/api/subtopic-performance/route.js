@@ -66,7 +66,7 @@ export async function GET(request) {
     })
 
     return NextResponse.json(
-      { subtopicStats, topicStats, _debug_user_id: user.id, _debug_email: user.email },
+      { subtopicStats, topicStats, _debug_user_id: user.id, _debug_email: user.email, _debug_google_id: user.google_id },
       { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } }
     )
   } catch (err) {
