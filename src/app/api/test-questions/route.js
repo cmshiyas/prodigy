@@ -29,7 +29,13 @@ export async function GET(request) {
       .select('id, question, visual, options, correct, explanation, difficulty, topic_id, subtopic, image_url, image_urls')
       .eq('exam_type', examType)
       .eq('topic_id', topicId)
-      .eq('question_source', source)
+
+    // Treat NULL question_source as 'sample' (legacy rows uploaded before the column existed)
+    if (source === 'sample') {
+      query = query.or('question_source.eq.sample,question_source.is.null')
+    } else {
+      query = query.eq('question_source', source)
+    }
 
     if (paperYear) {
       query = query.eq('paper_year', paperYear)
