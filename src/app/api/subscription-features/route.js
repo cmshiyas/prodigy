@@ -17,10 +17,13 @@ const FEATURE_DEFAULTS = {
 
 export async function GET() {
   const supabase = getSupabase()
-  const { data } = await supabase.from('config').select('key, value')
+  const { data, error } = await supabase.from('config').select('key, value')
+
+  if (error) console.error('[subscription-features] config fetch error:', error)
 
   const map = {}
   ;(data || []).forEach(({ key, value }) => { map[key] = value })
+  console.log('[subscription-features] config keys found:', Object.keys(map).filter(k => k.startsWith('feature_') || k.startsWith('question_limit_')))
 
   const questionLimits = {}
   TIERS.forEach(tier => {
