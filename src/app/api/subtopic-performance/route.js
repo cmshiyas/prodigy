@@ -63,7 +63,7 @@ export async function GET(request) {
       }
     })
 
-    return NextResponse.json({ subtopicStats, topicStats })
+    return NextResponse.json({ subtopicStats, topicStats, _debug_user_id: user.id, _debug_email: user.email })
   } catch (err) {
     console.error('Subtopic performance API error:', err.message)
     return NextResponse.json({ error: err.message }, { status: 500 })
