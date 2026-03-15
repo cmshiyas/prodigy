@@ -606,7 +606,6 @@ function AdminPanel({ idToken, onSignOut }) {
               )
             })}
           </div>
-          <TokenLimitsEditor idToken={idToken} onSignOut={onSignOut} />
         </>
       )}
 
@@ -857,19 +856,6 @@ function AdminPanel({ idToken, onSignOut }) {
                       </div>
                     )
                   })}
-                </div>
-                <div style={{ background: 'white', borderRadius: 12, border: '1.5px solid #E8D5C0', padding: 16 }}>
-                  <div style={{ fontWeight: 800, marginBottom: 10 }}>Top Token Users (7d)</div>
-                  {analytics.topTokenUsers.map((u, i) => (
-                    <div key={u.id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid #E8D5C0' }}>
-                      <span style={{ fontWeight: 800, color: '#7A5C3F', fontSize: '0.8rem', width: 18 }}>#{i + 1}</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name || u.email || 'Unknown'}</div>
-                        <div style={{ fontSize: '0.75rem', color: '#7A5C3F' }}>{u.email}</div>
-                      </div>
-                      <div style={{ fontWeight: 800, fontSize: '0.9rem', flexShrink: 0 }}>{(u.tokens || 0).toLocaleString()}</div>
-                    </div>
-                  ))}
                 </div>
               </div>
             </>
