@@ -7,6 +7,23 @@ import RankingScreen from '@/components/RankingScreen'
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
 
+// Key Australian exam dates (update yearly)
+const EXAM_KEY_DATES = [
+  { exam: 'NAPLAN',     label: 'NAPLAN Online',                     date: '2026-03-11', end: '2026-03-27', tag: 'naplan',    note: 'Years 3, 5, 7 & 9' },
+  { exam: 'OC',         label: 'OC Applications Open',              date: '2026-02-02', tag: 'oc',         note: 'NSW DoE portal' },
+  { exam: 'OC',         label: 'OC Applications Close',             date: '2026-03-27', tag: 'oc',         note: 'NSW DoE portal' },
+  { exam: 'OC',         label: 'OC Placement Test',                 date: '2026-07-23', tag: 'oc',         note: 'Year 4 students' },
+  { exam: 'Selective',  label: 'Selective Applications Open',       date: '2026-02-02', tag: 'selective',  note: 'NSW DoE portal' },
+  { exam: 'Selective',  label: 'Selective Applications Close',      date: '2026-03-27', tag: 'selective',  note: 'NSW DoE portal' },
+  { exam: 'Selective',  label: 'Selective Placement Test',          date: '2026-07-23', tag: 'selective',  note: 'Year 6 students' },
+]
+
+const EXAM_DATE_COLORS = {
+  naplan:    { bg: '#EFF6FF', border: '#BFDBFE', dot: '#3B82F6' },
+  oc:        { bg: '#FFF7ED', border: '#FED7AA', dot: '#F97316' },
+  selective: { bg: '#F0FDF4', border: '#BBF7D0', dot: '#22C55E' },
+}
+
 const TIER_PERMISSIONS = {
   silver:   { subtopics: false, history: false, ranking: false, streaks: false },
   gold:     { subtopics: true,  history: true,  ranking: false, streaks: false },
@@ -1191,6 +1208,64 @@ function PlansScreen({ user, idToken, onHome, onReferFriend, onTierUpgrade, refe
 
 const COMING_SOON_EXAMS = new Set(['Selective', 'NAPLAN'])
 
+function ExamDatesPanel({ examType }) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const upcoming = EXAM_KEY_DATES
+    .filter(d => new Date(d.date) >= today)
+    .sort((a, b) => new Date(a.date) - new Date(b.date))
+
+  function daysUntil(dateStr) {
+    const diff = new Date(dateStr) - today
+    const days = Math.round(diff / (1000 * 60 * 60 * 24))
+    if (days === 0) return 'Today'
+    if (days === 1) return 'Tomorrow'
+    if (days <= 14) return `${days} days`
+    const weeks = Math.round(days / 7)
+    if (weeks <= 8) return `${weeks}w away`
+    const months = Math.round(days / 30)
+    return `${months}mo away`
+  }
+
+  function formatDate(dateStr) {
+    return new Date(dateStr).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
+  }
+
+  return (
+    <div className="exam-dates-panel">
+      <div className="exam-dates-header">
+        <span className="exam-dates-title">📅 Key Exam Dates</span>
+        <span className="exam-dates-sub">NSW 2026</span>
+      </div>
+      {upcoming.length === 0 ? (
+        <div className="exam-dates-empty">No upcoming dates — check back soon!</div>
+      ) : (
+        <div className="exam-dates-list">
+          {upcoming.map((d, i) => {
+            const colors = EXAM_DATE_COLORS[d.tag] || EXAM_DATE_COLORS.naplan
+            const isHighlighted = d.tag === (examType || '').toLowerCase()
+            return (
+              <div key={i} className={`exam-date-item${isHighlighted ? ' exam-date-item--active' : ''}`} style={{ background: colors.bg, borderColor: colors.border }}>
+                <div className="exam-date-dot" style={{ background: colors.dot }} />
+                <div className="exam-date-body">
+                  <div className="exam-date-label">{d.label}</div>
+                  <div className="exam-date-meta">
+                    <span className="exam-date-when">{formatDate(d.date)}</span>
+                    {d.note && <span className="exam-date-note">{d.note}</span>}
+                  </div>
+                </div>
+                <div className="exam-date-countdown" style={{ color: colors.dot }}>{daysUntil(d.date)}</div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+      <div className="exam-dates-footer">Dates are approximate — verify at <a href="https://education.nsw.gov.au" target="_blank" rel="noopener noreferrer">NSW DoE</a></div>
+    </div>
+  )
+}
+
 function HomeScreen({ user, examType, onExamTypeChange, yearLevel, onYearLevelChange, score, totalAnswered, topicStats, subtopicStats, onSelectTopic, onUpgrade }) {
   const totalCorrect = Object.values(topicStats).reduce((a, v) => a + v.correct, 0)
   const topicList = EXAM_TOPICS[examType] || EXAM_TOPICS.OC
@@ -2060,19 +2135,22 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
           <div className="main">
             {/* Home */}
             {!currentTopic && !loadingQuestion && (
-              <HomeScreen
-                user={user}
-                examType={examType}
-                onExamTypeChange={setExamType}
-                yearLevel={yearLevel}
-                onYearLevelChange={setYearLevel}
-                score={score}
-                totalAnswered={totalAnswered}
-                topicStats={topicStats}
-                subtopicStats={subtopicStats}
-                onSelectTopic={generateQuestion}
-                onUpgrade={() => setScreen('plans')}
-              />
+              <div className="home-with-dates">
+                <HomeScreen
+                  user={user}
+                  examType={examType}
+                  onExamTypeChange={setExamType}
+                  yearLevel={yearLevel}
+                  onYearLevelChange={setYearLevel}
+                  score={score}
+                  totalAnswered={totalAnswered}
+                  topicStats={topicStats}
+                  subtopicStats={subtopicStats}
+                  onSelectTopic={generateQuestion}
+                  onUpgrade={() => setScreen('plans')}
+                />
+                <ExamDatesPanel examType={examType} />
+              </div>
             )}
 
             {/* Loading */}
