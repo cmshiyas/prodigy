@@ -949,6 +949,8 @@ function Sidebar({ currentTopic, currentSubtopic, topics, topicStats, subtopicSt
                     {allSubs.map(sub => {
                       const stats = (subtopicStats[t.id] || {})[sub]
                       const pct = stats?.total > 0 ? Math.round((stats.correct / stats.total) * 100) : null
+                      // Only show subtopics that need work (below 60%) or haven't been attempted yet
+                      if (pct !== null && pct >= 60) return null
                       const dotColor = pct === null ? '#cbd5e1' : pct >= 70 ? '#22c55e' : pct >= 40 ? '#f59e0b' : '#ef4444'
                       const isActive = currentTopic === t.id && currentSubtopic === sub
                       return (
