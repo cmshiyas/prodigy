@@ -17,7 +17,7 @@ const FEATURE_DEFAULTS = {
 
 export async function GET() {
   const supabase = getSupabase()
-  const { data, error } = await supabase.from('config').select('key, value')
+  const { data, error } = await supabase.from('config').select('key, value').limit(1000)
 
   if (error) console.error('[subscription-features] config fetch error:', error)
 

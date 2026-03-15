@@ -30,7 +30,7 @@ export async function GET(request) {
   }
 
   if (action === 'config') {
-    const { data, error } = await supabase.from('config').select('key, value')
+    const { data, error } = await supabase.from('config').select('key, value').limit(1000)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ config: data })
   }
