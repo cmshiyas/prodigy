@@ -46,16 +46,20 @@ export async function GET(request) {
       if (!r.questions) return
       const topic = r.questions.topic_id
       const subtopic = r.subtopic
-      if (!topic || !subtopic) return
+      if (!topic) return
 
-      if (!subtopicStats[topic]) subtopicStats[topic] = {}
-      if (!subtopicStats[topic][subtopic]) subtopicStats[topic][subtopic] = { correct: 0, total: 0 }
-      subtopicStats[topic][subtopic].total += 1
-      if (r.is_correct) subtopicStats[topic][subtopic].correct += 1
-
+      // Always count in topicStats (even if no subtopic)
       if (!topicStats[topic]) topicStats[topic] = { correct: 0, total: 0 }
       topicStats[topic].total += 1
       if (r.is_correct) topicStats[topic].correct += 1
+
+      // Only count in subtopicStats when subtopic exists
+      if (subtopic) {
+        if (!subtopicStats[topic]) subtopicStats[topic] = {}
+        if (!subtopicStats[topic][subtopic]) subtopicStats[topic][subtopic] = { correct: 0, total: 0 }
+        subtopicStats[topic][subtopic].total += 1
+        if (r.is_correct) subtopicStats[topic][subtopic].correct += 1
+      }
     })
 
     return NextResponse.json({ subtopicStats, topicStats })
