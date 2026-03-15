@@ -1609,7 +1609,7 @@ function TestSession({ questions, label, idToken, onFinish }) {
         <div className="options-list">
           {q.options.map((opt, i) => {
             const isChosen = isSubmitted ? answers[current] === i : pending[current] === i
-            const cls = 'option-btn' + (isChosen ? ' option-selected' : '')
+            const cls = 'option-btn' + (isChosen ? ' selected' : '')
             return (
               <button key={i} className={cls} onClick={() => !isSubmitted && setPending(prev => ({ ...prev, [current]: i }))} disabled={isSubmitted}>
                 <span className="option-letter">{String.fromCharCode(65 + i)}</span>
