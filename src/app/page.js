@@ -2429,7 +2429,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
                 questions={testResults.questions}
                 answers={testResults.answers}
                 label={testResults.label}
-                onReturnHome={() => setTestResults(null)}
+                onReturnHome={() => { setTestResults(null); setCurrentTopic(null); setQuestion(null); setQuestionError(null) }}
               />
             )}
 
