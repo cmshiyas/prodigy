@@ -1486,11 +1486,16 @@ function QuestionView({ question, questionNumber, topicStats, examType, onAnswer
         )}
         <div className="question-body">
           <div className="question-text">{question.question}</div>
-          {question.image_url && (
-            <div className="question-image-wrap">
-              <img src={question.image_url} alt="Question diagram" className="question-image" />
-            </div>
-          )}
+          {(() => {
+            const imgs = question.image_urls?.length ? question.image_urls : (question.image_url ? [question.image_url] : [])
+            return imgs.length > 0 ? (
+              <div className="question-image-wrap">
+                {imgs.map((url, i) => (
+                  <img key={i} src={url} alt={`Question diagram ${imgs.length > 1 ? i + 1 : ''}`} className="question-image" />
+                ))}
+              </div>
+            ) : null
+          })()}
           {question.visual && (
             <div className="question-visual">
               <pre style={{ fontFamily: 'inherit', whiteSpace: 'pre-wrap', fontSize: '0.9rem' }}>{question.visual}</pre>

@@ -300,7 +300,7 @@ export async function GET(request) {
 
     let query = supabase
       .from('questions')
-      .select('id, topic_id, exam_type, subtopic, year_level, difficulty, question, options, correct, explanation, visual, image_url, created_at', { count: 'exact' })
+      .select('id, topic_id, exam_type, subtopic, year_level, difficulty, question, options, correct, explanation, visual, image_url, image_urls, created_at', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(offset, offset + pageSize - 1)
 
@@ -401,8 +401,9 @@ export async function POST(request) {
   }
 
   if (action === 'updateQuestion') {
-    const { questionId, question, options, correct, explanation, difficulty, subtopic, year_level, image_url } = await request.json()
+    const { questionId, question, options, correct, explanation, difficulty, subtopic, year_level, image_urls } = await request.json()
     if (!questionId) return NextResponse.json({ error: 'questionId required' }, { status: 400 })
+    const urls = Array.isArray(image_urls) ? image_urls.filter(Boolean) : []
     const { data, error } = await supabase.from('questions').update({
       question,
       options,
@@ -411,7 +412,8 @@ export async function POST(request) {
       difficulty,
       subtopic: subtopic || null,
       year_level: year_level || null,
-      image_url: image_url || null,
+      image_url: urls[0] || null,
+      image_urls: urls.length > 0 ? urls : null,
     }).eq('id', questionId).select().single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ question: data })

@@ -136,6 +136,7 @@ export async function POST(request) {
       subtopic: question.subtopic || null,
       year_level: question.year_level || null,
       image_url: question.image_url || null,
+      image_urls: question.image_urls?.length ? question.image_urls : (question.image_url ? [question.image_url] : []),
       _usage: { tokensUsedToday: 0, limit: 99999, tier: user.tier, remaining: 99999 },
     })
 

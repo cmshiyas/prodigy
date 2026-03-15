@@ -193,8 +193,9 @@ header { background: var(--accent); padding: 0 2rem; display: flex; align-items:
 .question-body { padding: 24px 20px; }
 .question-text { font-size: 1.05rem; font-weight: 600; line-height: 1.6; margin-bottom: 20px; color: var(--text); }
 .question-visual { background: var(--surface2); border-radius: 10px; padding: 16px; margin-bottom: 20px; font-family: 'Nunito', sans-serif; font-size: 0.9rem; }
-.question-image-wrap { margin-bottom: 20px; text-align: center; }
-.question-image { max-width: 100%; max-height: 320px; border-radius: 10px; border: 1.5px solid var(--border); object-fit: contain; }
+.question-image-wrap { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.question-image { max-width: 100%; max-height: 320px; border-radius: 10px; border: 1.5px solid var(--border); object-fit: contain; flex: 1 1 auto; min-width: 0; }
+.question-image-wrap:has(.question-image:nth-child(2)) .question-image { max-width: calc(50% - 5px); max-height: 240px; }
 .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .option-btn { padding: 14px 16px; border: 2px solid var(--border); border-radius: 12px; background: var(--surface); cursor: pointer; font-family: 'Nunito Sans', sans-serif; font-size: 0.95rem; font-weight: 600; color: var(--text); text-align: left; transition: all 0.15s; display: flex; align-items: center; gap: 10px; }
 .option-btn:hover:not(:disabled) { border-color: var(--accent); background: #FFF0E8; }

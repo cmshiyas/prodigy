@@ -1370,7 +1370,7 @@ function QuestionBankReview({ idToken, onSignOut }) {
   const [editForm, setEditForm] = useState({})
   const [saving, setSaving] = useState(false)
   const [editError, setEditError] = useState('')
-  const [imageFile, setImageFile] = useState(null)
+  const [pendingImageFiles, setPendingImageFiles] = useState([]) // new files to upload
   const [uploadingImage, setUploadingImage] = useState(false)
   const [previewQuestion, setPreviewQuestion] = useState(null)
   const [showDuplicates, setShowDuplicates] = useState(false)
@@ -1417,7 +1417,8 @@ function QuestionBankReview({ idToken, onSignOut }) {
   const startEdit = (q) => {
     setEditingId(q.id)
     setEditError('')
-    setImageFile(null)
+    setPendingImageFiles([])
+    const existingUrls = q.image_urls?.length ? q.image_urls : (q.image_url ? [q.image_url] : [])
     setEditForm({
       question: q.question,
       options: [...(q.options || [])],
@@ -1426,22 +1427,25 @@ function QuestionBankReview({ idToken, onSignOut }) {
       difficulty: q.difficulty || 'medium',
       subtopic: q.subtopic || '',
       year_level: q.year_level || '',
-      image_url: q.image_url || '',
+      image_urls: existingUrls,
     })
   }
 
-  const cancelEdit = () => { setEditingId(null); setEditError(''); setImageFile(null) }
+  const cancelEdit = () => { setEditingId(null); setEditError(''); setPendingImageFiles([]) }
 
-  const doUploadImage = async () => {
-    if (!imageFile) return null
+  const doUploadImages = async (files) => {
+    if (!files.length) return []
     setUploadingImage(true)
     try {
-      const fd = new FormData()
-      fd.append('file', imageFile)
-      const res = await fetch('/api/admin?action=uploadImage', { method: 'POST', body: fd, headers: { Authorization: 'Bearer ' + idToken } })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      return data.url
+      const urls = await Promise.all(files.map(async file => {
+        const fd = new FormData()
+        fd.append('file', file)
+        const res = await fetch('/api/admin?action=uploadImage', { method: 'POST', body: fd, headers: { Authorization: 'Bearer ' + idToken } })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error)
+        return data.url
+      }))
+      return urls
     } finally { setUploadingImage(false) }
   }
 
@@ -1449,11 +1453,8 @@ function QuestionBankReview({ idToken, onSignOut }) {
     if (!editForm.question?.trim()) { setEditError('Question text is required'); return }
     setSaving(true); setEditError('')
     try {
-      let imageUrl = editForm.image_url
-      if (imageFile) {
-        const url = await doUploadImage()
-        if (url) imageUrl = url
-      }
+      const newUrls = pendingImageFiles.length ? await doUploadImages(pendingImageFiles) : []
+      const allUrls = [...(editForm.image_urls || []), ...newUrls]
       const res = await fetch('/api/admin?action=updateQuestion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
@@ -1466,13 +1467,13 @@ function QuestionBankReview({ idToken, onSignOut }) {
           difficulty: editForm.difficulty,
           subtopic: editForm.subtopic,
           year_level: editForm.year_level,
-          image_url: imageUrl,
+          image_urls: allUrls,
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       setEditingId(null)
-      setImageFile(null)
+      setPendingImageFiles([])
       await doLoad(page, examType, topicId, search)
     } catch (err) { setEditError(err.message) }
     finally { setSaving(false) }
@@ -1659,19 +1660,53 @@ function QuestionBankReview({ idToken, onSignOut }) {
                       </div>
                     </div>
 
-                    {/* Image upload */}
+                    {/* Multi-image upload */}
                     <div style={{ marginBottom: 12 }}>
-                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 6 }}>Image (optional — uploads to Supabase images bucket)</div>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                        {editForm.image_url && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <img src={editForm.image_url} alt="current" style={{ height: 64, borderRadius: 8, border: '1.5px solid #BAE6FD', objectFit: 'cover' }} />
-                            <button onClick={() => setEditForm(f => ({ ...f, image_url: '' }))} style={{ padding: '3px 8px', fontSize: '0.75rem', borderRadius: 5, border: '1.5px solid #FECACA', background: '#FEF2F2', color: '#991B1B', cursor: 'pointer', fontFamily: 'Nunito', fontWeight: 700 }}>Remove</button>
-                          </div>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 6 }}>
+                        Images (optional — multiple allowed)
+                        {(editForm.image_urls?.length || pendingImageFiles.length) > 0 && (
+                          <span style={{ marginLeft: 8, fontWeight: 600, color: '#0369A1' }}>
+                            {(editForm.image_urls?.length || 0) + pendingImageFiles.length} image{((editForm.image_urls?.length || 0) + pendingImageFiles.length) !== 1 ? 's' : ''}
+                          </span>
                         )}
-                        <input type="file" accept="image/*" onChange={e => setImageFile(e.target.files?.[0] || null)} style={{ fontSize: '0.82rem' }} />
-                        {imageFile && <span style={{ fontSize: '0.78rem', color: '#0369A1', fontWeight: 600 }}>Ready: {imageFile.name}</span>}
                       </div>
+                      {/* Existing saved images */}
+                      {(editForm.image_urls || []).length > 0 && (
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                          {editForm.image_urls.map((url, i) => (
+                            <div key={i} style={{ position: 'relative', display: 'inline-flex' }}>
+                              <img src={url} alt={`img ${i + 1}`} style={{ height: 72, width: 72, borderRadius: 8, border: '1.5px solid #BAE6FD', objectFit: 'cover' }} />
+                              <button
+                                onClick={() => setEditForm(f => ({ ...f, image_urls: f.image_urls.filter((_, j) => j !== i) }))}
+                                style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#EF4444', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
+                                title="Remove"
+                              >✕</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {/* Pending new files */}
+                      {pendingImageFiles.length > 0 && (
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                          {pendingImageFiles.map((f, i) => (
+                            <div key={i} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', background: '#F0F9FF', border: '1.5px dashed #7DD3FC', borderRadius: 8, padding: '4px 8px', fontSize: '0.75rem', color: '#0369A1', fontWeight: 600 }}>
+                              📎 {f.name}
+                              <button
+                                onClick={() => setPendingImageFiles(prev => prev.filter((_, j) => j !== i))}
+                                style={{ marginLeft: 6, background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', fontWeight: 900, fontSize: '0.8rem' }}
+                              >✕</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#F0F9FF', border: '1.5px dashed #7DD3FC', borderRadius: 8, cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700, color: '#0369A1' }}>
+                        + Add Image
+                        <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={e => {
+                          const files = Array.from(e.target.files || [])
+                          if (files.length) setPendingImageFiles(prev => [...prev, ...files])
+                          e.target.value = ''
+                        }} />
+                      </label>
                     </div>
 
                     {editError && <div style={{ color: '#991B1B', fontSize: '0.82rem', fontWeight: 700, marginBottom: 8 }}>{editError}</div>}
@@ -1690,8 +1725,13 @@ function QuestionBankReview({ idToken, onSignOut }) {
               // Normal row
               return (
                 <div key={q.id} style={{ background: 'white', border: '1.5px solid #E8D5C0', borderRadius: 10, padding: '12px 16px', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                  {q.image_url && (
-                    <img src={q.image_url} alt="" style={{ width: 56, height: 56, borderRadius: 8, objectFit: 'cover', flexShrink: 0, border: '1.5px solid #E8D5C0' }} />
+                  {(q.image_urls?.length ? q.image_urls[0] : q.image_url) && (
+                    <div style={{ position: 'relative', flexShrink: 0 }}>
+                      <img src={q.image_urls?.length ? q.image_urls[0] : q.image_url} alt="" style={{ width: 56, height: 56, borderRadius: 8, objectFit: 'cover', border: '1.5px solid #E8D5C0' }} />
+                      {(q.image_urls?.length || 0) > 1 && (
+                        <span style={{ position: 'absolute', bottom: -4, right: -4, background: '#0369A1', color: '#fff', borderRadius: 10, fontSize: '0.65rem', fontWeight: 800, padding: '1px 5px' }}>+{q.image_urls.length - 1}</span>
+                      )}
+                    </div>
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '0.88rem', fontWeight: 600, marginBottom: 6, lineHeight: 1.4 }}>
@@ -1703,7 +1743,7 @@ function QuestionBankReview({ idToken, onSignOut }) {
                       {q.subtopic && <span style={{ fontSize: '0.72rem', padding: '1px 7px', borderRadius: 20, background: '#F3F4F6', color: '#374151' }}>{q.subtopic}</span>}
                       {q.difficulty && <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '1px 7px', borderRadius: 20, background: '#F9FAFB', color: diffColors[q.difficulty] || '#374151' }}>{q.difficulty}</span>}
                       {q.year_level && <span style={{ fontSize: '0.72rem', padding: '1px 7px', borderRadius: 20, background: '#F3F4F6', color: '#374151' }}>Yr {q.year_level}</span>}
-                      {q.image_url && <span style={{ fontSize: '0.72rem', padding: '1px 7px', borderRadius: 20, background: '#ECFDF5', color: '#059669', fontWeight: 700 }}>📷 Image</span>}
+                      {(q.image_urls?.length || q.image_url) && <span style={{ fontSize: '0.72rem', padding: '1px 7px', borderRadius: 20, background: '#ECFDF5', color: '#059669', fontWeight: 700 }}>📷 {q.image_urls?.length > 1 ? `${q.image_urls.length} images` : 'Image'}</span>}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
@@ -1772,12 +1812,17 @@ function QuestionBankReview({ idToken, onSignOut }) {
                 {/* Question text */}
                 <div style={{ fontSize: '1.05rem', fontWeight: 600, lineHeight: 1.6, color: '#1E293B', marginBottom: 16 }}>{pq.question}</div>
 
-                {/* Image */}
-                {pq.image_url && (
-                  <div style={{ marginBottom: 16, textAlign: 'center' }}>
-                    <img src={pq.image_url} alt="Question diagram" style={{ maxWidth: '100%', maxHeight: 300, borderRadius: 10, border: '1.5px solid #E2E8F0', objectFit: 'contain' }} />
-                  </div>
-                )}
+                {/* Images */}
+                {(() => {
+                  const imgs = pq.image_urls?.length ? pq.image_urls : (pq.image_url ? [pq.image_url] : [])
+                  return imgs.length > 0 ? (
+                    <div style={{ marginBottom: 16, display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+                      {imgs.map((url, i) => (
+                        <img key={i} src={url} alt={`diagram ${i + 1}`} style={{ maxWidth: imgs.length > 1 ? '48%' : '100%', maxHeight: 280, borderRadius: 10, border: '1.5px solid #E2E8F0', objectFit: 'contain' }} />
+                      ))}
+                    </div>
+                  ) : null
+                })()}
 
                 {/* Visual text block */}
                 {pq.visual && (
