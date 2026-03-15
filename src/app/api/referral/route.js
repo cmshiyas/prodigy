@@ -24,9 +24,14 @@ export async function GET(request) {
 
     if (countError) console.error('Referral count error:', countError.message)
 
+    // DEBUG: log user id and raw rows — remove after diagnosis
+    console.log('[referral] user.id:', user.id, '| referredUsers:', JSON.stringify(referredUsers))
+
     return NextResponse.json({
       referral_code: user.referral_code,
       referral_count: referredUsers?.length ?? 0,
+      _debug_user_id: user.id,
+      _debug_referred_rows: referredUsers,
       goldCount: config.goldCount,
       platinumCount: config.platinumCount,
       goldBenefit: config.goldBenefit,
