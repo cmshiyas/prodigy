@@ -949,20 +949,16 @@ function Sidebar({ currentTopic, currentSubtopic, topics, topicStats, subtopicSt
                     {allSubs.map(sub => {
                       const stats = (subtopicStats[t.id] || {})[sub]
                       const pct = stats?.total > 0 ? Math.round((stats.correct / stats.total) * 100) : null
-                      // Only show subtopics that need work (below 60%) or haven't been attempted yet
-                      if (pct !== null && pct >= 60) return null
                       const dotColor = pct === null ? '#cbd5e1' : pct >= 70 ? '#22c55e' : pct >= 40 ? '#f59e0b' : '#ef4444'
                       const isActive = currentTopic === t.id && currentSubtopic === sub
                       return (
-                        <button
+                        <div
                           key={sub}
-                          onClick={() => onSelectTopic(t.id, sub)}
                           style={{
                             textAlign: 'left', padding: '4px 8px', borderRadius: 6, fontSize: '0.75rem',
-                            fontWeight: isActive ? 700 : 500,
-                            background: isActive ? t.bg : 'transparent',
-                            color: isActive ? t.color : '#64748b',
-                            border: 'none', cursor: 'pointer', width: '100%',
+                            fontWeight: 500,
+                            background: 'transparent',
+                            color: '#64748b',
                             display: 'flex', alignItems: 'center', gap: 6,
                           }}
                         >
@@ -971,7 +967,7 @@ function Sidebar({ currentTopic, currentSubtopic, topics, topicStats, subtopicSt
                           {pct !== null && (
                             <span style={{ fontSize: '0.7rem', fontWeight: 700, color: dotColor }}>{pct}%</span>
                           )}
-                        </button>
+                        </div>
                       )
                     })}
                   </div>
