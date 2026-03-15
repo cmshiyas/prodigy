@@ -1558,16 +1558,20 @@ function TestConfirmModal({ group, topic, onConfirm, onCancel }) {
 
 function TestSession({ questions, label, idToken, onFinish }) {
   const [current, setCurrent] = useState(0)
-  const [answers, setAnswers] = useState({})
-  const [revealed, setRevealed] = useState({})
+  const [pending, setPending] = useState({})   // { [index]: selectedIdx } — selected but not yet submitted
+  const [answers, setAnswers] = useState({})   // { [index]: selectedIdx } — submitted answers
+  const [revealed, setRevealed] = useState({}) // { [index]: true } — submitted, show correct/wrong
 
   const q = questions[current]
   const totalQ = questions.length
   const answered = Object.keys(answers).length
   const pct = Math.round((answered / totalQ) * 100)
+  const isSubmitted = !!revealed[current]
+  const hasPending = pending[current] !== undefined
 
-  function selectAnswer(idx) {
-    if (revealed[current]) return
+  function submitAnswer() {
+    const idx = pending[current]
+    if (idx === undefined) return
     setAnswers(prev => ({ ...prev, [current]: idx }))
     setRevealed(prev => ({ ...prev, [current]: true }))
     if (q.id && idToken) {
@@ -1604,43 +1608,47 @@ function TestSession({ questions, label, idToken, onFinish }) {
         <div className="question-text">{q.question}</div>
         <div className="options-list">
           {q.options.map((opt, i) => {
-            const isSelected = answers[current] === i
             const isCorrect = i === q.correct
             let cls = 'option-btn'
-            if (revealed[current]) {
+            if (isSubmitted) {
               if (isCorrect) cls += ' option-correct'
-              else if (isSelected) cls += ' option-wrong'
-            } else if (isSelected) {
+              else if (answers[current] === i) cls += ' option-wrong'
+            } else if (pending[current] === i) {
               cls += ' option-selected'
             }
             return (
-              <button key={i} className={cls} onClick={() => selectAnswer(i)} disabled={!!revealed[current]}>
+              <button key={i} className={cls} onClick={() => !isSubmitted && setPending(prev => ({ ...prev, [current]: i }))} disabled={isSubmitted}>
                 <span className="option-letter">{String.fromCharCode(65 + i)}</span>
                 <span>{opt}</span>
               </button>
             )
           })}
         </div>
-        {revealed[current] && q.explanation && (
-          <div className="explanation-box">
-            <strong>Explanation:</strong> {q.explanation}
+        {isSubmitted && (
+          <div style={{ marginTop: 12, padding: '8px 14px', borderRadius: 8, background: answers[current] === q.correct ? '#DCFCE7' : '#FEE2E2', fontSize: '0.88rem', fontWeight: 700, color: answers[current] === q.correct ? '#166534' : '#991B1B' }}>
+            {answers[current] === q.correct ? '✓ Correct!' : `✗ Incorrect — correct answer: ${String.fromCharCode(65 + q.correct)}`}
           </div>
         )}
       </div>
 
       <div style={{ display: 'flex', gap: 10, marginTop: 16, justifyContent: 'space-between', alignItems: 'center' }}>
         <button className="btn btn-secondary" onClick={() => setCurrent(c => c - 1)} disabled={current === 0}>← Prev</button>
-        {current < totalQ - 1 ? (
-          <button className="btn btn-primary" onClick={() => setCurrent(c => c + 1)}>Next →</button>
-        ) : (
-          answered === totalQ
-            ? <button className="btn btn-primary" style={{ background: 'var(--green)' }} onClick={() => onFinish(answers)}>Submit & See Results</button>
-            : <button className="btn btn-primary" onClick={() => {
-                // Jump to first unanswered
-                const firstUnanswered = questions.findIndex((_, i) => answers[i] === undefined)
-                if (firstUnanswered !== -1) setCurrent(firstUnanswered)
-              }}>Go to Unanswered</button>
-        )}
+        <div style={{ display: 'flex', gap: 8 }}>
+          {!isSubmitted && (
+            <button className="btn btn-primary" onClick={submitAnswer} disabled={!hasPending}>Submit Answer</button>
+          )}
+          {isSubmitted && current < totalQ - 1 && (
+            <button className="btn btn-primary" onClick={() => setCurrent(c => c + 1)}>Next →</button>
+          )}
+          {isSubmitted && current === totalQ - 1 && (
+            answered === totalQ
+              ? <button className="btn btn-primary" style={{ background: 'var(--green)' }} onClick={() => onFinish(answers)}>Submit & See Results</button>
+              : <button className="btn btn-primary" onClick={() => {
+                  const firstUnanswered = questions.findIndex((_, i) => answers[i] === undefined)
+                  if (firstUnanswered !== -1) setCurrent(firstUnanswered)
+                }}>Go to Unanswered</button>
+          )}
+        </div>
       </div>
     </div>
   )
