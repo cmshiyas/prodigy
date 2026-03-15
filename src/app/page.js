@@ -1985,6 +1985,27 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
     }
   }
 
+  // Save attempt on page refresh / tab close using sendBeacon (works synchronously on unload)
+  useEffect(() => {
+    function handleBeforeUnload() {
+      if (!quizSessionStartTime || totalAnswered === 0 || !session?.idToken) return
+      const duration = Math.floor((Date.now() - quizSessionStartTime) / 1000)
+      const correctAnswers = Object.values(topicStats).reduce((sum, t) => sum + t.correct, 0)
+      const payload = JSON.stringify({
+        score,
+        totalQuestions: totalAnswered,
+        correctAnswers,
+        durationSeconds: duration,
+        topics: Array.from(quizTopicsAttempted),
+        examType,
+        idToken: session.idToken,
+      })
+      navigator.sendBeacon('/api/save-attempt', new Blob([payload], { type: 'application/json' }))
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [quizSessionStartTime, totalAnswered, score, topicStats, quizTopicsAttempted, examType, session])
+
   function resetQuizSession() {
     setQuizSessionStartTime(null)
     setQuizTopicsAttempted(new Set())

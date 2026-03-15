@@ -4,13 +4,16 @@ import { getSupabase } from '@/lib/supabase'
 import { EXAM_TYPES } from '@/lib/constants'
 
 export async function POST(request) {
-  const authHeader = request.headers.get('authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
-  }
-
   try {
-    const payload = await verifyGoogleToken(authHeader.split(' ')[1])
+    const body = await request.json()
+    const { score, totalQuestions, correctAnswers, durationSeconds, topics, examType, idToken } = body
+
+    // Accept token from Authorization header (normal) or body (sendBeacon on unload)
+    const authHeader = request.headers.get('authorization')
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : idToken
+    if (!token) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+
+    const payload = await verifyGoogleToken(token)
     const { sub: google_id } = payload
     const supabase = getSupabase()
 
@@ -18,9 +21,6 @@ export async function POST(request) {
       .from('users').select('*').eq('google_id', google_id).single()
 
     if (userErr || !user) return NextResponse.json({ error: 'User not found' }, { status: 401 })
-
-    const body = await request.json()
-    const { score, totalQuestions, correctAnswers, durationSeconds, topics, examType } = body
     const validExamIds = EXAM_TYPES.map(item => item.id)
     const exam = validExamIds.includes(examType) ? examType : 'OC'
 
