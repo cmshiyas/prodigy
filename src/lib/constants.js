@@ -1,12 +1,5 @@
 export const ADMIN_EMAIL = 'cmshiyas007@gmail.com'
 
-export const TOKEN_LIMITS = {
-  admin:    999999,
-  platinum: 50000,
-  gold:     20000,
-  silver:   5000,
-}
-
 export const QUESTION_LIMITS = {
   admin:    999999,
   platinum: 999999,

@@ -123,11 +123,7 @@ async function respond(supabase, user) {
     console.log(`Promo expired: reverted user ${user.id} to ${revertTier}`)
   }
 
-  const today = new Date().toISOString().split('T')[0]
-  const { data: usage } = await supabase
-    .from('token_usage').select('tokens_used').eq('user_id', user.id).eq('date', today).single()
   return NextResponse.json({
     user: { id: user.id, email: user.email, name: user.name, picture: user.picture, status: user.status, tier: user.tier, is_admin: user.is_admin, referral_code: user.referral_code },
-    tokensUsedToday: usage?.tokens_used || 0,
   })
 }

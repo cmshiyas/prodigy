@@ -20,13 +20,9 @@ export async function GET(request) {
   const supabase = getSupabase()
 
   if (action === 'users') {
-    const today = new Date().toISOString().split('T')[0]
     const { data: users, error } = await supabase.from('users').select('*').order('created_at', { ascending: false })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    const { data: usageData } = await supabase.from('token_usage').select('user_id, tokens_used').eq('date', today)
-    const usageMap = {}
-    ;(usageData || []).forEach(u => { usageMap[u.user_id] = u.tokens_used })
-    return NextResponse.json({ users: users.map(u => ({ ...u, tokensToday: usageMap[u.id] || 0 })) })
+    return NextResponse.json({ users })
   }
 
   if (action === 'config') {
@@ -102,13 +98,11 @@ export async function GET(request) {
       { data: allQuestions },
       { data: responses30 },
       { data: newUsers30 },
-      { data: tokenRows },
     ] = await Promise.all([
       supabase.from('users').select('id, name, email, status, tier, created_at'),
       supabase.from('questions').select('id, exam_type, created_at'),
       supabase.from('question_responses').select('user_id, is_correct, created_at').gte('created_at', since30),
       supabase.from('users').select('id, created_at').gte('created_at', since30),
-      supabase.from('token_usage').select('user_id, date, tokens_used').gte('date', since7.split('T')[0]),
     ])
 
     // Daily activity for last 30 days
@@ -137,17 +131,6 @@ export async function GET(request) {
       .sort((a, b) => b.responses - a.responses)
       .slice(0, 20)
 
-    // Token usage last 7 days per user
-    const tokenMap = {}
-    ;(tokenRows || []).forEach(r => {
-      if (!tokenMap[r.user_id]) tokenMap[r.user_id] = 0
-      tokenMap[r.user_id] += r.tokens_used
-    })
-    const topTokenUsers = Object.entries(tokenMap)
-      .map(([uid, tokens]) => ({ ...userMap[uid], tokens }))
-      .sort((a, b) => b.tokens - a.tokens)
-      .slice(0, 10)
-
     // Overview totals
     const totalResponses = (responses30 || []).length
     const totalCorrect = (responses30 || []).filter(r => r.is_correct).length
@@ -165,7 +148,6 @@ export async function GET(request) {
       },
       dailyActivity,
       activeUsers,
-      topTokenUsers,
     })
   }
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { ADMIN_EMAIL, EXAM_TYPES, EXAM_TOPICS, TOKEN_LIMITS, TIER_LABELS, EXAM_YEAR_LEVELS } from '@/lib/constants'
+import { ADMIN_EMAIL, EXAM_TYPES, EXAM_TOPICS, TIER_LABELS, EXAM_YEAR_LEVELS } from '@/lib/constants'
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
 
@@ -102,100 +102,6 @@ function ReferralConfigEditor({ idToken, onSignOut }) {
                 onClick={() => save(key)}
                 disabled={saving === key}
               >{saving === key ? '...' : saved === key ? '✓' : 'Save'}</button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// ── TOKEN LIMITS EDITOR ────────────────────────────────────────
-
-function TokenLimitsEditor({ idToken, onSignOut }) {
-  const [limits, setLimits] = useState(null)
-  const [saving, setSaving] = useState(null)
-  const [saved, setSaved] = useState(null)
-
-  useEffect(() => {
-    fetch('/api/admin?action=config', {
-      headers: { Authorization: 'Bearer ' + idToken }
-    })
-      .then(async r => {
-        if (r.status === 403) {
-          const err = await r.json()
-          if (err.error && (err.error.includes('Not authenticated') || err.error.includes('token') || err.error.includes('Token'))) {
-            onSignOut()
-            return null
-          }
-        }
-        return r.json()
-      })
-      .then(data => {
-        if (!data) return
-        const map = {}
-        data.config.forEach(({ key, value }) => {
-          map[key.replace('token_limit_', '')] = value
-        })
-        setLimits(map)
-      })
-  }, [idToken])
-
-  const save = async (tier, value) => {
-    setSaving(tier)
-    try {
-      const res = await fetch('/api/admin?action=config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
-        body: JSON.stringify({ key: 'token_limit_' + tier, value }),
-      })
-      if (res.status === 403) {
-        const err = await res.json()
-        if (err.error && (err.error.includes('Not authenticated') || err.error.includes('token') || err.error.includes('Token'))) {
-          onSignOut(); return
-        }
-      }
-      if (!res.ok) throw new Error((await res.json()).error)
-      setSaved(tier)
-      setTimeout(() => setSaved(null), 2000)
-    } catch (err) {
-      alert('Failed: ' + err.message)
-    } finally {
-      setSaving(null)
-    }
-  }
-
-  if (!limits) return <div style={{ padding: 24, color: '#64748b' }}>Loading config...</div>
-
-  const tiers = [
-    { key: 'silver',   label: 'Silver',   color: '#94A3B8' },
-    { key: 'gold',     label: 'Gold',     color: '#F59E0B' },
-    { key: 'platinum', label: 'Platinum', color: '#8B5CF6' },
-    { key: 'admin',    label: 'Admin',    color: '#EF4444' },
-  ]
-
-  return (
-    <div style={{ padding: '20px 24px', borderTop: '1.5px solid #E8D5C0' }}>
-      <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1rem', marginBottom: 4 }}>Token Limits</div>
-      <div style={{ fontSize: '0.8rem', color: '#7A5C3F', marginBottom: 16 }}>Daily token limits per tier — changes take effect immediately.</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-        {tiers.map(({ key, label, color }) => (
-          <div key={key} style={{ background: '#FFF3E6', borderRadius: 10, padding: '12px 16px', border: '1.5px solid #E8D5C0' }}>
-            <div style={{ fontWeight: 800, fontSize: '0.85rem', color, marginBottom: 8 }}>{label}</div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <input
-                type="number"
-                value={limits[key] || ''}
-                onChange={e => setLimits(l => ({ ...l, [key]: e.target.value }))}
-                style={{ flex: 1, padding: '6px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', fontFamily: 'Nunito', fontWeight: 700, fontSize: '0.9rem', background: 'white' }}
-              />
-              <button
-                style={{ padding: '6px 14px', fontSize: '0.8rem', background: '#FF6B35', color: 'white', border: 'none', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 800, cursor: 'pointer' }}
-                onClick={() => save(key, limits[key])}
-                disabled={saving === key}
-              >
-                {saving === key ? '...' : saved === key ? '✓' : 'Save'}
-              </button>
             </div>
           </div>
         ))}
@@ -654,19 +560,16 @@ function AdminPanel({ idToken, onSignOut }) {
             ))}
           </div>
           <div>
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 1fr 120px', gap: 12, padding: '14px 20px', background: '#FFF3E6', fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#7A5C3F' }}>
-              <div>User</div><div>Email</div><div>Status / Tier</div><div>Tokens Today</div><div>Actions</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 120px', gap: 12, padding: '14px 20px', background: '#FFF3E6', fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#7A5C3F' }}>
+              <div>User</div><div>Email</div><div>Status / Tier</div><div>Actions</div>
             </div>
             {filtered.length === 0 ? (
               <div style={{ padding: '2rem', textAlign: 'center', color: '#7A5C3F', fontWeight: 600 }}>No users in this category.</div>
             ) : filtered.map(u => {
               const isAdmin = u.email === ADMIN_EMAIL
-              const limit = TOKEN_LIMITS[u.tier] || 5000
-              const pct = Math.min(100, Math.round(((u.tokensToday || 0) / limit) * 100))
               const initials = (u.name || '?').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-              const barColor = pct > 80 ? '#EF4444' : pct > 50 ? '#F59E0B' : '#52C41A'
               return (
-                <div key={u.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 1fr 120px', gap: 12, padding: '14px 20px', borderBottom: '1px solid #E8D5C0', alignItems: 'center', fontSize: '0.88rem' }}>
+                <div key={u.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 120px', gap: 12, padding: '14px 20px', borderBottom: '1px solid #E8D5C0', alignItems: 'center', fontSize: '0.88rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     {u.picture
                       ? <img src={u.picture} style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} alt="" />
@@ -692,12 +595,6 @@ function AdminPanel({ idToken, onSignOut }) {
                         <option value="platinum">Platinum</option>
                       </select>
                     )}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '0.78rem', color: '#7A5C3F' }}>{(u.tokensToday || 0).toLocaleString()} / {limit.toLocaleString()}</div>
-                    <div style={{ height: 4, background: '#E2E8F0', borderRadius: 2, marginTop: 3, width: 80 }}>
-                      <div style={{ height: '100%', borderRadius: 2, width: pct + '%', background: barColor }} />
-                    </div>
                   </div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {!isAdmin && u.status !== 'approved' && <button onClick={() => updateUser(u.id, { status: 'approved' })} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', background: '#DCFCE7', color: '#166534', fontFamily: 'Nunito' }}>Approve</button>}

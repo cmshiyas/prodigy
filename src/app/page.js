@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { EXAM_TYPES, EXAM_TOPICS, TOPIC_PROMPTS, TOKEN_LIMITS, TIER_LABELS, TIER_CLASSES, ADMIN_EMAIL, EXAM_YEAR_LEVELS } from '@/lib/constants'
+import { EXAM_TYPES, EXAM_TOPICS, TOPIC_PROMPTS, TIER_LABELS, TIER_CLASSES, ADMIN_EMAIL, EXAM_YEAR_LEVELS } from '@/lib/constants'
 import HistoryScreen from '@/components/HistoryScreen'
 import RankingScreen from '@/components/RankingScreen'
 
@@ -1514,13 +1514,13 @@ export default function App() {
     if (typeof window !== 'undefined') {
       try {
         const stored = localStorage.getItem('oc-trainer-session')
-        return stored ? JSON.parse(stored) : { user: null, idToken: null, tokensUsedToday: 0 }
+        return stored ? JSON.parse(stored) : { user: null, idToken: null }
       } catch (err) {
         console.warn('Failed to load session from localStorage:', err)
-        return { user: null, idToken: null, tokensUsedToday: 0 }
+        return { user: null, idToken: null }
       }
     }
-    return { user: null, idToken: null, tokensUsedToday: 0 }
+    return { user: null, idToken: null }
   }
 
   const initialSession = getInitialSession()
@@ -1730,7 +1730,7 @@ export default function App() {
       if (!res.ok) throw new Error(data.error)
       if (storedRefCode) localStorage.removeItem('oc-ref-code')
       window.history.replaceState(null, '', window.location.pathname)
-      setSession({ user: data.user, idToken, tokensUsedToday: data.tokensUsedToday || 0 })
+      setSession({ user: data.user, idToken })
       setScreen('app')
     } catch (err) {
       alert('Sign-in failed: ' + err.message)
@@ -1740,7 +1740,7 @@ export default function App() {
   function handleSignOut() {
     if (typeof window.google !== 'undefined') window.google.accounts.id.disableAutoSelect()
     window._googleInitDone = false
-    setSession({ user: null, idToken: null, tokensUsedToday: 0 })
+    setSession({ user: null, idToken: null })
     setScreen('landing')
     setCurrentTopic(null)
     setQuestion(null)
@@ -1847,7 +1847,6 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
       }
 
       const data = await res.json()
-      if (data._usage) setSession(s => ({ ...s, tokensUsedToday: data._usage.tokensUsedToday }))
 
       // The API now returns the question data directly
       setQuestion(data)
@@ -2033,7 +2032,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
     </div>
   )
 
-  const { user, tokensUsedToday } = session
+  const { user } = session
   const dbFeatures = subscriptionFeatures?.features?.[user.tier]
   const fallbackPerms = TIER_PERMISSIONS[user.tier] || TIER_PERMISSIONS.silver
   const perms = {
