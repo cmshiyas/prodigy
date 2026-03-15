@@ -1711,6 +1711,9 @@ export default function App() {
             })
             return reset
           })
+          // Sync totalAnswered from DB totals so it survives refresh
+          const dbTotal = Object.values(data.topicStats || {}).reduce((sum, s) => sum + (s.total || 0), 0)
+          setTotalAnswered(dbTotal)
         } else {
           setSubtopicStats({})
         }
