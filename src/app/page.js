@@ -1549,43 +1549,27 @@ function TestConfirmModal({ group, topic, onConfirm, onCancel }) {
 
 function TestSession({ questions, label, idToken, onFinish }) {
   const [current, setCurrent] = useState(0)
-  const [pending, setPending] = useState({})   // { [index]: selectedIdx } — selected but not yet submitted
-  const [answers, setAnswers] = useState({})   // { [index]: selectedIdx } — submitted answers
-  const [revealed, setRevealed] = useState({}) // { [index]: true } — submitted, show correct/wrong
+  const [selections, setSelections] = useState({}) // { [index]: selectedIdx } — freely changeable until final submit
 
   const q = questions[current]
   const totalQ = questions.length
-  const answered = Object.keys(answers).length
+  const answered = Object.keys(selections).length
   const pct = Math.round((answered / totalQ) * 100)
-  const isSubmitted = !!revealed[current]
-  const hasPending = pending[current] !== undefined
+  const unanswered = totalQ - answered
 
-  function submitAnswer() {
-    const idx = pending[current]
-    if (idx === undefined) return
-    setAnswers(prev => ({ ...prev, [current]: idx }))
-    setRevealed(prev => ({ ...prev, [current]: true }))
-    if (q.id && idToken) {
-      fetch('/api/record-response', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken },
-        body: JSON.stringify({ questionId: q.id, selectedOption: idx, responseTimeSeconds: null }),
-      }).catch(() => {})
-    }
-    setTimeout(() => {
-      if (current < totalQ - 1) {
-        setCurrent(c => c + 1)
-      } else {
-        const newAnswers = { ...answers, [current]: idx }
-        const allAnswered = questions.every((_, i) => newAnswers[i] !== undefined)
-        if (allAnswered) {
-          onFinish(newAnswers)
-        } else {
-          const firstUnanswered = questions.findIndex((_, i) => newAnswers[i] === undefined)
-          if (firstUnanswered !== -1) setCurrent(firstUnanswered)
-        }
+  function handleFinish() {
+    // Record all responses at submission time
+    for (const [idx, selectedOption] of Object.entries(selections)) {
+      const question = questions[parseInt(idx)]
+      if (question?.id && idToken) {
+        fetch('/api/record-response', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken },
+          body: JSON.stringify({ questionId: question.id, selectedOption, responseTimeSeconds: null }),
+        }).catch(() => {})
       }
-    }, 1200)
+    }
+    onFinish(selections)
   }
 
   return (
@@ -1613,10 +1597,10 @@ function TestSession({ questions, label, idToken, onFinish }) {
         <div className="question-text">{q.question}</div>
         <div className="options-list">
           {q.options.map((opt, i) => {
-            const isChosen = isSubmitted ? answers[current] === i : pending[current] === i
+            const isChosen = selections[current] === i
             const cls = 'option-btn' + (isChosen ? ' selected' : '')
             return (
-              <button key={i} className={cls} onClick={() => !isSubmitted && setPending(prev => ({ ...prev, [current]: i }))} disabled={isSubmitted}>
+              <button key={i} className={cls} onClick={() => setSelections(prev => ({ ...prev, [current]: i }))}>
                 <span className="option-letter">{String.fromCharCode(65 + i)}</span>
                 <span>{opt}</span>
               </button>
@@ -1628,16 +1612,19 @@ function TestSession({ questions, label, idToken, onFinish }) {
       <div style={{ display: 'flex', gap: 10, marginTop: 16, justifyContent: 'space-between', alignItems: 'center' }}>
         <button className="btn btn-secondary" onClick={() => setCurrent(c => c - 1)} disabled={current === 0}>← Prev</button>
         <div style={{ display: 'flex', gap: 8 }}>
-          {!isSubmitted && (
-            <button className="btn btn-primary" onClick={submitAnswer} disabled={!hasPending}>Submit Answer</button>
+          {current < totalQ - 1 && (
+            <button className="btn btn-primary" onClick={() => setCurrent(c => c + 1)}>Next →</button>
           )}
-          {isSubmitted && current === totalQ - 1 && (
-            answered === totalQ
-              ? <button className="btn btn-primary" style={{ background: 'var(--green)' }} onClick={() => onFinish(answers)}>Submit & See Results</button>
-              : <button className="btn btn-primary" onClick={() => {
-                  const firstUnanswered = questions.findIndex((_, i) => answers[i] === undefined)
-                  if (firstUnanswered !== -1) setCurrent(firstUnanswered)
-                }}>Go to Unanswered</button>
+          {current === totalQ - 1 && (
+            unanswered === 0
+              ? <button className="btn btn-primary" style={{ background: 'var(--green)' }} onClick={handleFinish}>Submit & See Results</button>
+              : <>
+                  <button className="btn btn-secondary" onClick={() => {
+                    const firstUnanswered = questions.findIndex((_, i) => selections[i] === undefined)
+                    if (firstUnanswered !== -1) setCurrent(firstUnanswered)
+                  }}>Go to Unanswered ({unanswered})</button>
+                  <button className="btn btn-primary" style={{ background: 'var(--green)' }} onClick={handleFinish}>Submit Anyway</button>
+                </>
           )}
         </div>
       </div>
