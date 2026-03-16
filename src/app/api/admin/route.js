@@ -546,6 +546,7 @@ ${trimmed}`
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
           max_tokens: 16000,
+          system: 'You are a JSON-only responder. You must always respond with valid JSON and nothing else — no prose, no explanations, no apologies, no markdown. If you cannot extract questions, respond with {"topics":[],"extractedQuestions":[]}.',
           messages: [{ role: 'user', content: prompt }],
         }),
       })
@@ -564,7 +565,8 @@ ${trimmed}`
     try {
       parsedResponse = JSON.parse(textOutput.replace(/```json|```/g, '').trim())
     } catch (err) {
-      return NextResponse.json({ error: 'Failed to parse generate output: ' + err.message, raw: textOutput }, { status: 500 })
+      const preview = textOutput.slice(0, 300)
+      return NextResponse.json({ error: `Claude returned non-JSON: "${preview}"` }, { status: 500 })
     }
 
     // Store extracted topics
@@ -712,6 +714,7 @@ Respond with ONLY valid JSON (no markdown, no prose):
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
           max_tokens: 8000,
+          system: 'You are a JSON-only responder. You must always respond with valid JSON and nothing else — no prose, no explanations, no apologies, no markdown. If you cannot generate questions, respond with {"questions":[]}.',
           messages: [{ role: 'user', content: prompt }],
         }),
       })
@@ -731,7 +734,8 @@ Respond with ONLY valid JSON (no markdown, no prose):
     try {
       parsed = JSON.parse(textOutput.replace(/```json|```/g, '').trim())
     } catch (err) {
-      return NextResponse.json({ error: 'Failed to parse AI output: ' + err.message }, { status: 500 })
+      const preview = textOutput.slice(0, 300)
+      return NextResponse.json({ error: `Claude returned non-JSON: "${preview}"` }, { status: 500 })
     }
 
     const questions = Array.isArray(parsed.questions) ? parsed.questions : []
