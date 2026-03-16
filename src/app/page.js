@@ -1749,6 +1749,7 @@ export default function App() {
   const [confirmModal, setConfirmModal] = useState(null) // { group, topic } | null
   const [testSession, setTestSession] = useState(null)   // { questions, label } | null
   const [testResults, setTestResults] = useState(null)   // { questions, answers, label } | null
+  const [exitTestConfirm, setExitTestConfirm] = useState(false)
 
   const baseTopics = EXAM_TOPICS[examType] || EXAM_TOPICS.OC
   const currentTopics = baseTopics.map(t => ({ ...t, subtopics: dynamicSubtopics[t.id] || [] }))
@@ -2206,6 +2207,25 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
     setTestFilter(null)
   }
 
+  function handleGoHome() {
+    if (testSession || testResults) {
+      setExitTestConfirm(true)
+    } else {
+      saveQuizAttempt()
+      resetQuizSession()
+      setScreen('app')
+    }
+  }
+
+  function confirmExitTest() {
+    setExitTestConfirm(false)
+    setTestSession(null)
+    setTestResults(null)
+    saveQuizAttempt()
+    resetQuizSession()
+    setScreen('app')
+  }
+
   function openTestConfirmModal(group, topic) {
     setConfirmModal({ group, topic })
   }
@@ -2290,11 +2310,11 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
     <div>
       {/* HEADER */}
       <header>
-        <div className="logo" onClick={() => { saveQuizAttempt(); resetQuizSession(); setScreen('app') }} style={{ cursor: 'pointer' }}>Self Paced Learning <span className="logo-sub">Practice · Consistency · Feedback</span></div>
+        <div className="logo" onClick={handleGoHome} style={{ cursor: 'pointer' }}>Self Paced Learning <span className="logo-sub">Practice · Consistency · Feedback</span></div>
         <div className="header-right">
           {/* Desktop nav */}
           <div className="desktop-nav">
-            <button className="nav-btn" onClick={() => { saveQuizAttempt(); resetQuizSession(); setScreen('app') }}>Home</button>
+            <button className="nav-btn" onClick={handleGoHome}>Home</button>
             <button
               className={`nav-btn${!perms.history ? ' nav-btn--locked' : ''}`}
               onClick={() => { if (!perms.history) { setCurrentTopic(null); setScreen('plans'); return } setCurrentTopic(null); setScreen('history') }}
@@ -2331,7 +2351,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
             </button>
             {mobileMenuOpen && (
               <div className="mobile-nav-dropdown">
-                <button className="mobile-nav-item" onClick={() => { saveQuizAttempt(); resetQuizSession(); setScreen('app'); setMobileMenuOpen(false) }}>🏠 Home</button>
+                <button className="mobile-nav-item" onClick={() => { setMobileMenuOpen(false); handleGoHome() }}>🏠 Home</button>
                 <button
                   className="mobile-nav-item"
                   onClick={() => { if (!perms.history) { setScreen('plans'); setMobileMenuOpen(false); return } setCurrentTopic(null); setScreen('history'); setMobileMenuOpen(false) }}
@@ -2359,6 +2379,23 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
           onConfirm={() => startTestSession(confirmModal.group, confirmModal.topic)}
           onCancel={() => setConfirmModal(null)}
         />
+      )}
+      {exitTestConfirm && (
+        <div className="test-confirm-backdrop" onClick={() => setExitTestConfirm(false)}>
+          <div className="test-confirm-modal" onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: '2rem', marginBottom: 10 }}>⚠️</div>
+            <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#1E293B', marginBottom: 8 }}>
+              Exit {testSession ? 'Test' : 'Review'}?
+            </div>
+            <div style={{ fontSize: '0.88rem', color: '#64748B', marginBottom: 24 }}>
+              {testSession
+                ? 'Your progress will be lost if you leave now.'
+                : 'Are you sure you want to leave the answer review?'}
+            </div>
+            <button className="btn btn-primary" style={{ width: '100%', marginBottom: 8, background: '#ef4444', borderColor: '#ef4444' }} onClick={confirmExitTest}>Exit</button>
+            <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => setExitTestConfirm(false)}>Stay</button>
+          </div>
+        </div>
       )}
       {showReferralModal && session.user?.referral_code && (
         <ReferralModal user={session.user} idToken={session.idToken} referralConfig={referralConfig} onClose={() => setShowReferralModal(false)} />
