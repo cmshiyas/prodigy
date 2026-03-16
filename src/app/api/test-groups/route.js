@@ -64,7 +64,7 @@ export async function GET(request) {
       return 0
     })
 
-    return NextResponse.json({ groups })
+    return NextResponse.json({ groups }, { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } })
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 })
   }

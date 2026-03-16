@@ -64,7 +64,7 @@ export async function GET(request) {
       }))
       .sort((a, b) => b.accuracy - a.accuracy)
 
-    return NextResponse.json(rankings)
+    return NextResponse.json(rankings, { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } })
   } catch (err) {
     console.error('Rankings API error:', err.message)
     return NextResponse.json({ error: err.message }, { status: 500 })

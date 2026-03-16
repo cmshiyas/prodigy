@@ -58,7 +58,7 @@ export async function GET(request) {
       image_urls: q.image_urls?.length ? q.image_urls : (q.image_url ? [q.image_url] : []),
     }))
 
-    return NextResponse.json({ questions })
+    return NextResponse.json({ questions }, { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } })
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 })
   }

@@ -45,7 +45,7 @@ export async function GET(request) {
       topics: attempt.topics
     }))
 
-    return NextResponse.json(history)
+    return NextResponse.json(history, { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } })
   } catch (err) {
     console.error('History API error:', err.message)
     return NextResponse.json({ error: err.message }, { status: 500 })
