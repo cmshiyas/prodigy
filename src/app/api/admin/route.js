@@ -275,22 +275,25 @@ export async function GET(request) {
 
   if (action === 'questions') {
     const url = new URL(request.url)
-    const examType = url.searchParams.get('examType') || ''
-    const topicId  = url.searchParams.get('topicId')  || ''
-    const search   = url.searchParams.get('search')   || ''
-    const page     = Math.max(1, parseInt(url.searchParams.get('page') || '1') || 1)
+    const examType     = url.searchParams.get('examType')     || ''
+    const topicId      = url.searchParams.get('topicId')      || ''
+    const search       = url.searchParams.get('search')       || ''
+    const uploadSource = url.searchParams.get('uploadSource') || ''
+    const page         = Math.max(1, parseInt(url.searchParams.get('page') || '1') || 1)
     const pageSize = 20
     const offset   = (page - 1) * pageSize
 
     let query = supabase
       .from('questions')
-      .select('id, topic_id, exam_type, subtopic, year_level, difficulty, question, options, correct, explanation, visual, image_url, image_urls, question_source, paper_year, created_at', { count: 'exact' })
+      .select('id, topic_id, exam_type, subtopic, year_level, difficulty, question, options, correct, explanation, visual, image_url, image_urls, question_source, paper_year, created_at, upload_source', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(offset, offset + pageSize - 1)
 
-    if (examType) query = query.eq('exam_type', examType)
-    if (topicId)  query = query.eq('topic_id', topicId)
-    if (search)   query = query.ilike('question', `%${search}%`)
+    if (examType)     query = query.eq('exam_type', examType)
+    if (topicId)      query = query.eq('topic_id', topicId)
+    if (search)       query = query.ilike('question', `%${search}%`)
+    if (uploadSource === 'none') query = query.is('upload_source', null)
+    else if (uploadSource) query = query.eq('upload_source', uploadSource)
 
     const { data, error, count } = await query
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -640,6 +643,7 @@ ${trimmed}`
         year_level: yearLevel || null,
         question_source: questionSource,
         paper_year: paperYear || null,
+        upload_source: 'PDF',
       }
       const { error: insertError } = await supabase.from('questions').insert(insert)
       if (insertError) {
@@ -768,6 +772,7 @@ Respond with ONLY valid JSON (no markdown, no prose):
         difficulty: ['easy', 'medium', 'hard'].includes(q.difficulty) ? q.difficulty : 'medium',
         year_level: yearLevel || null,
         question_source: 'sample',
+        upload_source: 'AI',
       })
 
       if (insertError) {
@@ -848,6 +853,7 @@ Respond with ONLY valid JSON (no markdown, no prose):
         year_level: yearLevel || null,
         question_source: uploadSource,
         paper_year: paperYear || null,
+        upload_source: 'Json',
       })
 
       if (insertError) {
