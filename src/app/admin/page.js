@@ -840,42 +840,31 @@ function AdminPanel({ idToken, onSignOut }) {
                   </div>
                 ))}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div style={{ background: 'white', borderRadius: 12, border: '1.5px solid #E8D5C0', padding: 16 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-                    <div style={{ fontWeight: 800 }}>Questions per Topic</div>
-                    <select value={quizBankTopicFilter} onChange={e => setQuizBankTopicFilter(e.target.value)} style={{ padding: '5px 8px', borderRadius: 7, border: '1.5px solid #E8D5C0', background: 'white', fontSize: '0.82rem', fontWeight: 600, fontFamily: 'Nunito' }}>
-                      <option value="all">All Exams</option>
-                      {(quizBank.examBreakdown || []).map(e => <option key={e.examType} value={e.examType}>{e.examType}</option>)}
-                    </select>
-                  </div>
-                  {quizBank.topics.map(t => {
-                    const examEntries = quizBankTopicFilter === 'all' ? Object.entries(t.byExam || {}) : [[quizBankTopicFilter, (t.byExam || {})[quizBankTopicFilter] || 0]]
-                    const count = quizBankTopicFilter === 'all' ? t.count : ((t.byExam || {})[quizBankTopicFilter] || 0)
-                    if (quizBankTopicFilter !== 'all' && count === 0) return null
-                    return (
-                      <div key={t.topicId} style={{ borderBottom: '1px solid #E8D5C0', paddingBottom: 6, marginBottom: 6 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', fontWeight: 700, marginBottom: 2 }}>
-                          <span>{t.topicId}</span><span>{count}</span>
-                        </div>
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                          {examEntries.map(([exam, cnt]) => (
-                            <span key={exam} style={{ fontSize: '0.72rem', background: '#DBEAFE', color: '#1D4ED8', borderRadius: 999, padding: '1px 7px', fontWeight: 700 }}>{exam}: {cnt}</span>
-                          ))}
-                        </div>
+              <div style={{ background: 'white', borderRadius: 12, border: '1.5px solid #E8D5C0', padding: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+                  <div style={{ fontWeight: 800 }}>Questions per Topic</div>
+                  <select value={quizBankTopicFilter} onChange={e => setQuizBankTopicFilter(e.target.value)} style={{ padding: '5px 8px', borderRadius: 7, border: '1.5px solid #E8D5C0', background: 'white', fontSize: '0.82rem', fontWeight: 600, fontFamily: 'Nunito' }}>
+                    <option value="all">All Exams</option>
+                    {(quizBank.examBreakdown || []).map(e => <option key={e.examType} value={e.examType}>{e.examType}</option>)}
+                  </select>
+                </div>
+                {quizBank.topics.map(t => {
+                  const examEntries = quizBankTopicFilter === 'all' ? Object.entries(t.byExam || {}) : [[quizBankTopicFilter, (t.byExam || {})[quizBankTopicFilter] || 0]]
+                  const count = quizBankTopicFilter === 'all' ? t.count : ((t.byExam || {})[quizBankTopicFilter] || 0)
+                  if (quizBankTopicFilter !== 'all' && count === 0) return null
+                  return (
+                    <div key={t.topicId} style={{ borderBottom: '1px solid #E8D5C0', paddingBottom: 6, marginBottom: 6 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', fontWeight: 700, marginBottom: 2 }}>
+                        <span>{t.topicId}</span><span>{count}</span>
                       </div>
-                    )
-                  })}
-                </div>
-                <div style={{ background: 'white', borderRadius: 12, border: '1.5px solid #E8D5C0', padding: 16 }}>
-                  <div style={{ fontWeight: 800, marginBottom: 10 }}>Top Creators</div>
-                  {quizBank.users.slice().sort((a, b) => b.count - a.count).map(u => (
-                    <div key={u.userId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', padding: '4px 0', borderBottom: '1px solid #E8D5C0' }}>
-                      <span>{u.name || u.email || 'Unknown'}</span>
-                      <span style={{ fontWeight: 700 }}>{u.count}</span>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        {examEntries.map(([exam, cnt]) => (
+                          <span key={exam} style={{ fontSize: '0.72rem', background: '#DBEAFE', color: '#1D4ED8', borderRadius: 999, padding: '1px 7px', fontWeight: 700 }}>{exam}: {cnt}</span>
+                        ))}
+                      </div>
                     </div>
-                  ))}
-                </div>
+                  )
+                })}
               </div>
             </>
           ) : <div style={{ color: '#7A5C3F' }}>No data available.</div>}
