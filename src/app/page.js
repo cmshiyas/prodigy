@@ -1988,8 +1988,9 @@ export default function App() {
     setQuestionError(null)
     setLoadingQuestion(true)
 
+    const topicName = currentTopics.find(t => t.id === topicId)?.name || topicId
     const prompt = `You are an expert at creating Australian Year 4 ${examType} exam-style questions.
-Topic: ${topic.name} — ${TOPIC_PROMPTS[topicId]}${subtopic ? `\nSubtopic: ${subtopic} — focus the question specifically on this subtopic.` : ''}
+Topic: ${topicName} — ${TOPIC_PROMPTS[topicId]}${subtopic ? `\nSubtopic: ${subtopic} — focus the question specifically on this subtopic.` : ''}
 Create ONE multiple choice question for Year 4 (9-10 year olds). Vary difficulty: 40% easy, 40% medium, 20% hard.
 
 IMPORTANT: The correct answer must be randomly distributed across positions A–E (indices 0–4). Do NOT always place the correct answer at index 0. Solve the question yourself first, then arrange the options so the correct answer appears at a random position.
