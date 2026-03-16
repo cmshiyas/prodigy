@@ -628,7 +628,7 @@ ${trimmed}`
         topic_id: resolvedTopicId,
         exam_type: examType,
         subtopic: q.subtopic || null,
-        created_by: 'PDF',
+        created_by: null,
         question: q.question,
         visual: q.visual || null,
         options: shuffledOptions,
@@ -700,19 +700,24 @@ IMPORTANT: For each question, solve it yourself first, then place the correct an
 Respond with ONLY valid JSON (no markdown, no prose):
 {"questions":[{"question":"...","visual":"optional text table or empty string","options":["A","B","C","D","E"],"correct":<0-based index>,"explanation":"step-by-step solution","difficulty":"easy|medium|hard","subtopic":"subtopic name"}]}`
 
-    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 8000,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    })
+    let anthropicRes
+    try {
+      anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 8000,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      })
+    } catch (err) {
+      return NextResponse.json({ error: 'Failed to reach Claude API: ' + err.message }, { status: 500 })
+    }
 
     if (!anthropicRes.ok) {
       const err = await anthropicRes.text()
@@ -750,7 +755,7 @@ Respond with ONLY valid JSON (no markdown, no prose):
         topic_id: topicId,
         exam_type: examType,
         subtopic: subtopic || q.subtopic || null,
-        created_by: 'AI',
+        created_by: null,
         question: q.question.trim(),
         visual: q.visual || null,
         options: shuffled,
@@ -758,6 +763,7 @@ Respond with ONLY valid JSON (no markdown, no prose):
         explanation: q.explanation || '',
         difficulty: ['easy', 'medium', 'hard'].includes(q.difficulty) ? q.difficulty : 'medium',
         year_level: yearLevel || null,
+        question_source: 'sample',
       })
 
       if (insertError) {
@@ -828,7 +834,7 @@ Respond with ONLY valid JSON (no markdown, no prose):
       const { error: insertError } = await supabase.from('questions').insert({
         topic_id: topicId,
         exam_type: examType,
-        created_by: 'Json',
+        created_by: null,
         question: questionText.trim(),
         visual,
         options,

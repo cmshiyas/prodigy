@@ -498,8 +498,11 @@ function AdminPanel({ idToken, onSignOut }) {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Generation failed')
-      const errCount = data.errors?.length || 0
-      setGenStatus(`✓ Generated and saved ${data.generated} questions.${errCount > 0 ? ` (${errCount} failed)` : ''}`)
+      const errList = data.errors || []
+      const errDetails = errList.length
+        ? '\n\nFailed:\n' + errList.map(e => `  Q${e.idx + 1}: ${e.error}`).join('\n')
+        : ''
+      setGenStatus(`✓ Generated and saved ${data.generated} questions.${errList.length > 0 ? ` (${errList.length} failed)` : ''}${errDetails}`)
       loadQuizBank()
     } catch (err) {
       setGenStatus('Error: ' + err.message)
@@ -544,7 +547,7 @@ function AdminPanel({ idToken, onSignOut }) {
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {tabBtn('users', 'Users')}
-          {tabBtn('quizBank', 'Quiz Bank')}
+          {tabBtn('quizBank', 'Question Bank')}
           {tabBtn('questions', 'Questions')}
           {tabBtn('analytics', 'Analytics')}
           {tabBtn('review', 'Answer Review')}
@@ -625,158 +628,198 @@ function AdminPanel({ idToken, onSignOut }) {
         </>
       )}
 
-      {/* Quiz Bank tab */}
+      {/* Question Bank tab */}
       {adminView === 'quizBank' && (
         <div style={{ padding: '20px 24px' }}>
-          <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1rem', marginBottom: 4 }}>Quiz Bank</div>
-          <div style={{ fontSize: '0.85rem', color: '#7A5C3F', marginBottom: 16 }}>Analytics for questions in the bank.</div>
+          <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1.05rem', marginBottom: 4 }}>Question Bank</div>
+          <div style={{ fontSize: '0.82rem', color: '#7A5C3F', marginBottom: 20 }}>Upload PDF papers to extract and add questions to the bank.</div>
 
-          <div style={{ padding: 14, borderRadius: 10, border: '1px solid #E8D5C0', background: '#FFF3E6', marginBottom: 16 }}>
-            <div style={{ fontWeight: 700, marginBottom: 6 }}>Bulk upload sample questions (JSON)</div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
-              <select value={uploadExamType} onChange={e => { setUploadExamType(e.target.value); setUploadYearLevel('') }} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white' }}>
-                {EXAM_TYPES.map(e => <option key={e.id} value={e.id}>{e.label}</option>)}
-              </select>
-              <select value={uploadYearLevel} onChange={e => setUploadYearLevel(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white' }}>
-                <option value="">All year levels</option>
-                {(EXAM_YEAR_LEVELS[uploadExamType] || []).map(y => <option key={y.value} value={y.value}>{y.label}</option>)}
-              </select>
-              <select value={uploadQuestionSource} onChange={e => { setUploadQuestionSource(e.target.value); setUploadPaperYear('') }} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white' }}>
-                <option value="sample">Practice Test</option>
-                <option value="past_paper">Past Year Paper</option>
-              </select>
-              {uploadQuestionSource === 'sample' && (
-                <input
-                  value={uploadPaperYear}
-                  onChange={e => setUploadPaperYear(e.target.value)}
-                  placeholder="Test number (e.g. 1)"
-                  type="number"
-                  min="1"
-                  style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white', width: 150, fontFamily: 'Nunito' }}
-                />
-              )}
-              {uploadQuestionSource === 'past_paper' && (
-                <input
-                  value={uploadPaperYear}
-                  onChange={e => setUploadPaperYear(e.target.value)}
-                  placeholder="Year (e.g. 2023)"
-                  style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white', width: 130, fontFamily: 'Nunito' }}
-                />
-              )}
-              <input id="question-upload-input" type="file" accept="application/json" onChange={e => setUploadFile(e.target.files?.[0] || null)} style={{ padding: '6px 8px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white' }} />
-              <button style={{ padding: '7px 12px', background: '#FF6B35', color: 'white', border: 'none', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 800, cursor: 'pointer' }} onClick={uploadQuestions}>Upload</button>
+          {/* ── PDF Upload ── */}
+          <div style={{ background: '#FFF8F3', border: '1.5px solid #E8D5C0', borderRadius: 12, padding: '18px 20px', marginBottom: 20 }}>
+            <div style={{ fontFamily: 'Nunito', fontWeight: 800, fontSize: '0.95rem', color: '#2D1B0E', marginBottom: 16 }}>Upload PDF</div>
+
+            {/* Column headings */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr 0.8fr 1.2fr 1.6fr', gap: 12, marginBottom: 6 }}>
+              {['Exam Type', 'Section', 'Year', 'Type of Test', 'Test Title'].map(h => (
+                <div key={h} style={{ fontSize: '0.75rem', fontWeight: 800, color: '#7A5C3F', letterSpacing: '0.02em' }}>{h}</div>
+              ))}
             </div>
-            {uploadStatus && <div style={{ fontSize: '0.8rem', color: uploadStatus.startsWith('Upload error') ? '#EF4444' : '#10B981' }}>{uploadStatus}</div>}
-          </div>
 
-          <div style={{ padding: 14, borderRadius: 10, border: '1px solid #E8D5C0', background: '#FFF3E6', marginBottom: 16 }}>
-            <div style={{ fontWeight: 700, marginBottom: 6 }}>Upload PDF for AI topic extraction</div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
-              <select value={uploadPdfExamType} onChange={e => { setUploadPdfExamType(e.target.value); setUploadPdfTopicId(''); setUploadPdfYearLevel('') }} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white' }}>
+            {/* Input row */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr 0.8fr 1.2fr 1.6fr', gap: 12, marginBottom: 14 }}>
+              <select
+                value={uploadPdfExamType}
+                onChange={e => { setUploadPdfExamType(e.target.value); setUploadPdfTopicId(''); setUploadPdfYearLevel('') }}
+                style={{ padding: '8px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white', fontFamily: 'Nunito', fontSize: '0.88rem', width: '100%' }}
+              >
                 {EXAM_TYPES.map(e => <option key={e.id} value={e.id}>{e.label}</option>)}
               </select>
-              <select value={uploadPdfTopicId} onChange={e => setUploadPdfTopicId(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white' }}>
-                <option value="">Auto-detect topic</option>
+
+              <select
+                value={uploadPdfTopicId}
+                onChange={e => setUploadPdfTopicId(e.target.value)}
+                style={{ padding: '8px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white', fontFamily: 'Nunito', fontSize: '0.88rem', width: '100%' }}
+              >
+                <option value="">— Select section —</option>
                 {(EXAM_TOPICS[uploadPdfExamType] || []).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
-              <select value={uploadPdfYearLevel} onChange={e => setUploadPdfYearLevel(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white' }}>
-                <option value="">All year levels</option>
+
+              <select
+                value={uploadPdfYearLevel}
+                onChange={e => setUploadPdfYearLevel(e.target.value)}
+                style={{ padding: '8px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white', fontFamily: 'Nunito', fontSize: '0.88rem', width: '100%' }}
+              >
+                <option value="">—</option>
                 {(EXAM_YEAR_LEVELS[uploadPdfExamType] || []).map(y => <option key={y.value} value={y.value}>{y.label}</option>)}
               </select>
-              <select value={uploadPdfQuestionSource} onChange={e => { setUploadPdfQuestionSource(e.target.value); setUploadPdfPaperYear('') }} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white' }}>
+
+              <select
+                value={uploadPdfQuestionSource}
+                onChange={e => setUploadPdfQuestionSource(e.target.value)}
+                style={{ padding: '8px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white', fontFamily: 'Nunito', fontSize: '0.88rem', width: '100%' }}
+              >
                 <option value="sample">Practice Test</option>
-                <option value="past_paper">Past Year Paper</option>
+                <option value="past_paper">Past Year</option>
               </select>
-              {uploadPdfQuestionSource === 'sample' && (
-                <input
-                  value={uploadPdfPaperYear}
-                  onChange={e => setUploadPdfPaperYear(e.target.value)}
-                  placeholder="Test number (e.g. 1)"
-                  type="number"
-                  min="1"
-                  style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white', width: 150, fontFamily: 'Nunito' }}
-                />
-              )}
-              {uploadPdfQuestionSource === 'past_paper' && (
-                <input
-                  value={uploadPdfPaperYear}
-                  onChange={e => setUploadPdfPaperYear(e.target.value)}
-                  placeholder="Year (e.g. 2023)"
-                  style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white', width: 130, fontFamily: 'Nunito' }}
-                />
-              )}
-              <input id="pdf-upload-input" type="file" accept="application/pdf" onChange={e => setUploadPdfFile(e.target.files?.[0] || null)} style={{ padding: '6px 8px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white' }} />
-              <button style={{ padding: '7px 12px', background: '#FF6B35', color: 'white', border: 'none', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 800, cursor: 'pointer' }} onClick={uploadPdf}>Upload PDF</button>
+
+              <input
+                value={uploadPdfPaperYear}
+                onChange={e => setUploadPdfPaperYear(e.target.value)}
+                placeholder="e.g. 2024 Term 2"
+                style={{ padding: '8px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white', fontFamily: 'Nunito', fontSize: '0.88rem', width: '100%', boxSizing: 'border-box' }}
+              />
             </div>
-            {uploadPdfStatus && <div style={{ fontSize: '0.8rem', whiteSpace: 'pre-wrap', color: (uploadPdfStatus.startsWith('PDF upload failed') || uploadPdfStatus.includes('\n\nErrors:')) ? '#EF4444' : '#10B981' }}>{uploadPdfStatus}</div>}
+
+            {/* File upload row */}
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <input
+                id="pdf-upload-input"
+                type="file"
+                accept="application/pdf"
+                onChange={e => setUploadPdfFile(e.target.files?.[0] || null)}
+                style={{ flex: 1, minWidth: 0, padding: '7px 8px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white', fontFamily: 'Nunito', fontSize: '0.85rem' }}
+              />
+              <button
+                onClick={uploadPdf}
+                style={{ padding: '8px 20px', background: '#FF6B35', color: 'white', border: 'none', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap' }}
+              >Upload PDF</button>
+            </div>
+
+            {uploadPdfStatus && (
+              <div style={{ marginTop: 10, fontSize: '0.82rem', whiteSpace: 'pre-wrap', color: (uploadPdfStatus.startsWith('PDF upload failed') || uploadPdfStatus.includes('\n\nErrors:')) ? '#EF4444' : '#10B981', fontWeight: 600 }}>
+                {uploadPdfStatus}
+              </div>
+            )}
           </div>
 
-          <div style={{ padding: 14, borderRadius: 10, border: '1px solid #C4B5FD', background: '#F5F3FF', marginBottom: 16 }}>
-            <div style={{ fontWeight: 700, marginBottom: 2, color: '#5B21B6' }}>AI Question Generator</div>
-            <div style={{ fontSize: '0.8rem', color: '#7C3AED', marginBottom: 10 }}>Generate questions using Claude AI and add them directly to the question bank.</div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
-              <select
-                value={genExamType}
-                onChange={e => { setGenExamType(e.target.value); setGenTopicId(''); setGenSubtopic(''); setGenYearLevel('') }}
-                style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #C4B5FD', background: 'white' }}
-              >
-                {EXAM_TYPES.map(e => <option key={e.id} value={e.id}>{e.label}</option>)}
-              </select>
-              <select
-                value={genYearLevel}
-                onChange={e => setGenYearLevel(e.target.value)}
-                style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #C4B5FD', background: 'white' }}
-              >
-                <option value="">All year levels</option>
-                {(EXAM_YEAR_LEVELS[genExamType] || []).map(y => <option key={y.value} value={y.value}>{y.label}</option>)}
-              </select>
-              <select
-                value={genTopicId}
-                onChange={e => { setGenTopicId(e.target.value); setGenSubtopic('') }}
-                style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #C4B5FD', background: 'white', minWidth: 160 }}
-              >
-                <option value="">— Select topic —</option>
-                {(EXAM_TOPICS[genExamType] || []).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
-              {genTopicId && (EXAM_TOPICS[genExamType] || []).find(t => t.id === genTopicId)?.subtopics?.length > 0 && (
+          {/* ── AI Question Generator ── */}
+          <div style={{ background: '#F5F3FF', border: '1.5px solid #C4B5FD', borderRadius: 12, padding: '18px 20px', marginBottom: 20 }}>
+            <div style={{ fontFamily: 'Nunito', fontWeight: 800, fontSize: '0.95rem', color: '#5B21B6', marginBottom: 4 }}>AI Question Generator</div>
+            <div style={{ fontSize: '0.8rem', color: '#7C3AED', marginBottom: 14 }}>Generate questions using Claude AI and add them directly to the question bank.</div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto auto', gap: 12, alignItems: 'end', flexWrap: 'wrap' }}>
+              <div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#7C3AED', marginBottom: 5 }}>Exam Type</div>
+                <select
+                  value={genExamType}
+                  onChange={e => { setGenExamType(e.target.value); setGenTopicId(''); setGenSubtopic(''); setGenYearLevel('') }}
+                  style={{ padding: '8px 10px', borderRadius: 8, border: '1.5px solid #C4B5FD', background: 'white', fontFamily: 'Nunito', fontSize: '0.88rem', width: '100%' }}
+                >
+                  {EXAM_TYPES.map(e => <option key={e.id} value={e.id}>{e.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#7C3AED', marginBottom: 5 }}>Section</div>
+                <select
+                  value={genTopicId}
+                  onChange={e => { setGenTopicId(e.target.value); setGenSubtopic('') }}
+                  style={{ padding: '8px 10px', borderRadius: 8, border: '1.5px solid #C4B5FD', background: 'white', fontFamily: 'Nunito', fontSize: '0.88rem', width: '100%' }}
+                >
+                  <option value="">— Select section —</option>
+                  {(EXAM_TOPICS[genExamType] || []).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#7C3AED', marginBottom: 5 }}>Year</div>
+                <select
+                  value={genYearLevel}
+                  onChange={e => setGenYearLevel(e.target.value)}
+                  style={{ padding: '8px 10px', borderRadius: 8, border: '1.5px solid #C4B5FD', background: 'white', fontFamily: 'Nunito', fontSize: '0.88rem', width: '100%' }}
+                >
+                  <option value="">All years</option>
+                  {(EXAM_YEAR_LEVELS[genExamType] || []).map(y => <option key={y.value} value={y.value}>{y.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#7C3AED', marginBottom: 5 }}>Subtopic (optional)</div>
                 <select
                   value={genSubtopic}
                   onChange={e => setGenSubtopic(e.target.value)}
-                  style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #C4B5FD', background: 'white' }}
+                  disabled={!genTopicId}
+                  style={{ padding: '8px 10px', borderRadius: 8, border: '1.5px solid #C4B5FD', background: 'white', fontFamily: 'Nunito', fontSize: '0.88rem', width: '100%', opacity: genTopicId ? 1 : 0.5 }}
                 >
                   <option value="">All subtopics</option>
-                  {(EXAM_TOPICS[genExamType] || []).find(t => t.id === genTopicId)?.subtopics.map(s => (
+                  {(EXAM_TOPICS[genExamType] || []).find(t => t.id === genTopicId)?.subtopics?.map(s => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
-              )}
-              <input
-                type="number"
-                min={1}
-                max={50}
-                value={genCount}
-                onChange={e => setGenCount(e.target.value)}
-                style={{ width: 70, padding: '7px 10px', borderRadius: 8, border: '1.5px solid #C4B5FD', background: 'white', fontFamily: 'Nunito', fontWeight: 700 }}
-                title="Number of questions (1–50)"
-              />
-              <button
-                onClick={generateQuestions}
-                disabled={genLoading || !genTopicId}
-                style={{ padding: '7px 14px', background: genLoading || !genTopicId ? '#C4B5FD' : '#7C3AED', color: 'white', border: 'none', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 800, cursor: genLoading || !genTopicId ? 'not-allowed' : 'pointer' }}
-              >
-                {genLoading ? 'Generating...' : 'Generate & Add to Bank'}
-              </button>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#7C3AED', marginBottom: 5 }}>Count</div>
+                <input
+                  type="number" min={1} max={50} value={genCount}
+                  onChange={e => setGenCount(e.target.value)}
+                  style={{ width: 64, padding: '8px 10px', borderRadius: 8, border: '1.5px solid #C4B5FD', background: 'white', fontFamily: 'Nunito', fontWeight: 700, fontSize: '0.88rem' }}
+                />
+              </div>
+              <div style={{ paddingTop: 20 }}>
+                <button
+                  onClick={generateQuestions}
+                  disabled={genLoading || !genTopicId}
+                  style={{ padding: '8px 16px', background: genLoading || !genTopicId ? '#C4B5FD' : '#7C3AED', color: 'white', border: 'none', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 800, cursor: genLoading || !genTopicId ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}
+                >
+                  {genLoading ? 'Generating...' : 'Generate'}
+                </button>
+              </div>
             </div>
+
             {genStatus && (
-              <div style={{ fontSize: '0.82rem', color: genStatus.startsWith('Error') ? '#DC2626' : genStatus.startsWith('✓') ? '#059669' : '#5B21B6', fontWeight: 600 }}>
+              <div style={{ marginTop: 10, fontSize: '0.82rem', whiteSpace: 'pre-wrap', color: genStatus.startsWith('Error') || genStatus.includes('\n\nFailed:') ? '#DC2626' : genStatus.startsWith('✓') ? '#059669' : '#5B21B6', fontWeight: 600 }}>
                 {genStatus}
               </div>
             )}
           </div>
 
-          <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1.05rem', marginBottom: 4, marginTop: 8 }}>Question Bank Overview</div>
+          {/* ── JSON Upload (secondary) ── */}
+          <details style={{ marginBottom: 20 }}>
+            <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: '0.88rem', color: '#7A5C3F', padding: '10px 14px', background: '#FFF8F3', border: '1.5px solid #E8D5C0', borderRadius: 8, listStyle: 'none', userSelect: 'none' }}>
+              ▸ Bulk upload via JSON
+            </summary>
+            <div style={{ padding: '14px 14px 10px', border: '1.5px solid #E8D5C0', borderTop: 'none', borderRadius: '0 0 8px 8px', background: 'white' }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
+                <select value={uploadExamType} onChange={e => { setUploadExamType(e.target.value); setUploadYearLevel('') }} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white', fontFamily: 'Nunito' }}>
+                  {EXAM_TYPES.map(e => <option key={e.id} value={e.id}>{e.label}</option>)}
+                </select>
+                <select value={uploadYearLevel} onChange={e => setUploadYearLevel(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white', fontFamily: 'Nunito' }}>
+                  <option value="">All year levels</option>
+                  {(EXAM_YEAR_LEVELS[uploadExamType] || []).map(y => <option key={y.value} value={y.value}>{y.label}</option>)}
+                </select>
+                <select value={uploadQuestionSource} onChange={e => { setUploadQuestionSource(e.target.value); setUploadPaperYear('') }} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white', fontFamily: 'Nunito' }}>
+                  <option value="sample">Practice Test</option>
+                  <option value="past_paper">Past Year Paper</option>
+                </select>
+                <input value={uploadPaperYear} onChange={e => setUploadPaperYear(e.target.value)} placeholder={uploadQuestionSource === 'past_paper' ? 'Year (e.g. 2023)' : 'Test number'} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white', width: 140, fontFamily: 'Nunito' }} />
+                <input id="question-upload-input" type="file" accept="application/json" onChange={e => setUploadFile(e.target.files?.[0] || null)} style={{ padding: '6px 8px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white' }} />
+                <button style={{ padding: '7px 12px', background: '#FF6B35', color: 'white', border: 'none', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 800, cursor: 'pointer' }} onClick={uploadQuestions}>Upload</button>
+              </div>
+              {uploadStatus && <div style={{ fontSize: '0.8rem', color: uploadStatus.startsWith('Upload error') ? '#EF4444' : '#10B981' }}>{uploadStatus}</div>}
+            </div>
+          </details>
+
+          {/* ── Overview Stats ── */}
+          <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1rem', marginBottom: 12, color: '#2D1B0E' }}>Overview</div>
           {loadingQuizBank ? (
-            <div style={{ padding: 40, textAlign: 'center', color: '#7A5C3F' }}>Loading quiz bank data...</div>
+            <div style={{ padding: 40, textAlign: 'center', color: '#7A5C3F' }}>Loading...</div>
           ) : quizBank ? (
             <>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
@@ -787,7 +830,7 @@ function AdminPanel({ idToken, onSignOut }) {
                 {(quizBank.examBreakdown || []).map(e => (
                   <div key={e.examType} style={{ background: 'white', borderRadius: 12, border: '1.5px solid #E8D5C0', padding: '14px 20px', minWidth: 120, textAlign: 'center' }}>
                     <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#1D4ED8' }}>{e.count}</div>
-                    <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#7A5C3F', marginTop: 2 }}>{e.examType} Track</div>
+                    <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#7A5C3F', marginTop: 2 }}>{e.examType}</div>
                   </div>
                 ))}
                 {(quizBank.yearBreakdown || []).map(yb => (
@@ -801,9 +844,9 @@ function AdminPanel({ idToken, onSignOut }) {
                 <div style={{ background: 'white', borderRadius: 12, border: '1.5px solid #E8D5C0', padding: 16 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
                     <div style={{ fontWeight: 800 }}>Questions per Topic</div>
-                    <select value={quizBankTopicFilter} onChange={e => setQuizBankTopicFilter(e.target.value)} style={{ padding: '5px 8px', borderRadius: 7, border: '1.5px solid #E8D5C0', background: 'white', fontSize: '0.82rem', fontWeight: 600 }}>
+                    <select value={quizBankTopicFilter} onChange={e => setQuizBankTopicFilter(e.target.value)} style={{ padding: '5px 8px', borderRadius: 7, border: '1.5px solid #E8D5C0', background: 'white', fontSize: '0.82rem', fontWeight: 600, fontFamily: 'Nunito' }}>
                       <option value="all">All Exams</option>
-                      {(quizBank.examBreakdown || []).map(e => <option key={e.examType} value={e.examType}>{e.examType} Track</option>)}
+                      {(quizBank.examBreakdown || []).map(e => <option key={e.examType} value={e.examType}>{e.examType}</option>)}
                     </select>
                   </div>
                   {quizBank.topics.map(t => {
@@ -835,7 +878,7 @@ function AdminPanel({ idToken, onSignOut }) {
                 </div>
               </div>
             </>
-          ) : <div style={{ color: '#7A5C3F' }}>No quiz bank data.</div>}
+          ) : <div style={{ color: '#7A5C3F' }}>No data available.</div>}
         </div>
       )}
 
@@ -1681,7 +1724,7 @@ function QuestionBankReview({ idToken, onSignOut }) {
           <option value="">All Topics</option>
           {(EXAM_TOPICS[examType] || []).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
         </select>
-        <input
+<input
           value={searchInput}
           onChange={e => setSearchInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') setSearch(searchInput) }}
