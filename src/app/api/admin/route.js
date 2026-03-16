@@ -664,7 +664,8 @@ ${trimmed}`
   }
 
   if (action === 'generateQuestions') {
-    const { examType, topicId, subtopic, yearLevel, count = 10 } = await request.json()
+    const { examType, topicId, subtopic, yearLevel, count = 10, questionSource, paperYear } = await request.json()
+    const resolvedSource = questionSource === 'past_paper' ? 'past_paper' : 'sample'
     const validExamIds = EXAM_TYPES.map(item => item.id)
     if (!validExamIds.includes(examType)) {
       return NextResponse.json({ error: 'Invalid exam type' }, { status: 400 })
@@ -771,7 +772,8 @@ Respond with ONLY valid JSON (no markdown, no prose):
         explanation: q.explanation || '',
         difficulty: ['easy', 'medium', 'hard'].includes(q.difficulty) ? q.difficulty : 'medium',
         year_level: yearLevel || null,
-        question_source: 'sample',
+        question_source: resolvedSource,
+        paper_year: paperYear || null,
         upload_source: 'AI',
       })
 

@@ -322,6 +322,8 @@ function AdminPanel({ idToken, onSignOut }) {
   const [genTopicId, setGenTopicId] = useState('')
   const [genSubtopic, setGenSubtopic] = useState('')
   const [genYearLevel, setGenYearLevel] = useState('')
+  const [genQuestionSource, setGenQuestionSource] = useState('sample')
+  const [genPaperYear, setGenPaperYear] = useState('')
   const [genCount, setGenCount] = useState(10)
   const [genStatus, setGenStatus] = useState('')
   const [genLoading, setGenLoading] = useState(false)
@@ -489,7 +491,7 @@ function AdminPanel({ idToken, onSignOut }) {
     setGenLoading(true)
     setGenStatus('Generating questions with AI...')
     try {
-      const body = { examType: genExamType, topicId: genTopicId, yearLevel: genYearLevel, count }
+      const body = { examType: genExamType, topicId: genTopicId, yearLevel: genYearLevel, count, questionSource: genQuestionSource, paperYear: genPaperYear }
       if (genSubtopic) body.subtopic = genSubtopic
       const res = await fetch('/api/admin?action=generateQuestions', {
         method: 'POST',
@@ -717,7 +719,7 @@ function AdminPanel({ idToken, onSignOut }) {
             <div style={{ fontFamily: 'Nunito', fontWeight: 800, fontSize: '0.95rem', color: '#5B21B6', marginBottom: 4 }}>AI Question Generator</div>
             <div style={{ fontSize: '0.8rem', color: '#7C3AED', marginBottom: 14 }}>Generate questions using Claude AI and add them directly to the question bank.</div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto auto', gap: 12, alignItems: 'end', flexWrap: 'wrap' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr 1.4fr auto auto', gap: 12, alignItems: 'end', flexWrap: 'wrap' }}>
               <div>
                 <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#7C3AED', marginBottom: 5 }}>Exam Type</div>
                 <select
@@ -763,6 +765,27 @@ function AdminPanel({ idToken, onSignOut }) {
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#7C3AED', marginBottom: 5 }}>Type of Test</div>
+                <select
+                  value={genQuestionSource}
+                  onChange={e => setGenQuestionSource(e.target.value)}
+                  style={{ padding: '8px 10px', borderRadius: 8, border: '1.5px solid #C4B5FD', background: 'white', fontFamily: 'Nunito', fontSize: '0.88rem', width: '100%' }}
+                >
+                  <option value="sample">Practice Test</option>
+                  <option value="past_paper">Past Year</option>
+                </select>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#7C3AED', marginBottom: 5 }}>Test Title</div>
+                <input
+                  type="text"
+                  value={genPaperYear}
+                  onChange={e => setGenPaperYear(e.target.value)}
+                  placeholder="e.g. 2024 Term 2"
+                  style={{ padding: '8px 10px', borderRadius: 8, border: '1.5px solid #C4B5FD', background: 'white', fontFamily: 'Nunito', fontSize: '0.88rem', width: '100%' }}
+                />
               </div>
               <div>
                 <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#7C3AED', marginBottom: 5 }}>Count</div>
