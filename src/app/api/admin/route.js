@@ -534,19 +534,24 @@ Required format:
 Exam paper text:
 ${trimmed}`
 
-    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 16000,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    })
+    let anthropicRes
+    try {
+      anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 16000,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      })
+    } catch (err) {
+      return NextResponse.json({ error: 'Failed to reach Claude API: ' + err.message }, { status: 500 })
+    }
 
     if (!anthropicRes.ok) {
       const err = await anthropicRes.text()
@@ -623,7 +628,7 @@ ${trimmed}`
         topic_id: resolvedTopicId,
         exam_type: examType,
         subtopic: q.subtopic || null,
-        created_by: null,
+        created_by: 'PDF',
         question: q.question,
         visual: q.visual || null,
         options: shuffledOptions,
@@ -745,7 +750,7 @@ Respond with ONLY valid JSON (no markdown, no prose):
         topic_id: topicId,
         exam_type: examType,
         subtopic: subtopic || q.subtopic || null,
-        created_by: null,
+        created_by: 'AI',
         question: q.question.trim(),
         visual: q.visual || null,
         options: shuffled,
@@ -823,7 +828,7 @@ Respond with ONLY valid JSON (no markdown, no prose):
       const { error: insertError } = await supabase.from('questions').insert({
         topic_id: topicId,
         exam_type: examType,
-        created_by: null,
+        created_by: 'Json',
         question: questionText.trim(),
         visual,
         options,

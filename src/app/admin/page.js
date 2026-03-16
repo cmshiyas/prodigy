@@ -453,6 +453,7 @@ function AdminPanel({ idToken, onSignOut }) {
 
   const uploadPdf = async () => {
     if (!uploadPdfFile) { setUploadPdfStatus('Please select a PDF file first.'); return }
+    if (uploadPdfFile.size > 4 * 1024 * 1024) { setUploadPdfStatus('PDF is too large (max 4 MB). Split the file and try again.'); return }
     setUploadPdfStatus('Sending PDF for extraction...')
     try {
       const formData = new FormData()
@@ -463,11 +464,16 @@ function AdminPanel({ idToken, onSignOut }) {
       if (uploadPdfPaperYear) formData.append('paperYear', uploadPdfPaperYear)
       formData.append('file', uploadPdfFile)
       const res = await fetch('/api/admin?action=uploadPdf', { method: 'POST', body: formData, headers: { Authorization: 'Bearer ' + idToken } })
-      const data = await res.json()
+      const text = await res.text()
+      let data
+      try { data = JSON.parse(text) } catch { throw new Error(`Server error (${res.status}): ${text.slice(0, 200)}`) }
       if (!res.ok) throw new Error(data.error || 'Upload failed')
-      const errors = data.errors?.length || 0
+      const errorList = data.errors || []
       const topics = (data.topics || []).map(t => t.name).join(', ') || 'n/a'
-      setUploadPdfStatus(`Extracted topics: ${topics}. Inserted: ${data.inserted || 0}. Skipped: ${data.skipped || 0}. Errors: ${errors}.`)
+      const errorDetails = errorList.length
+        ? '\n\nErrors:\n' + errorList.map(e => `  Q${e.idx + 1}: ${e.error}`).join('\n')
+        : ''
+      setUploadPdfStatus(`Extracted topics: ${topics}. Inserted: ${data.inserted || 0}. Skipped: ${data.skipped || 0}. Errors: ${errorList.length}.${errorDetails}`)
       setUploadPdfFile(null)
       setUploadPdfYearLevel('')
       setUploadPdfQuestionSource('sample')
@@ -702,7 +708,7 @@ function AdminPanel({ idToken, onSignOut }) {
               <input id="pdf-upload-input" type="file" accept="application/pdf" onChange={e => setUploadPdfFile(e.target.files?.[0] || null)} style={{ padding: '6px 8px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white' }} />
               <button style={{ padding: '7px 12px', background: '#FF6B35', color: 'white', border: 'none', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 800, cursor: 'pointer' }} onClick={uploadPdf}>Upload PDF</button>
             </div>
-            {uploadPdfStatus && <div style={{ fontSize: '0.8rem', color: uploadPdfStatus.startsWith('PDF upload failed') ? '#EF4444' : '#10B981' }}>{uploadPdfStatus}</div>}
+            {uploadPdfStatus && <div style={{ fontSize: '0.8rem', whiteSpace: 'pre-wrap', color: (uploadPdfStatus.startsWith('PDF upload failed') || uploadPdfStatus.includes('\n\nErrors:')) ? '#EF4444' : '#10B981' }}>{uploadPdfStatus}</div>}
           </div>
 
           <div style={{ padding: 14, borderRadius: 10, border: '1px solid #C4B5FD', background: '#F5F3FF', marginBottom: 16 }}>
