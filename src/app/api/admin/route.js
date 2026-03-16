@@ -594,9 +594,16 @@ ${trimmed}`
     const skippedQuestions = []
     const questionErrors = []
 
+    const SELF_CORRECTION_PATTERNS = /\b(wait|let me recalculate|let me re-check|let me double.check|actually,|i made an error|i was wrong|correction:|re-checking|reconsider)\b/i
+
     for (const [idx, q] of questions.entries()) {
       if (!q || !q.topicId || !q.question || !Array.isArray(q.options) || q.options.length < 2 || typeof q.correct !== 'number') {
         questionErrors.push({ idx, error: 'Invalid question format', q })
+        continue
+      }
+
+      if (q.explanation && SELF_CORRECTION_PATTERNS.test(q.explanation)) {
+        questionErrors.push({ idx, error: 'Explanation contains self-correction language — correct index may be wrong', q })
         continue
       }
 
