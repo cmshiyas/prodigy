@@ -56,12 +56,13 @@ export async function GET(request) {
         }),
     }))
 
-    // Sort: past_paper first (newest year first), then practice tests by number ascending
+    // Sort: past_paper first (newest year first), then practice tests ascending by title
     groups.sort((a, b) => {
       if (a.question_source !== b.question_source) return a.question_source === 'past_paper' ? -1 : 1
-      if (a.question_source === 'past_paper' && a.paper_year && b.paper_year) return b.paper_year.localeCompare(a.paper_year)
-      if (a.question_source === 'sample') return parseInt(a.paper_year || '0') - parseInt(b.paper_year || '0')
-      return 0
+      const ay = a.paper_year || ''
+      const by = b.paper_year || ''
+      if (a.question_source === 'past_paper') return by.localeCompare(ay, undefined, { numeric: true })
+      return ay.localeCompare(by, undefined, { numeric: true })
     })
 
     return NextResponse.json({ groups }, { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } })
