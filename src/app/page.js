@@ -1281,30 +1281,6 @@ function HomeScreen({ user, examType, onExamTypeChange, yearLevel, onYearLevelCh
           Year level: <span style={{ fontWeight: 800, color: '#334155' }}>{EXAM_YEAR_LEVELS[examType][0].label}</span>
         </div>
       )}
-      {!user.is_admin && (
-        <div className="limit-banner" style={{ marginBottom: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-            <span><strong>{TIER_LABELS[user.tier]} Tier</strong></span>
-            {user.tier === 'silver' && (
-              <button
-                className="btn btn-primary"
-                style={{ fontSize: '0.78rem', padding: '5px 12px' }}
-                onClick={onUpgrade}
-              >Upgrade ↑</button>
-            )}
-          </div>
-          {user.tier === 'silver' && (
-            <div style={{ marginTop: 8, fontSize: '0.8rem', color: '#92400E' }}>
-              🔒 Subtopic drill, History, Ranking &amp; Streak rewards unlock with Gold or Platinum.
-            </div>
-          )}
-          {user.tier === 'gold' && (
-            <div style={{ marginTop: 8, fontSize: '0.8rem', color: '#92400E' }}>
-              🔒 Leaderboard &amp; Streak rewards unlock with Platinum.
-            </div>
-          )}
-        </div>
-      )}
       <div className="stats-card" style={{ marginBottom: 20 }}>
         <div className="stats-title">This Session</div>
         <div className="stats-grid">
@@ -1596,6 +1572,20 @@ function TestSession({ questions, label, idToken, onFinish }) {
         body: JSON.stringify({ questionId: q.id, selectedOption: idx, responseTimeSeconds: null }),
       }).catch(() => {})
     }
+    setTimeout(() => {
+      if (current < totalQ - 1) {
+        setCurrent(c => c + 1)
+      } else {
+        const newAnswers = { ...answers, [current]: idx }
+        const allAnswered = questions.every((_, i) => newAnswers[i] !== undefined)
+        if (allAnswered) {
+          onFinish(newAnswers)
+        } else {
+          const firstUnanswered = questions.findIndex((_, i) => newAnswers[i] === undefined)
+          if (firstUnanswered !== -1) setCurrent(firstUnanswered)
+        }
+      }
+    }, 1200)
   }
 
   return (
@@ -1640,9 +1630,6 @@ function TestSession({ questions, label, idToken, onFinish }) {
         <div style={{ display: 'flex', gap: 8 }}>
           {!isSubmitted && (
             <button className="btn btn-primary" onClick={submitAnswer} disabled={!hasPending}>Submit Answer</button>
-          )}
-          {isSubmitted && current < totalQ - 1 && (
-            <button className="btn btn-primary" onClick={() => setCurrent(c => c + 1)}>Next →</button>
           )}
           {isSubmitted && current === totalQ - 1 && (
             answered === totalQ
