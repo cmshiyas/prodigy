@@ -1316,7 +1316,7 @@ function HomeScreen({ user, examType, onExamTypeChange, yearLevel, onYearLevelCh
                     const isPast = item.group.question_source === 'past_paper'
                     const label = isPast
                       ? `📄 ${item.group.paper_year || 'Past Paper'}`
-                      : `📋 Practice Test ${item.group.paper_year || ''}`
+                      : `📋 ${item.group.paper_year || ''}`
                     const topic = { topic_id: topicId, topic_name, count: item.count }
                     return (
                       <button key={ti} className="paper-topic-tile" onClick={() => onTestTileClick(item.group, topic)}>
