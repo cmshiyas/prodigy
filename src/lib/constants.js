@@ -42,10 +42,6 @@ export const EXAM_TOPICS = {
   ],
   OC: [
     {
-      id: 'reading', name: 'Reading', icon: '📘', color: '#4A90D9', bg: '#EFF6FF', desc: 'Short passages, inference, comprehension',
-      subtopics: ['Inference', 'Main idea', 'Vocabulary', 'Comparison']
-    },
-    {
       id: 'mathematical', name: 'Mathematical Reasoning', icon: '📐', color: '#0F9B8E', bg: '#F0FDFA', desc: 'Algebra, operations, quantitative reasoning',
       subtopics: ['Arithmetic', 'Algebraic thinking', 'Number patterns', 'Problem solving']
     },
@@ -55,10 +51,6 @@ export const EXAM_TOPICS = {
     },
   ],
   Selective: [
-    {
-      id: 'reading', name: 'Reading', icon: '📘', color: '#4A90D9', bg: '#EFF6FF', desc: 'Comprehension, inference, passage analysis',
-      subtopics: ['Inference', 'Summary', 'Vocabulary', 'Opinion']
-    },
     {
       id: 'mathematical', name: 'Mathematical Reasoning', icon: '📐', color: '#0F9B8E', bg: '#F0FDFA', desc: 'Algebra, arithmetic, equations',
       subtopics: ['Algebra', 'Fractions', 'Ratios', 'Word problems']
