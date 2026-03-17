@@ -554,6 +554,7 @@ function AdminPanel({ idToken, onSignOut }) {
           {tabBtn('users', 'Users')}
           {tabBtn('quizBank', 'Question Bank')}
           {tabBtn('questions', 'Questions')}
+          {tabBtn('create', 'Create Question')}
           {tabBtn('analytics', 'Analytics')}
           {tabBtn('review', 'Answer Review')}
           {tabBtn('promos', 'Promo Codes')}
@@ -909,6 +910,10 @@ function AdminPanel({ idToken, onSignOut }) {
       {/* Questions tab */}
       {adminView === 'questions' && (
         <QuestionBankReview idToken={idToken} onSignOut={onSignOut} />
+      )}
+
+      {adminView === 'create' && (
+        <CreateQuestion idToken={idToken} onSignOut={onSignOut} />
       )}
 
       {/* Analytics tab */}
@@ -1553,6 +1558,368 @@ function PromoManager({ idToken, onSignOut }) {
   )
 }
 
+// ── CREATE QUESTION ────────────────────────────────────────────
+
+function CreateQuestion({ idToken, onSignOut }) {
+  const OPTION_LABELS = ['A', 'B', 'C', 'D', 'E']
+  const blankForm = () => ({
+    examType: 'OC',
+    topicId: '',
+    yearLevel: '',
+    subtopic: '',
+    questionSource: 'sample',
+    paperYear: '',
+    format: 'standard',
+    difficulty: 'medium',
+    question: '',
+    passage: '',
+    visual: '',
+    options: ['', '', '', ''],
+    correct: 0,
+    explanation: '',
+    image_urls: [],
+  })
+
+  const [form, setForm] = useState(blankForm())
+  const [pendingImageFiles, setPendingImageFiles] = useState([])
+  const [saving, setSaving] = useState(false)
+  const [status, setStatus] = useState(null) // { type: 'success'|'error', msg }
+  const [showPreview, setShowPreview] = useState(false)
+
+  const set = (key, val) => setForm(f => ({ ...f, [key]: val }))
+  const setOption = (i, val) => setForm(f => { const o = [...f.options]; o[i] = val; return { ...f, options: o } })
+  const addOption = () => { if (form.options.length < 5) setForm(f => ({ ...f, options: [...f.options, ''] })) }
+  const removeOption = (i) => setForm(f => {
+    const o = f.options.filter((_, j) => j !== i)
+    return { ...f, options: o, correct: f.correct >= o.length ? 0 : f.correct === i ? 0 : f.correct > i ? f.correct - 1 : f.correct }
+  })
+
+  const topicList = EXAM_TOPICS[form.examType] || []
+  const yearLevels = EXAM_YEAR_LEVELS[form.examType] || []
+  const subtopicSuggestions = topicList.find(t => t.id === form.topicId)?.subtopics || []
+
+  const uploadImages = async () => {
+    const urls = []
+    for (const file of pendingImageFiles) {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/admin?action=uploadImage', { method: 'POST', body: fd, headers: { Authorization: 'Bearer ' + idToken } })
+      if (res.status === 403) { const e = await res.json(); if (e.error?.includes('Not')) { onSignOut(); return [] } }
+      const data = await res.json()
+      if (data.url) urls.push(data.url)
+    }
+    return urls
+  }
+
+  const handleSubmit = async () => {
+    if (!form.topicId) { setStatus({ type: 'error', msg: 'Please select a Section.' }); return }
+    if (!form.question.trim()) { setStatus({ type: 'error', msg: 'Question text is required.' }); return }
+    if (form.options.some(o => !o.trim())) { setStatus({ type: 'error', msg: 'All options must be filled in.' }); return }
+    if (!form.explanation.trim()) { setStatus({ type: 'error', msg: 'Explanation is required.' }); return }
+    if (form.format === 'reading' && !form.passage.trim()) { setStatus({ type: 'error', msg: 'Passage is required for Reading format.' }); return }
+    setSaving(true)
+    setStatus(null)
+    try {
+      const newUrls = await uploadImages()
+      const allUrls = [...form.image_urls, ...newUrls]
+      const res = await fetch('/api/admin?action=createQuestion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+        body: JSON.stringify({
+          examType: form.examType,
+          topicId: form.topicId,
+          yearLevel: form.yearLevel || null,
+          subtopic: form.subtopic || null,
+          questionSource: form.questionSource,
+          paperYear: form.paperYear || null,
+          difficulty: form.difficulty,
+          question: form.question.trim(),
+          passage: form.format === 'reading' ? form.passage.trim() : null,
+          visual: form.visual.trim() || null,
+          options: form.options,
+          correct: form.correct,
+          explanation: form.explanation.trim(),
+          image_urls: allUrls,
+        }),
+      })
+      if (res.status === 403) { const e = await res.json(); if (e.error?.includes('Not')) { onSignOut(); return } }
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to create question')
+      setStatus({ type: 'success', msg: 'Question created successfully!' })
+      setForm(blankForm())
+      setPendingImageFiles([])
+      setShowPreview(false)
+    } catch (err) {
+      setStatus({ type: 'error', msg: err.message })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const inpStyle = { padding: '8px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', fontFamily: 'Nunito', fontSize: '0.88rem', width: '100%', boxSizing: 'border-box', background: 'white' }
+  const labelStyle = { fontSize: '0.75rem', fontWeight: 800, color: '#7A5C3F', letterSpacing: '0.03em', textTransform: 'uppercase', marginBottom: 5, display: 'block' }
+  const sectionStyle = { background: '#FFF8F3', border: '1.5px solid #E8D5C0', borderRadius: 12, padding: '16px 18px', marginBottom: 16 }
+
+  const diffColor = { easy: '#059669', medium: '#D97706', hard: '#DC2626' }
+
+  return (
+    <div style={{ padding: '20px 24px' }}>
+      <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1.05rem', marginBottom: 4 }}>Create Question</div>
+      <div style={{ fontSize: '0.82rem', color: '#7A5C3F', marginBottom: 20 }}>Manually author a question for any exam type. All fields marked * are required.</div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, maxWidth: 900 }}>
+
+        {/* ── LEFT COLUMN ── */}
+        <div>
+
+          {/* Meta */}
+          <div style={sectionStyle}>
+            <div style={{ fontWeight: 800, fontSize: '0.82rem', color: '#2D1B0E', marginBottom: 12 }}>Question Settings</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+              <div>
+                <label style={labelStyle}>Exam Type *</label>
+                <select value={form.examType} onChange={e => { set('examType', e.target.value); set('topicId', ''); set('yearLevel', '') }} style={inpStyle}>
+                  {EXAM_TYPES.map(e => <option key={e.id} value={e.id}>{e.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Section *</label>
+                <select value={form.topicId} onChange={e => { set('topicId', e.target.value); set('subtopic', '') }} style={{ ...inpStyle, borderColor: !form.topicId ? '#FCA5A5' : '#E8D5C0' }}>
+                  <option value="">— Select —</option>
+                  {topicList.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+              <div>
+                <label style={labelStyle}>Year Level</label>
+                <select value={form.yearLevel} onChange={e => set('yearLevel', e.target.value)} style={inpStyle}>
+                  <option value="">— Any —</option>
+                  {yearLevels.map(y => <option key={y.value} value={y.value}>{y.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Difficulty *</label>
+                <select value={form.difficulty} onChange={e => set('difficulty', e.target.value)} style={{ ...inpStyle, color: diffColor[form.difficulty], fontWeight: 700 }}>
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+              <div>
+                <label style={labelStyle}>Type of Test</label>
+                <select value={form.questionSource} onChange={e => { set('questionSource', e.target.value); set('paperYear', '') }} style={inpStyle}>
+                  <option value="sample">Practice Test</option>
+                  <option value="past_paper">Past Year Paper</option>
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>{form.questionSource === 'past_paper' ? 'Year' : 'Test Title'}</label>
+                <input
+                  value={form.paperYear}
+                  onChange={e => set('paperYear', e.target.value)}
+                  placeholder={form.questionSource === 'past_paper' ? 'e.g. 2023' : 'e.g. Practice Test 1'}
+                  style={inpStyle}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div>
+                <label style={labelStyle}>Subtopic</label>
+                <input
+                  list="subtopic-suggestions"
+                  value={form.subtopic}
+                  onChange={e => set('subtopic', e.target.value)}
+                  placeholder="e.g. Fractions"
+                  style={inpStyle}
+                />
+                <datalist id="subtopic-suggestions">
+                  {subtopicSuggestions.map(s => <option key={s} value={s} />)}
+                </datalist>
+              </div>
+              <div>
+                <label style={labelStyle}>Format</label>
+                <select value={form.format} onChange={e => set('format', e.target.value)} style={inpStyle}>
+                  <option value="standard">Standard</option>
+                  <option value="reading">Reading (with passage)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Passage (Reading only) */}
+          {form.format === 'reading' && (
+            <div style={sectionStyle}>
+              <label style={labelStyle}>Reading Passage *</label>
+              <textarea
+                value={form.passage}
+                onChange={e => set('passage', e.target.value)}
+                rows={8}
+                placeholder="Paste the full reading passage here…"
+                style={{ ...inpStyle, resize: 'vertical', lineHeight: 1.6 }}
+              />
+            </div>
+          )}
+
+          {/* Question */}
+          <div style={sectionStyle}>
+            <label style={labelStyle}>Question *</label>
+            <textarea
+              value={form.question}
+              onChange={e => set('question', e.target.value)}
+              rows={4}
+              placeholder="Enter the question text…"
+              style={{ ...inpStyle, resize: 'vertical', lineHeight: 1.6 }}
+            />
+            <div style={{ marginTop: 10 }}>
+              <label style={labelStyle}>Visual / Text Table <span style={{ fontWeight: 500, textTransform: 'none' }}>(optional — use for diagrams described in text)</span></label>
+              <textarea
+                value={form.visual}
+                onChange={e => set('visual', e.target.value)}
+                rows={3}
+                placeholder="e.g. a plain-text table or ASCII diagram"
+                style={{ ...inpStyle, resize: 'vertical', fontFamily: 'monospace', fontSize: '0.82rem' }}
+              />
+            </div>
+          </div>
+
+          {/* Images */}
+          <div style={sectionStyle}>
+            <label style={labelStyle}>Images <span style={{ fontWeight: 500, textTransform: 'none' }}>(optional)</span></label>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={e => setPendingImageFiles(prev => [...prev, ...Array.from(e.target.files)])}
+              style={{ fontSize: '0.82rem', fontFamily: 'Nunito' }}
+            />
+            {pendingImageFiles.length > 0 && (
+              <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {pendingImageFiles.map((f, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: 6, padding: '3px 8px', fontSize: '0.78rem' }}>
+                    <span style={{ color: '#0369A1', fontWeight: 600 }}>{f.name}</span>
+                    <button onClick={() => setPendingImageFiles(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: '0.9rem', padding: 0, lineHeight: 1 }}>✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── RIGHT COLUMN ── */}
+        <div>
+
+          {/* Options */}
+          <div style={sectionStyle}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <label style={{ ...labelStyle, margin: 0 }}>Answer Options * <span style={{ fontWeight: 500, textTransform: 'none' }}>— click the letter to mark as correct</span></label>
+              {form.options.length < 5 && (
+                <button onClick={addOption} style={{ fontSize: '0.75rem', fontWeight: 700, padding: '3px 10px', borderRadius: 6, border: '1.5px solid #BBF7D0', background: '#F0FDF4', color: '#166534', cursor: 'pointer', fontFamily: 'Nunito' }}>+ Add Option E</button>
+              )}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {form.options.map((opt, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button
+                    onClick={() => set('correct', i)}
+                    title="Mark as correct"
+                    style={{
+                      width: 30, height: 30, borderRadius: '50%', border: '2px solid',
+                      borderColor: form.correct === i ? '#059669' : '#E8D5C0',
+                      background: form.correct === i ? '#059669' : 'white',
+                      color: form.correct === i ? 'white' : '#7A5C3F',
+                      fontWeight: 800, fontSize: '0.82rem', cursor: 'pointer', flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >{OPTION_LABELS[i]}</button>
+                  <input
+                    value={opt}
+                    onChange={e => setOption(i, e.target.value)}
+                    placeholder={`Option ${OPTION_LABELS[i]}…`}
+                    style={{ ...inpStyle, flex: 1, borderColor: form.correct === i ? '#A7F3D0' : '#E8D5C0', background: form.correct === i ? '#F0FDF4' : 'white' }}
+                  />
+                  {form.options.length > 2 && (
+                    <button onClick={() => removeOption(i)} title="Remove option" style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: '1rem', padding: 2, flexShrink: 0 }}>✕</button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop: 8, fontSize: '0.75rem', color: '#7A5C3F' }}>
+              Correct answer: <strong style={{ color: '#059669' }}>{OPTION_LABELS[form.correct]}: {form.options[form.correct] || '—'}</strong>
+            </div>
+          </div>
+
+          {/* Explanation */}
+          <div style={sectionStyle}>
+            <label style={labelStyle}>Explanation * <span style={{ fontWeight: 500, textTransform: 'none' }}>— step-by-step reasoning for the correct answer</span></label>
+            <textarea
+              value={form.explanation}
+              onChange={e => set('explanation', e.target.value)}
+              rows={6}
+              placeholder="Explain why the correct answer is right. Be specific and step-by-step…"
+              style={{ ...inpStyle, resize: 'vertical', lineHeight: 1.6 }}
+            />
+          </div>
+
+          {/* Preview card */}
+          {showPreview && form.question && (
+            <div style={{ background: '#F8F5F0', border: '1.5px solid #E8D5C0', borderRadius: 12, padding: '14px 16px', marginBottom: 16 }}>
+              <div style={{ fontWeight: 800, fontSize: '0.78rem', color: '#7A5C3F', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 }}>Preview</div>
+              {form.format === 'reading' && form.passage && (
+                <div style={{ background: 'white', border: '1px solid #E8D5C0', borderRadius: 8, padding: '10px 12px', marginBottom: 10, maxHeight: 160, overflowY: 'auto', fontSize: '0.82rem', lineHeight: 1.6, whiteSpace: 'pre-wrap', color: '#2D1B0E' }}>{form.passage}</div>
+              )}
+              {form.visual && <pre style={{ background: 'white', border: '1px solid #E8D5C0', borderRadius: 8, padding: '8px 12px', marginBottom: 10, fontSize: '0.8rem', overflowX: 'auto' }}>{form.visual}</pre>}
+              <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#2D1B0E', marginBottom: 10, lineHeight: 1.5 }}>{form.question}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                {form.options.map((opt, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, background: form.correct === i ? '#DCFCE7' : 'white', border: `1px solid ${form.correct === i ? '#86EFAC' : '#E8D5C0'}`, borderRadius: 7, padding: '5px 10px', fontSize: '0.85rem' }}>
+                    <span style={{ fontWeight: 800, color: form.correct === i ? '#166534' : '#7A5C3F', width: 16 }}>{OPTION_LABELS[i]}</span>
+                    <span style={{ color: '#2D1B0E' }}>{opt}</span>
+                  </div>
+                ))}
+              </div>
+              {form.explanation && (
+                <div style={{ marginTop: 10, background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 8, padding: '8px 12px', fontSize: '0.82rem', color: '#1D4ED8', lineHeight: 1.5 }}>
+                  <strong>Explanation:</strong> {form.explanation}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Status */}
+          {status && (
+            <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 8, background: status.type === 'success' ? '#DCFCE7' : '#FEF2F2', border: `1.5px solid ${status.type === 'success' ? '#86EFAC' : '#FECACA'}`, color: status.type === 'success' ? '#166534' : '#991B1B', fontWeight: 700, fontSize: '0.85rem' }}>
+              {status.msg}
+            </div>
+          )}
+
+          {/* Actions */}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => setShowPreview(v => !v)}
+              style={{ flex: 1, padding: '10px 0', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white', fontFamily: 'Nunito', fontWeight: 700, fontSize: '0.88rem', cursor: 'pointer', color: '#2D1B0E' }}
+            >{showPreview ? 'Hide Preview' : 'Preview'}</button>
+            <button
+              onClick={handleSubmit}
+              disabled={saving}
+              style={{ flex: 2, padding: '10px 0', borderRadius: 8, border: 'none', background: saving ? '#E8D5C0' : '#FF6B35', color: 'white', fontFamily: 'Nunito', fontWeight: 800, fontSize: '0.88rem', cursor: saving ? 'not-allowed' : 'pointer' }}
+            >{saving ? 'Saving…' : 'Save Question'}</button>
+            <button
+              onClick={() => { setForm(blankForm()); setPendingImageFiles([]); setStatus(null); setShowPreview(false) }}
+              style={{ padding: '10px 14px', borderRadius: 8, border: '1.5px solid #FECACA', background: '#FEF2F2', fontFamily: 'Nunito', fontWeight: 700, fontSize: '0.88rem', cursor: 'pointer', color: '#991B1B' }}
+            >Reset</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── QUESTION BANK REVIEW ───────────────────────────────────────
 
 function QuestionBankReview({ idToken, onSignOut }) {
@@ -1757,6 +2124,7 @@ function QuestionBankReview({ idToken, onSignOut }) {
           <option value="AI">AI</option>
           <option value="PDF">PDF</option>
           <option value="Json">Json</option>
+          <option value="Manual">Manual</option>
           <option value="none">Unknown</option>
         </select>
         <input

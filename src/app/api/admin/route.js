@@ -390,6 +390,49 @@ export async function POST(request) {
     return NextResponse.json({ ok: true })
   }
 
+  if (action === 'createQuestion') {
+    const { examType, topicId, yearLevel, subtopic, questionSource, paperYear, difficulty, question, passage, visual, options, correct, explanation, image_urls } = await request.json()
+    const validExamIds = EXAM_TYPES.map(e => e.id)
+    if (!validExamIds.includes(examType)) return NextResponse.json({ error: 'Invalid exam type' }, { status: 400 })
+    if (!topicId) return NextResponse.json({ error: 'topicId is required' }, { status: 400 })
+    if (!question?.trim()) return NextResponse.json({ error: 'question is required' }, { status: 400 })
+    if (!Array.isArray(options) || options.length < 2) return NextResponse.json({ error: 'At least 2 options required' }, { status: 400 })
+    if (typeof correct !== 'number' || correct < 0 || correct >= options.length) return NextResponse.json({ error: 'Invalid correct index' }, { status: 400 })
+    if (!explanation?.trim()) return NextResponse.json({ error: 'explanation is required' }, { status: 400 })
+
+    const urls = Array.isArray(image_urls) ? image_urls.filter(Boolean) : []
+    const source = questionSource === 'past_paper' ? 'past_paper' : 'sample'
+    const diff = ['easy', 'medium', 'hard'].includes(difficulty) ? difficulty : 'medium'
+
+    // Upsert subtopic
+    if (subtopic) {
+      await supabase.from('subtopics').upsert({ topic_id: topicId, exam_type: examType, name: subtopic }, { onConflict: 'topic_id,exam_type,name' })
+    }
+
+    const { data, error } = await supabase.from('questions').insert({
+      exam_type: examType,
+      topic_id: topicId,
+      year_level: yearLevel || null,
+      subtopic: subtopic || null,
+      question_source: source,
+      paper_year: paperYear || null,
+      difficulty: diff,
+      question: question.trim(),
+      passage: passage || null,
+      visual: visual || null,
+      options,
+      correct,
+      explanation: explanation.trim(),
+      image_url: urls[0] || null,
+      image_urls: urls.length > 0 ? urls : null,
+      upload_source: 'Manual',
+      created_by: null,
+    }).select().single()
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ question: data })
+  }
+
   if (action === 'updateQuestion') {
     const { questionId, question, options, correct, explanation, difficulty, subtopic, year_level, image_urls, question_source, paper_year } = await request.json()
     if (!questionId) return NextResponse.json({ error: 'questionId required' }, { status: 400 })
