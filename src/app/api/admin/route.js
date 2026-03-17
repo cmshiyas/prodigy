@@ -561,57 +561,9 @@ export async function POST(request) {
       return NextResponse.json({ error: 'PDF contains no extractable text' }, { status: 400 })
     }
 
-    // Extract images from PDF pages with images and upload to Supabase (parallel, capped at 10 pages)
-    const pageImageUrls = {}
-    try {
-      const { createCanvas } = require('@napi-rs/canvas')
-      const pdfjs = require('pdf-parse/lib/pdf.js/v2.0.550/build/pdf.js')
-
-      const loadingTask = pdfjs.getDocument({ data: new Uint8Array(fileBuffer) })
-      const pdfDoc = await loadingTask.promise
-
-      const imagePageNums = []
-      for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
-        const page = await pdfDoc.getPage(pageNum)
-        const ops = await page.getOperatorList()
-        const hasImage = ops.fnArray.some(fn =>
-          fn === pdfjs.OPS.paintJpegXObject ||
-          fn === pdfjs.OPS.paintImageXObject ||
-          fn === pdfjs.OPS.paintInlineImageXObject
-        )
-        if (hasImage) imagePageNums.push(pageNum)
-        if (imagePageNums.length >= 10) break
-      }
-
-      await Promise.all(imagePageNums.map(async (pageNum) => {
-        const page = await pdfDoc.getPage(pageNum)
-        const viewport = page.getViewport({ scale: 1.5 })
-        const canvas = createCanvas(Math.floor(viewport.width), Math.floor(viewport.height))
-        const ctx = canvas.getContext('2d')
-        await page.render({ canvasContext: ctx, viewport }).promise
-        const pngBuffer = canvas.toBuffer('image/png')
-        const fileName = `questions/pdf-${Date.now()}-p${pageNum}.png`
-        const { error: uploadErr } = await supabase.storage
-          .from('images')
-          .upload(fileName, pngBuffer, { contentType: 'image/png', upsert: false })
-        if (!uploadErr) {
-          const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(fileName)
-          pageImageUrls[pageNum] = publicUrl
-        }
-      }))
-    } catch (imgErr) {
-      console.error('PDF image extraction error:', imgErr.message)
-      // Non-fatal: continue without images
-    }
-
     const topicInstruction = topicId
       ? `All questions belong to topicId "${topicId}". Set topicId to "${topicId}" for every question.`
       : `Determine the appropriate topicId for each question based on its content.`
-
-    const pageImageEntries = Object.entries(pageImageUrls)
-    const imageContext = pageImageEntries.length > 0
-      ? `\n\nThe following PDF pages contain images and have been uploaded:\n${pageImageEntries.map(([p, url]) => `Page ${p}: ${url}`).join('\n')}\nFor each question that references or relies on an image on one of these pages, include "image_urls": ["<url>"] using the matching page URL. Leave image_urls as [] if the question has no associated image.`
-      : ''
 
     const trimmed = text.length > 16000 ? text.slice(0, 16000) : text
 
@@ -630,12 +582,12 @@ For each passage block:
    e. Set difficulty: easy / medium / hard
    f. Assign a subtopic (e.g. "Inference", "Vocabulary in context", "Main idea", "Author's purpose", "Text structure", "Figurative language")
    g. Set "passage" to the full passage text for that question group
-   h. ${topicInstruction}${imageContext}
+   h. ${topicInstruction}
 
 IMPORTANT: Respond with ONLY valid JSON, no markdown, no prose.
 
 Required format:
-{"topics":[{"id":"string","name":"string","subtopics":["string"]}],"extractedQuestions":[{"topicId":"string","subtopic":"string","passage":"full passage text","question":"string","options":["string"],"correct":2,"explanation":"string","difficulty":"easy","image_urls":[]}]}
+{"topics":[{"id":"string","name":"string","subtopics":["string"]}],"extractedQuestions":[{"topicId":"string","subtopic":"string","passage":"full passage text","question":"string","options":["string"],"correct":2,"explanation":"string","difficulty":"easy"}]}
 
 Exam paper text:
 ${trimmed}`
@@ -648,12 +600,12 @@ Below is the text of an exam paper. Extract every multiple choice question and d
 4. Write a brief step-by-step explanation of why that answer is correct. The explanation must be confident and final — no self-corrections, no "wait", no "let me recalculate". Present only the correct reasoning leading to the final answer.
 5. Assign a subtopic (e.g. "Algebraic thinking", "Fractions", "Measurement", "Number operations", "Geometry", "Spatial reasoning", "Number patterns", "Problem solving", "Data & graphs")
 6. Set difficulty: easy / medium / hard
-7. ${topicInstruction}${imageContext}
+7. ${topicInstruction}
 
 IMPORTANT: Respond with ONLY valid JSON, no markdown, no prose.
 
 Required format:
-{"topics":[{"id":"string","name":"string","subtopics":["string"]}],"extractedQuestions":[{"topicId":"string","subtopic":"string","question":"string","options":["string"],"correct":2,"explanation":"string","difficulty":"easy","image_urls":[]}]}
+{"topics":[{"id":"string","name":"string","subtopics":["string"]}],"extractedQuestions":[{"topicId":"string","subtopic":"string","question":"string","options":["string"],"correct":2,"explanation":"string","difficulty":"easy"}]}
 
 Exam paper text:
 ${trimmed}`
