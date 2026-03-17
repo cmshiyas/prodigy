@@ -31,7 +31,7 @@ export default function TermsOfService() {
           </Section>
 
           <Section title="3. Accounts">
-            <p>You are responsible for maintaining the confidentiality of your Google account credentials. You must notify us immediately at <strong>support@selfpaced.com.au</strong> if you suspect unauthorised access to your account.</p>
+            <p>You are responsible for maintaining the confidentiality of your Google account credentials. You must notify us immediately at <strong>hello@selfpaced.com.au</strong> if you suspect unauthorised access to your account.</p>
             <p>We reserve the right to refuse or revoke access at our discretion, including where we reasonably believe the Terms are being violated.</p>
           </Section>
 
@@ -52,7 +52,7 @@ export default function TermsOfService() {
           </Section>
 
           <Section title="6. Cancellation">
-            <p>You may cancel your subscription at any time by contacting us at <strong>support@selfpaced.com.au</strong>. Cancellation takes effect at the end of your current billing cycle. You will retain access to paid features until that date.</p>
+            <p>You may cancel your subscription at any time by contacting us at <strong>hello@selfpaced.com.au</strong>. Cancellation takes effect at the end of your current billing cycle. You will retain access to paid features until that date.</p>
           </Section>
 
           <Section title="7. Australian Consumer Law">
@@ -101,7 +101,7 @@ export default function TermsOfService() {
           <Section title="15. Contact">
             <p>
               <strong>Self Paced Learning</strong><br />
-              Email: <strong>support@selfpaced.com.au</strong><br />
+              Email: <strong>hello@selfpaced.com.au</strong><br />
               Website: <a href="https://www.selfpaced.com.au" style={{ color: '#7A5C3F' }}>selfpaced.com.au</a>
             </p>
           </Section>

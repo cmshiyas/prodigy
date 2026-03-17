@@ -704,7 +704,7 @@ function LandingScreen({ onSignIn, referralConfig = {}, subscriptionFeatures }) 
               <div className="lp-footer-heading">Legal</div>
               <a href="/privacy">Privacy Policy</a>
               <a href="/terms">Terms of Service</a>
-              <a href="mailto:support@selfpaced.com.au">Contact Us</a>
+              <a href="mailto:hello@selfpaced.com.au">Contact Us</a>
             </div>
           </div>
         </div>
