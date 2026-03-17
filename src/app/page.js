@@ -1251,7 +1251,7 @@ function HomeScreen({ user, examType, onExamTypeChange, yearLevel, onYearLevelCh
                 if (locked) { onUpgrade(); return }
                 if (comingSoon) { setShowComingSoon(item.label); return }
                 onExamTypeChange(item.id)
-                if (typeof window !== 'undefined') localStorage.setItem('oc-trainer-examType', item.id)
+                if (typeof window !== 'undefined') localStorage.setItem('selfpaced-examType', item.id)
               }}
               className={`exam-chip${examType === item.id ? ' active' : ''}${comingSoon ? ' exam-chip--soon' : ''}${locked ? ' exam-chip--locked' : ''}`}
               style={{ marginRight: 8 }}
@@ -1712,7 +1712,7 @@ export default function App() {
   const getInitialSession = () => {
     if (typeof window !== 'undefined') {
       try {
-        const stored = localStorage.getItem('oc-trainer-session')
+        const stored = localStorage.getItem('selfpaced-session')
         return stored ? JSON.parse(stored) : { user: null, idToken: null }
       } catch (err) {
         console.warn('Failed to load session from localStorage:', err)
@@ -1768,7 +1768,7 @@ export default function App() {
   // Load exam-type preference from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedExamType = localStorage.getItem('oc-trainer-examType')
+      const savedExamType = localStorage.getItem('selfpaced-examType')
       const validExamIds = EXAM_TYPES.map(item => item.id)
       if (savedExamType && validExamIds.includes(savedExamType)) {
         setExamType(savedExamType)
@@ -1869,7 +1869,7 @@ export default function App() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem('oc-trainer-session', JSON.stringify(session))
+        localStorage.setItem('selfpaced-session', JSON.stringify(session))
       } catch (err) {
         console.warn('Failed to save session to localStorage:', err)
       }
@@ -1960,7 +1960,7 @@ export default function App() {
     // Clear stored session
     if (typeof window !== 'undefined') {
       try {
-        localStorage.removeItem('oc-trainer-session')
+        localStorage.removeItem('selfpaced-session')
       } catch (err) {
         console.warn('Failed to clear session from localStorage:', err)
       }
