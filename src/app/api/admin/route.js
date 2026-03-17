@@ -483,6 +483,7 @@ export async function POST(request) {
     const questionSource = formData.get('questionSource')?.toString() === 'past_paper' ? 'past_paper' : 'sample'
     const paperYear = formData.get('paperYear')?.toString() || ''
     const file = formData.get('file')
+    const format = formData.get('format')?.toString() === 'reading' ? 'reading' : 'standard'
     const validExamIds = EXAM_TYPES.map(item => item.id)
 
     if (!validExamIds.includes(examType)) {
@@ -556,7 +557,28 @@ export async function POST(request) {
       ? `\n\nThe following PDF pages contain images and have been uploaded:\n${pageImageEntries.map(([p, url]) => `Page ${p}: ${url}`).join('\n')}\nFor each question that references or relies on an image on one of these pages, include "image_urls": ["<url>"] using the matching page URL. Leave image_urls as [] if the question has no associated image.`
       : ''
 
-    const prompt = `You are an expert ${examType} exam marker and question bank builder.
+    const prompt = format === 'reading'
+      ? `You are an expert ${examType} exam marker and question bank builder.
+
+This is a READING exam paper PDF. It contains one or more reading passages (stories, poems, articles, or sets of extracts) each followed by multiple choice questions.
+
+For each passage block:
+1. Capture the FULL passage text exactly as written (including the passage title if present). For multi-extract questions (e.g. "Extract A … Extract B …"), include all extracts together as the passage.
+2. For every multiple choice question that follows the passage:
+   a. Copy the question text exactly
+   b. Copy all options (A–E) as an array in order
+   c. SOLVE the question and set "correct" to the 0-based index (A=0, B=1, …)
+   d. Write a confident, final explanation — no self-corrections, no "wait", no "let me recalculate"
+   e. Set difficulty: easy / medium / hard
+   f. Assign a subtopic (e.g. "Inference", "Vocabulary in context", "Main idea", "Author's purpose", "Text structure", "Figurative language")
+   g. Set "passage" to the full passage text for that question group
+   h. ${topicInstruction}${imageContext}
+
+IMPORTANT: Respond with ONLY valid JSON, no markdown, no prose.
+
+Required format:
+{"topics":[{"id":"string","name":"string","subtopics":["string"]}],"extractedQuestions":[{"topicId":"string","subtopic":"string","passage":"full passage text","question":"string","options":["string"],"correct":2,"explanation":"string","difficulty":"easy","image_urls":[]}]}`
+      : `You are an expert ${examType} exam marker and question bank builder.
 
 This is an exam paper PDF. Extract every multiple choice question and do the following for each:
 1. Copy the question text exactly
@@ -623,7 +645,7 @@ Required format:
     // Fetch existing questions for deduplication (include id and image_urls for backfill)
     const { data: existingQs } = await supabase
       .from('questions')
-      .select('id, question, topic_id, image_urls')
+      .select('id, question, topic_id, image_urls, passage')
       .eq('exam_type', examType)
     // Map key → existing row so we can backfill images on duplicates
     const existingMap = new Map(
@@ -667,15 +689,17 @@ Required format:
       const qImageUrls = Array.isArray(q.image_urls) ? q.image_urls.filter(Boolean) : []
 
       if (existing) {
-        // Backfill image_urls if the existing row has none and this upload has images
+        // Backfill image_urls and/or passage if missing on the existing row
         const existingHasImages = Array.isArray(existing.image_urls) && existing.image_urls.length > 0
-        if (!existingHasImages && qImageUrls.length > 0) {
-          const { error: updateErr } = await supabase
-            .from('questions')
-            .update({ image_url: qImageUrls[0], image_urls: qImageUrls })
-            .eq('id', existing.id)
+        const existingHasPassage = !!existing.passage
+        const shouldUpdate = (!existingHasImages && qImageUrls.length > 0) || (!existingHasPassage && q.passage)
+        if (shouldUpdate) {
+          const updates = {}
+          if (!existingHasImages && qImageUrls.length > 0) { updates.image_url = qImageUrls[0]; updates.image_urls = qImageUrls }
+          if (!existingHasPassage && q.passage) updates.passage = q.passage
+          const { error: updateErr } = await supabase.from('questions').update(updates).eq('id', existing.id)
           if (updateErr) {
-            questionErrors.push({ idx, error: 'Image backfill failed: ' + updateErr.message })
+            questionErrors.push({ idx, error: 'Backfill failed: ' + updateErr.message })
           } else {
             updatedQuestions.push(idx)
           }
@@ -697,6 +721,7 @@ Required format:
         created_by: null,
         question: q.question,
         visual: q.visual || null,
+        passage: q.passage || null,
         options: shuffledOptions,
         correct: shuffledCorrect,
         explanation: q.explanation || '',

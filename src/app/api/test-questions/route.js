@@ -26,7 +26,7 @@ export async function GET(request) {
 
     let query = supabase
       .from('questions')
-      .select('id, question, visual, options, correct, explanation, difficulty, topic_id, subtopic, image_url, image_urls')
+      .select('id, question, visual, passage, options, correct, explanation, difficulty, topic_id, subtopic, image_url, image_urls')
       .eq('exam_type', examType)
       .eq('topic_id', topicId)
 
@@ -48,6 +48,7 @@ export async function GET(request) {
       id: q.id,
       question: q.question,
       visual: q.visual || null,
+      passage: q.passage || null,
       options: q.options,
       correct: q.correct,
       explanation: q.explanation,

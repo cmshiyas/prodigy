@@ -316,6 +316,7 @@ function AdminPanel({ idToken, onSignOut }) {
   const [uploadPdfYearLevel, setUploadPdfYearLevel] = useState('')
   const [uploadPdfQuestionSource, setUploadPdfQuestionSource] = useState('sample')
   const [uploadPdfPaperYear, setUploadPdfPaperYear] = useState('')
+  const [uploadPdfFormat, setUploadPdfFormat] = useState('standard')
   const [uploadPdfStatus, setUploadPdfStatus] = useState('')
 
   const [genExamType, setGenExamType] = useState('OC')
@@ -464,6 +465,7 @@ function AdminPanel({ idToken, onSignOut }) {
       if (uploadPdfYearLevel) formData.append('yearLevel', uploadPdfYearLevel)
       formData.append('questionSource', uploadPdfQuestionSource)
       if (uploadPdfPaperYear) formData.append('paperYear', uploadPdfPaperYear)
+      formData.append('format', uploadPdfFormat)
       formData.append('file', uploadPdfFile)
       const res = await fetch('/api/admin?action=uploadPdf', { method: 'POST', body: formData, headers: { Authorization: 'Bearer ' + idToken } })
       const text = await res.text()
@@ -642,14 +644,14 @@ function AdminPanel({ idToken, onSignOut }) {
             <div style={{ fontFamily: 'Nunito', fontWeight: 800, fontSize: '0.95rem', color: '#2D1B0E', marginBottom: 16 }}>Upload PDF</div>
 
             {/* Column headings */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr 0.8fr 1.2fr 1.6fr', gap: 12, marginBottom: 6 }}>
-              {['Exam Type', 'Section', 'Year', 'Type of Test', 'Test Title'].map(h => (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr 0.8fr 1.2fr 1.6fr 1fr', gap: 12, marginBottom: 6 }}>
+              {['Exam Type', 'Section', 'Year', 'Type of Test', 'Test Title', 'Format'].map(h => (
                 <div key={h} style={{ fontSize: '0.75rem', fontWeight: 800, color: '#7A5C3F', letterSpacing: '0.02em' }}>{h}</div>
               ))}
             </div>
 
             {/* Input row */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr 0.8fr 1.2fr 1.6fr', gap: 12, marginBottom: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr 0.8fr 1.2fr 1.6fr 1fr', gap: 12, marginBottom: 14 }}>
               <select
                 value={uploadPdfExamType}
                 onChange={e => { setUploadPdfExamType(e.target.value); setUploadPdfTopicId(''); setUploadPdfYearLevel('') }}
@@ -691,6 +693,15 @@ function AdminPanel({ idToken, onSignOut }) {
                 placeholder="e.g. 2024 Term 2"
                 style={{ padding: '8px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white', fontFamily: 'Nunito', fontSize: '0.88rem', width: '100%', boxSizing: 'border-box' }}
               />
+
+              <select
+                value={uploadPdfFormat}
+                onChange={e => setUploadPdfFormat(e.target.value)}
+                style={{ padding: '8px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white', fontFamily: 'Nunito', fontSize: '0.88rem', width: '100%' }}
+              >
+                <option value="standard">Standard</option>
+                <option value="reading">Reading</option>
+              </select>
             </div>
 
             {/* File upload row */}

@@ -1586,6 +1586,12 @@ function TestSession({ questions, label, idToken, onFinish }) {
       </div>
 
       <div className="question-body">
+        {q.passage && (
+          <div style={{ background: '#F8F5F0', border: '1.5px solid #E8D5C0', borderRadius: 10, padding: '14px 16px', marginBottom: 16, maxHeight: 280, overflowY: 'auto' }}>
+            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#7A5C3F', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>Reading Passage</div>
+            <div style={{ fontSize: '0.88rem', lineHeight: 1.7, color: '#2D1B0E', whiteSpace: 'pre-wrap' }}>{q.passage}</div>
+          </div>
+        )}
         {q.visual && <pre className="visual-block">{q.visual}</pre>}
         {q.image_urls?.length > 0 && (
           <div style={{ marginBottom: 12 }}>
