@@ -26,7 +26,7 @@ export default function TermsOfService() {
             <ul>
               <li>If you are under 18, a parent or guardian must review and accept these Terms on your behalf</li>
               <li>You must have a valid Google account to sign in</li>
-              <li>Your account must be approved by our admin team before access is granted</li>
+              <li>Your account is created automatically upon first sign-in</li>
             </ul>
           </Section>
 
