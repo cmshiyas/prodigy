@@ -279,6 +279,7 @@ export async function GET(request) {
     const topicId      = url.searchParams.get('topicId')      || ''
     const search       = url.searchParams.get('search')       || ''
     const uploadSource = url.searchParams.get('uploadSource') || ''
+    const paperYear    = url.searchParams.get('paperYear')    || ''
     const page         = Math.max(1, parseInt(url.searchParams.get('page') || '1') || 1)
     const pageSize = 20
     const offset   = (page - 1) * pageSize
@@ -294,6 +295,7 @@ export async function GET(request) {
     if (search)       query = query.ilike('question', `%${search}%`)
     if (uploadSource === 'none') query = query.is('upload_source', null)
     else if (uploadSource) query = query.eq('upload_source', uploadSource)
+    if (paperYear)    query = query.eq('paper_year', paperYear)
 
     const { data, error, count } = await query
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })

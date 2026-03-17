@@ -1548,6 +1548,7 @@ function QuestionBankReview({ idToken, onSignOut }) {
   const [examType, setExamType] = useState('OC')
   const [topicId, setTopicId] = useState('')
   const [uploadSource, setUploadSource] = useState('')
+  const [paperYear, setPaperYear] = useState('')
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [page, setPage] = useState(1)
@@ -1566,7 +1567,7 @@ function QuestionBankReview({ idToken, onSignOut }) {
   const [loadingDuplicates, setLoadingDuplicates] = useState(false)
   const [selectedIds, setSelectedIds] = useState(new Set())
 
-  const doLoad = async (p, et, tid, s, us) => {
+  const doLoad = async (p, et, tid, s, us, py) => {
     setLoading(true)
     try {
       const params = new URLSearchParams({ action: 'questions', page: p })
@@ -1574,6 +1575,7 @@ function QuestionBankReview({ idToken, onSignOut }) {
       if (tid) params.set('topicId', tid)
       if (s) params.set('search', s)
       if (us) params.set('uploadSource', us)
+      if (py) params.set('paperYear', py)
       const res = await fetch(`/api/admin?${params}`, { headers: { Authorization: 'Bearer ' + idToken } })
       if (res.status === 403) { const e = await res.json(); if (e.error?.includes('Not')) { onSignOut(); return } }
       const data = await res.json()
@@ -1586,7 +1588,7 @@ function QuestionBankReview({ idToken, onSignOut }) {
   }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { doLoad(1, examType, topicId, search, uploadSource); setPage(1) }, [examType, topicId, search, uploadSource])
+  useEffect(() => { doLoad(1, examType, topicId, search, uploadSource, paperYear); setPage(1) }, [examType, topicId, search, uploadSource, paperYear])
 
   const loadDuplicates = async () => {
     setLoadingDuplicates(true)
@@ -1669,7 +1671,7 @@ function QuestionBankReview({ idToken, onSignOut }) {
       if (!res.ok) throw new Error(data.error)
       setEditingId(null)
       setPendingImageFiles([])
-      await doLoad(page, examType, topicId, search, uploadSource)
+      await doLoad(page, examType, topicId, search, uploadSource, paperYear)
     } catch (err) { setEditError(err.message) }
     finally { setSaving(false) }
   }
@@ -1683,7 +1685,7 @@ function QuestionBankReview({ idToken, onSignOut }) {
         body: JSON.stringify({ questionId: qId }),
       })
       if (!res.ok) throw new Error((await res.json()).error)
-      await doLoad(page, examType, topicId, search, uploadSource)
+      await doLoad(page, examType, topicId, search, uploadSource, paperYear)
     } catch (err) { alert('Failed: ' + err.message) }
   }
 
@@ -1715,7 +1717,7 @@ function QuestionBankReview({ idToken, onSignOut }) {
         body: JSON.stringify({ questionIds: ids }),
       })
       if (!res.ok) throw new Error((await res.json()).error)
-      await doLoad(page, examType, topicId, search, uploadSource)
+      await doLoad(page, examType, topicId, search, uploadSource, paperYear)
     } catch (err) { alert('Failed: ' + err.message) }
   }
 
@@ -1747,6 +1749,12 @@ function QuestionBankReview({ idToken, onSignOut }) {
           <option value="none">Unknown</option>
         </select>
         <input
+          value={paperYear}
+          onChange={e => setPaperYear(e.target.value)}
+          placeholder="Test Title…"
+          style={{ padding: '7px 12px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white', minWidth: 130, fontFamily: 'Nunito' }}
+        />
+        <input
           value={searchInput}
           onChange={e => setSearchInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') setSearch(searchInput) }}
@@ -1754,8 +1762,8 @@ function QuestionBankReview({ idToken, onSignOut }) {
           style={{ padding: '7px 12px', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white', minWidth: 220, fontFamily: 'Nunito' }}
         />
         <button onClick={() => setSearch(searchInput)} style={{ padding: '7px 14px', background: '#FF6B35', color: 'white', border: 'none', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 800, cursor: 'pointer' }}>Search</button>
-        {(search || topicId || uploadSource) && (
-          <button onClick={() => { setSearch(''); setSearchInput(''); setTopicId(''); setUploadSource('') }} style={{ padding: '7px 14px', background: 'white', color: '#7A5C3F', border: '1.5px solid #E8D5C0', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 700, cursor: 'pointer' }}>Clear</button>
+        {(search || topicId || uploadSource || paperYear) && (
+          <button onClick={() => { setSearch(''); setSearchInput(''); setTopicId(''); setUploadSource(''); setPaperYear('') }} style={{ padding: '7px 14px', background: 'white', color: '#7A5C3F', border: '1.5px solid #E8D5C0', borderRadius: 8, fontFamily: 'Nunito', fontWeight: 700, cursor: 'pointer' }}>Clear</button>
         )}
         <div style={{ marginLeft: 'auto', fontSize: '0.82rem', color: '#7A5C3F', fontWeight: 600 }}>{total} questions</div>
         <button
@@ -1808,7 +1816,7 @@ function QuestionBankReview({ idToken, onSignOut }) {
                                 })
                                 if (!res.ok) throw new Error((await res.json()).error)
                                 await loadDuplicates()
-                                doLoad(page, examType, topicId, search, uploadSource)
+                                doLoad(page, examType, topicId, search, uploadSource, paperYear)
                               } catch (err) { alert('Failed: ' + err.message) }
                             }}
                             style={{ padding: '4px 12px', fontSize: '0.75rem', borderRadius: 6, border: '1.5px solid #FECACA', background: '#FEF2F2', fontFamily: 'Nunito', fontWeight: 700, cursor: 'pointer', color: '#991B1B', flexShrink: 0 }}
@@ -2051,13 +2059,13 @@ function QuestionBankReview({ idToken, onSignOut }) {
           {totalPages > 1 && (
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 20, alignItems: 'center' }}>
               <button
-                onClick={() => { const p = Math.max(1, page - 1); setPage(p); doLoad(p, examType, topicId, search) }}
+                onClick={() => { const p = Math.max(1, page - 1); setPage(p); doLoad(p, examType, topicId, search, uploadSource, paperYear) }}
                 disabled={page === 1}
                 style={{ padding: '6px 14px', borderRadius: 7, border: '1.5px solid #E8D5C0', background: 'white', cursor: page === 1 ? 'not-allowed' : 'pointer', opacity: page === 1 ? 0.5 : 1, fontFamily: 'Nunito', fontWeight: 700 }}
               >← Prev</button>
               <span style={{ fontSize: '0.85rem', color: '#7A5C3F', fontWeight: 600 }}>Page {page} of {totalPages}</span>
               <button
-                onClick={() => { const p = Math.min(totalPages, page + 1); setPage(p); doLoad(p, examType, topicId, search) }}
+                onClick={() => { const p = Math.min(totalPages, page + 1); setPage(p); doLoad(p, examType, topicId, search, uploadSource, paperYear) }}
                 disabled={page === totalPages}
                 style={{ padding: '6px 14px', borderRadius: 7, border: '1.5px solid #E8D5C0', background: 'white', cursor: page === totalPages ? 'not-allowed' : 'pointer', opacity: page === totalPages ? 0.5 : 1, fontFamily: 'Nunito', fontWeight: 700 }}
               >Next →</button>
