@@ -42,7 +42,7 @@ export const EXAM_TOPICS = {
   ],
   OC: [
     {
-      id: 'reading', name: 'Reading Test', icon: '📘', color: '#4A90D9', bg: '#EFF6FF', desc: 'Short passages, inference, comprehension',
+      id: 'reading', name: 'Reading', icon: '📘', color: '#4A90D9', bg: '#EFF6FF', desc: 'Short passages, inference, comprehension',
       subtopics: ['Inference', 'Main idea', 'Vocabulary', 'Comparison']
     },
     {
@@ -56,7 +56,7 @@ export const EXAM_TOPICS = {
   ],
   Selective: [
     {
-      id: 'reading', name: 'Reading Test', icon: '📘', color: '#4A90D9', bg: '#EFF6FF', desc: 'Comprehension, inference, passage analysis',
+      id: 'reading', name: 'Reading', icon: '📘', color: '#4A90D9', bg: '#EFF6FF', desc: 'Comprehension, inference, passage analysis',
       subtopics: ['Inference', 'Summary', 'Vocabulary', 'Opinion']
     },
     {
