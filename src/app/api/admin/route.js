@@ -499,13 +499,26 @@ export async function POST(request) {
     }
 
     const fileBuffer = Buffer.from(await file.arrayBuffer())
-    const pdfBase64 = fileBuffer.toString('base64')
 
     if (!process.env.ANTHROPIC_API_KEY) {
       return NextResponse.json({ error: 'Missing ANTHROPIC_API_KEY' }, { status: 500 })
     }
 
-    // Extract images from PDF pages and upload to Supabase
+    // Extract text via pdf-parse (fast)
+    let text = ''
+    try {
+      const pdfParse = require('pdf-parse')
+      const result = await pdfParse(fileBuffer)
+      text = result.text || ''
+    } catch (err) {
+      return NextResponse.json({ error: 'Failed to parse PDF: ' + err.message }, { status: 500 })
+    }
+
+    if (!text.trim()) {
+      return NextResponse.json({ error: 'PDF contains no extractable text' }, { status: 400 })
+    }
+
+    // Extract images from PDF pages with images and upload to Supabase (parallel, capped at 10 pages)
     const pageImageUrls = {}
     try {
       const { createCanvas } = require('@napi-rs/canvas')
@@ -514,7 +527,6 @@ export async function POST(request) {
       const loadingTask = pdfjs.getDocument({ data: new Uint8Array(fileBuffer) })
       const pdfDoc = await loadingTask.promise
 
-      // Identify pages with images first, then render them in parallel
       const imagePageNums = []
       for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
         const page = await pdfDoc.getPage(pageNum)
@@ -525,6 +537,7 @@ export async function POST(request) {
           fn === pdfjs.OPS.paintInlineImageXObject
         )
         if (hasImage) imagePageNums.push(pageNum)
+        if (imagePageNums.length >= 10) break
       }
 
       await Promise.all(imagePageNums.map(async (pageNum) => {
@@ -557,10 +570,12 @@ export async function POST(request) {
       ? `\n\nThe following PDF pages contain images and have been uploaded:\n${pageImageEntries.map(([p, url]) => `Page ${p}: ${url}`).join('\n')}\nFor each question that references or relies on an image on one of these pages, include "image_urls": ["<url>"] using the matching page URL. Leave image_urls as [] if the question has no associated image.`
       : ''
 
+    const trimmed = text.length > 16000 ? text.slice(0, 16000) : text
+
     const prompt = format === 'reading'
       ? `You are an expert ${examType} exam marker and question bank builder.
 
-This is a READING exam paper PDF. It contains one or more reading passages (stories, poems, articles, or sets of extracts) each followed by multiple choice questions.
+Below is the text of a READING exam paper. It contains one or more reading passages (stories, poems, articles, or sets of extracts) each followed by multiple choice questions.
 
 For each passage block:
 1. Capture the FULL passage text exactly as written (including the passage title if present). For multi-extract questions (e.g. "Extract A … Extract B …"), include all extracts together as the passage.
@@ -577,10 +592,13 @@ For each passage block:
 IMPORTANT: Respond with ONLY valid JSON, no markdown, no prose.
 
 Required format:
-{"topics":[{"id":"string","name":"string","subtopics":["string"]}],"extractedQuestions":[{"topicId":"string","subtopic":"string","passage":"full passage text","question":"string","options":["string"],"correct":2,"explanation":"string","difficulty":"easy","image_urls":[]}]}`
+{"topics":[{"id":"string","name":"string","subtopics":["string"]}],"extractedQuestions":[{"topicId":"string","subtopic":"string","passage":"full passage text","question":"string","options":["string"],"correct":2,"explanation":"string","difficulty":"easy","image_urls":[]}]}
+
+Exam paper text:
+${trimmed}`
       : `You are an expert ${examType} exam marker and question bank builder.
 
-This is an exam paper PDF. Extract every multiple choice question and do the following for each:
+Below is the text of an exam paper. Extract every multiple choice question and do the following for each:
 1. Copy the question text exactly
 2. Copy all options (A-E) as an array in order
 3. SOLVE the question and set "correct" to the 0-based index of the correct answer (A=0, B=1, C=2, D=3, E=4)
@@ -592,7 +610,10 @@ This is an exam paper PDF. Extract every multiple choice question and do the fol
 IMPORTANT: Respond with ONLY valid JSON, no markdown, no prose.
 
 Required format:
-{"topics":[{"id":"string","name":"string","subtopics":["string"]}],"extractedQuestions":[{"topicId":"string","subtopic":"string","question":"string","options":["string"],"correct":2,"explanation":"string","difficulty":"easy","image_urls":[]}]}`
+{"topics":[{"id":"string","name":"string","subtopics":["string"]}],"extractedQuestions":[{"topicId":"string","subtopic":"string","question":"string","options":["string"],"correct":2,"explanation":"string","difficulty":"easy","image_urls":[]}]}
+
+Exam paper text:
+${trimmed}`
 
     let anthropicRes
     try {
@@ -602,16 +623,12 @@ Required format:
           'Content-Type': 'application/json',
           'x-api-key': process.env.ANTHROPIC_API_KEY,
           'anthropic-version': '2023-06-01',
-          'anthropic-beta': 'pdfs-2024-09-25',
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
           max_tokens: 16000,
           system: 'You are a JSON-only responder. You must always respond with valid JSON and nothing else — no prose, no explanations, no apologies, no markdown. If you cannot extract questions, respond with {"topics":[],"extractedQuestions":[]}.',
-          messages: [{ role: 'user', content: [
-            { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 } },
-            { type: 'text', text: prompt },
-          ] }],
+          messages: [{ role: 'user', content: prompt }],
         }),
       })
     } catch (err) {
