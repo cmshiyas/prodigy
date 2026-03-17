@@ -475,7 +475,8 @@ function AdminPanel({ idToken, onSignOut }) {
       const errorDetails = errorList.length
         ? '\n\nErrors:\n' + errorList.map(e => `  Q${e.idx + 1}: ${e.error}`).join('\n')
         : ''
-      setUploadPdfStatus(`Extracted topics: ${topics}. Inserted: ${data.inserted || 0}. Skipped: ${data.skipped || 0}. Errors: ${errorList.length}.${errorDetails}`)
+      const updatedPart = data.updated > 0 ? ` Updated (images backfilled): ${data.updated}.` : ''
+      setUploadPdfStatus(`Extracted topics: ${topics}. Inserted: ${data.inserted || 0}.${updatedPart} Skipped: ${data.skipped || 0}. Errors: ${errorList.length}.${errorDetails}`)
       setUploadPdfFile(null)
       setUploadPdfYearLevel('')
       setUploadPdfQuestionSource('sample')

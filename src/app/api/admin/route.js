@@ -618,12 +618,15 @@ Required format:
 
     const questions = Array.isArray(parsedResponse.extractedQuestions) ? parsedResponse.extractedQuestions : []
 
-    // Fetch existing questions for deduplication
+    // Fetch existing questions for deduplication (include id and image_urls for backfill)
     const { data: existingQs } = await supabase
       .from('questions')
-      .select('question, topic_id')
+      .select('id, question, topic_id, image_urls')
       .eq('exam_type', examType)
-    const existingSet = new Set((existingQs || []).map(q => `${q.topic_id}::${q.question.trim().toLowerCase()}`))
+    // Map key → existing row so we can backfill images on duplicates
+    const existingMap = new Map(
+      (existingQs || []).map(q => [`${q.topic_id}::${q.question.trim().toLowerCase()}`, q])
+    )
 
     // Collect unique subtopics to upsert
     const subtopicSet = new Set()
@@ -638,6 +641,7 @@ Required format:
     }
 
     const insertedQuestions = []
+    const updatedQuestions = []
     const skippedQuestions = []
     const questionErrors = []
 
@@ -656,8 +660,26 @@ Required format:
 
       const resolvedTopicId = topicId || q.topicId
       const key = `${resolvedTopicId}::${q.question.trim().toLowerCase()}`
-      if (existingSet.has(key)) {
-        skippedQuestions.push(idx)
+      const existing = existingMap.get(key)
+
+      const qImageUrls = Array.isArray(q.image_urls) ? q.image_urls.filter(Boolean) : []
+
+      if (existing) {
+        // Backfill image_urls if the existing row has none and this upload has images
+        const existingHasImages = Array.isArray(existing.image_urls) && existing.image_urls.length > 0
+        if (!existingHasImages && qImageUrls.length > 0) {
+          const { error: updateErr } = await supabase
+            .from('questions')
+            .update({ image_url: qImageUrls[0], image_urls: qImageUrls })
+            .eq('id', existing.id)
+          if (updateErr) {
+            questionErrors.push({ idx, error: 'Image backfill failed: ' + updateErr.message })
+          } else {
+            updatedQuestions.push(idx)
+          }
+        } else {
+          skippedQuestions.push(idx)
+        }
         continue
       }
 
@@ -666,7 +688,6 @@ Required format:
       const shuffledOptions = [...q.options].sort(() => Math.random() - 0.5)
       const shuffledCorrect = shuffledOptions.indexOf(correctContent)
 
-      const qImageUrls = Array.isArray(q.image_urls) ? q.image_urls.filter(Boolean) : []
       const insert = {
         topic_id: resolvedTopicId,
         exam_type: examType,
@@ -690,13 +711,14 @@ Required format:
         questionErrors.push({ idx, error: insertError.message })
       } else {
         insertedQuestions.push(q)
-        existingSet.add(key)
+        existingMap.set(key, { id: null, image_urls: qImageUrls })
       }
     }
 
     return NextResponse.json({
       topics: parsedResponse.topics || [],
       inserted: insertedQuestions.length,
+      updated: updatedQuestions.length,
       skipped: skippedQuestions.length,
       errors: questionErrors,
       raw: null,
