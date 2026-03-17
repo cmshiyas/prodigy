@@ -87,7 +87,7 @@ export default function TermsOfService() {
           </Section>
 
           <Section title="12. Account Deletion">
-            <p>You may request deletion of your account and personal data at any time by emailing <strong>privacy@selfpaced.com.au</strong>. We will delete your account and associated personal data within 30 days of your request, subject to data we are required to retain by law.</p>
+            <p>You may request deletion of your account and personal data at any time by emailing <strong>hello@selfpaced.com.au</strong>. We will delete your account and associated personal data within 30 days of your request, subject to data we are required to retain by law.</p>
           </Section>
 
           <Section title="13. Governing Law">

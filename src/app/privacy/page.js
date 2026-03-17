@@ -122,7 +122,7 @@ export default function PrivacyPolicy() {
               <li><strong>Request deletion</strong> of your account and personal data</li>
               <li><strong>Complain</strong> about how we have handled your information</li>
             </ul>
-            <p>To exercise any of these rights, email us at <strong>privacy@selfpaced.com.au</strong>. We will respond within 30 days. For account deletion requests, we will confirm deletion within 30 days of receiving your request.</p>
+            <p>To exercise any of these rights, email us at <strong>hello@selfpaced.com.au</strong>. We will respond within 30 days. For account deletion requests, we will confirm deletion within 30 days of receiving your request.</p>
           </Section>
 
           <Section title="10. Cookies and Tracking">
@@ -138,7 +138,7 @@ export default function PrivacyPolicy() {
           <Section title="11. Complaints">
             <p>If you believe we have breached the Australian Privacy Principles, you may:</p>
             <ol>
-              <li>Contact us at <strong>privacy@selfpaced.com.au</strong> — we will investigate and respond within 30 days</li>
+              <li>Contact us at <strong>hello@selfpaced.com.au</strong> — we will investigate and respond within 30 days</li>
               <li>If unsatisfied with our response, lodge a complaint with the <strong>Office of the Australian Information Commissioner (OAIC)</strong> at <a href="https://www.oaic.gov.au" target="_blank" rel="noopener noreferrer" style={{ color: '#7A5C3F' }}>oaic.gov.au</a> or on 1300 363 992</li>
             </ol>
           </Section>
@@ -151,7 +151,7 @@ export default function PrivacyPolicy() {
             <p>For privacy enquiries, requests or complaints:</p>
             <p>
               <strong>Self Paced Learning</strong><br />
-              Email: <strong>privacy@selfpaced.com.au</strong><br />
+              Email: <strong>hello@selfpaced.com.au</strong><br />
               Website: <a href="https://www.selfpaced.com.au" style={{ color: '#7A5C3F' }}>selfpaced.com.au</a>
             </p>
           </Section>
