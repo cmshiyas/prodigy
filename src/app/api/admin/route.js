@@ -495,47 +495,80 @@ export async function POST(request) {
     }
 
     const fileBuffer = Buffer.from(await file.arrayBuffer())
-    let text
-    try {
-      const pdfParse = require('pdf-parse')
-      const result = await pdfParse(fileBuffer)
-      text = result.text || ''
-    } catch (err) {
-      return NextResponse.json({ error: 'Failed to parse PDF: ' + err.message }, { status: 500 })
-    }
+    const pdfBase64 = fileBuffer.toString('base64')
 
-    if (!text.trim()) {
-      return NextResponse.json({ error: 'PDF contains no text' }, { status: 400 })
-    }
-
-    // Limit size for LLM prompt
-    const trimmed = text.length > 16000 ? text.slice(0, 16000) : text
     if (!process.env.ANTHROPIC_API_KEY) {
       return NextResponse.json({ error: 'Missing ANTHROPIC_API_KEY' }, { status: 500 })
+    }
+
+    // Extract images from PDF pages and upload to Supabase
+    const pageImageUrls = {}
+    try {
+      const { createCanvas } = require('@napi-rs/canvas')
+      const pdfjs = require('pdf-parse/lib/pdf.js/v2.0.550/build/pdf.js')
+
+      const loadingTask = pdfjs.getDocument({ data: new Uint8Array(fileBuffer) })
+      const pdfDoc = await loadingTask.promise
+
+      for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+        const page = await pdfDoc.getPage(pageNum)
+        const ops = await page.getOperatorList()
+
+        const hasImage = ops.fnArray.some(fn =>
+          fn === pdfjs.OPS.paintJpegXObject ||
+          fn === pdfjs.OPS.paintImageXObject ||
+          fn === pdfjs.OPS.paintInlineImageXObject
+        )
+
+        if (!hasImage) continue
+
+        const viewport = page.getViewport({ scale: 2.0 })
+        const canvas = createCanvas(Math.floor(viewport.width), Math.floor(viewport.height))
+        const ctx = canvas.getContext('2d')
+
+        await page.render({ canvasContext: ctx, viewport }).promise
+
+        const pngBuffer = canvas.toBuffer('image/png')
+        const fileName = `questions/pdf-${Date.now()}-p${pageNum}.png`
+
+        const { error: uploadErr } = await supabase.storage
+          .from('images')
+          .upload(fileName, pngBuffer, { contentType: 'image/png', upsert: false })
+
+        if (!uploadErr) {
+          const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(fileName)
+          pageImageUrls[pageNum] = publicUrl
+        }
+      }
+    } catch (imgErr) {
+      console.error('PDF image extraction error:', imgErr.message)
+      // Non-fatal: continue without images
     }
 
     const topicInstruction = topicId
       ? `All questions belong to topicId "${topicId}". Set topicId to "${topicId}" for every question.`
       : `Determine the appropriate topicId for each question based on its content.`
 
+    const pageImageEntries = Object.entries(pageImageUrls)
+    const imageContext = pageImageEntries.length > 0
+      ? `\n\nThe following PDF pages contain images and have been uploaded:\n${pageImageEntries.map(([p, url]) => `Page ${p}: ${url}`).join('\n')}\nFor each question that references or relies on an image on one of these pages, include "image_urls": ["<url>"] using the matching page URL. Leave image_urls as [] if the question has no associated image.`
+      : ''
+
     const prompt = `You are an expert ${examType} exam marker and question bank builder.
 
-Below is the text of an exam paper. Extract every multiple choice question and do the following for each:
+This is an exam paper PDF. Extract every multiple choice question and do the following for each:
 1. Copy the question text exactly
 2. Copy all options (A-E) as an array in order
 3. SOLVE the question and set "correct" to the 0-based index of the correct answer (A=0, B=1, C=2, D=3, E=4)
 4. Write a brief step-by-step explanation of why that answer is correct. The explanation must be confident and final — no self-corrections, no "wait", no "let me recalculate". Present only the correct reasoning leading to the final answer.
 5. Assign a subtopic (e.g. "Algebraic thinking", "Fractions", "Measurement", "Number operations", "Geometry", "Spatial reasoning", "Number patterns", "Problem solving", "Data & graphs")
 6. Set difficulty: easy / medium / hard
-7. ${topicInstruction}
+7. ${topicInstruction}${imageContext}
 
 IMPORTANT: Respond with ONLY valid JSON, no markdown, no prose.
 
 Required format:
-{"topics":[{"id":"string","name":"string","subtopics":["string"]}],"extractedQuestions":[{"topicId":"string","subtopic":"string","question":"string","options":["string"],"correct":2,"explanation":"string","difficulty":"easy"}]}
-
-Exam paper text:
-${trimmed}`
+{"topics":[{"id":"string","name":"string","subtopics":["string"]}],"extractedQuestions":[{"topicId":"string","subtopic":"string","question":"string","options":["string"],"correct":2,"explanation":"string","difficulty":"easy","image_urls":[]}]}`
 
     let anthropicRes
     try {
@@ -544,13 +577,17 @@ ${trimmed}`
         headers: {
           'Content-Type': 'application/json',
           'x-api-key': process.env.ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01'
+          'anthropic-version': '2023-06-01',
+          'anthropic-beta': 'pdfs-2024-09-25',
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
           max_tokens: 16000,
           system: 'You are a JSON-only responder. You must always respond with valid JSON and nothing else — no prose, no explanations, no apologies, no markdown. If you cannot extract questions, respond with {"topics":[],"extractedQuestions":[]}.',
-          messages: [{ role: 'user', content: prompt }],
+          messages: [{ role: 'user', content: [
+            { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 } },
+            { type: 'text', text: prompt },
+          ] }],
         }),
       })
     } catch (err) {
@@ -629,6 +666,7 @@ ${trimmed}`
       const shuffledOptions = [...q.options].sort(() => Math.random() - 0.5)
       const shuffledCorrect = shuffledOptions.indexOf(correctContent)
 
+      const qImageUrls = Array.isArray(q.image_urls) ? q.image_urls.filter(Boolean) : []
       const insert = {
         topic_id: resolvedTopicId,
         exam_type: examType,
@@ -644,6 +682,8 @@ ${trimmed}`
         question_source: questionSource,
         paper_year: paperYear || null,
         upload_source: 'PDF',
+        image_url: qImageUrls[0] || null,
+        image_urls: qImageUrls.length > 0 ? qImageUrls : null,
       }
       const { error: insertError } = await supabase.from('questions').insert(insert)
       if (insertError) {
