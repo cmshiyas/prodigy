@@ -668,7 +668,7 @@ function LandingScreen({ onSignIn, referralConfig = {}, subscriptionFeatures }) 
             </div>
 
           </div>
-          <p className="lp-pricing-note">All plans include a Google sign-in account and access via any device. Invite friends to earn free upgrades — 3 friends gets you Gold, 5 friends gets you Platinum.</p>
+          <p className="lp-pricing-note">All plans include a Google sign-in account and access via any device. Invite friends to earn free upgrades — 3 friends gets you Gold, 5 friends gets you Platinum. Prices are in AUD and include GST (10%). Billed monthly. Cancel anytime.</p>
         </div>
       </section>
 
@@ -700,10 +700,16 @@ function LandingScreen({ onSignIn, referralConfig = {}, subscriptionFeatures }) 
               <span>Selective School</span>
               <span>NAPLAN</span>
             </div>
+            <div className="lp-footer-col">
+              <div className="lp-footer-heading">Legal</div>
+              <a href="/privacy">Privacy Policy</a>
+              <a href="/terms">Terms of Service</a>
+              <a href="mailto:support@selfpaced.com.au">Contact Us</a>
+            </div>
           </div>
         </div>
         <div className="lp-footer-bottom">
-          © {new Date().getFullYear()} Self Paced Learning. All rights reserved.
+          © {new Date().getFullYear()} Self Paced Learning. All rights reserved. ABN shown on invoices. All prices in AUD and include GST.
         </div>
       </footer>
 
@@ -744,8 +750,14 @@ function AuthScreen() {
         <p className="auth-sub">Get started with AI-generated exam practice.</p>
         <div className="auth-divider">Sign in with Google</div>
         <div id="google-btn" className="g_id_signin" />
-        <p style={{ marginTop: '1.5rem', fontSize: '0.78rem', color: 'var(--text2)' }}>
-          Save your progress and continue later.
+        <p style={{ marginTop: '1.5rem', fontSize: '0.78rem', color: 'var(--text2)', lineHeight: 1.6 }}>
+          By signing in you agree to our{' '}
+          <a href="/terms" style={{ color: 'var(--primary, #7A5C3F)', textDecoration: 'underline' }}>Terms of Service</a>
+          {' '}and{' '}
+          <a href="/privacy" style={{ color: 'var(--primary, #7A5C3F)', textDecoration: 'underline' }}>Privacy Policy</a>.
+        </p>
+        <p style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text2)', lineHeight: 1.6 }}>
+          This platform is designed for students aged 9–13. If you are under 18, a parent or guardian must review our Privacy Policy before signing in.
         </p>
       </div>
     </div>
