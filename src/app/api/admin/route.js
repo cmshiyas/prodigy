@@ -11,6 +11,7 @@ async function verifyAdmin(request) {
 }
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 300
 
 export async function GET(request) {
   try { await verifyAdmin(request) }
@@ -513,36 +514,35 @@ export async function POST(request) {
       const loadingTask = pdfjs.getDocument({ data: new Uint8Array(fileBuffer) })
       const pdfDoc = await loadingTask.promise
 
+      // Identify pages with images first, then render them in parallel
+      const imagePageNums = []
       for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
         const page = await pdfDoc.getPage(pageNum)
         const ops = await page.getOperatorList()
-
         const hasImage = ops.fnArray.some(fn =>
           fn === pdfjs.OPS.paintJpegXObject ||
           fn === pdfjs.OPS.paintImageXObject ||
           fn === pdfjs.OPS.paintInlineImageXObject
         )
+        if (hasImage) imagePageNums.push(pageNum)
+      }
 
-        if (!hasImage) continue
-
-        const viewport = page.getViewport({ scale: 2.0 })
+      await Promise.all(imagePageNums.map(async (pageNum) => {
+        const page = await pdfDoc.getPage(pageNum)
+        const viewport = page.getViewport({ scale: 1.5 })
         const canvas = createCanvas(Math.floor(viewport.width), Math.floor(viewport.height))
         const ctx = canvas.getContext('2d')
-
         await page.render({ canvasContext: ctx, viewport }).promise
-
         const pngBuffer = canvas.toBuffer('image/png')
         const fileName = `questions/pdf-${Date.now()}-p${pageNum}.png`
-
         const { error: uploadErr } = await supabase.storage
           .from('images')
           .upload(fileName, pngBuffer, { contentType: 'image/png', upsert: false })
-
         if (!uploadErr) {
           const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(fileName)
           pageImageUrls[pageNum] = publicUrl
         }
-      }
+      }))
     } catch (imgErr) {
       console.error('PDF image extraction error:', imgErr.message)
       // Non-fatal: continue without images
