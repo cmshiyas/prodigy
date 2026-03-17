@@ -9,6 +9,9 @@ export async function POST(request) {
     if (!message?.trim()) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 })
     }
+    if (message.trim().length > 2000) {
+      return NextResponse.json({ error: 'Message too long (max 2000 characters)' }, { status: 400 })
+    }
 
     const supabase = getSupabase()
 
@@ -38,6 +41,6 @@ export async function POST(request) {
 
     return NextResponse.json({ ok: true })
   } catch (err) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
   }
 }

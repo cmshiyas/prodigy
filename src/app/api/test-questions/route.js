@@ -42,7 +42,7 @@ export async function GET(request) {
     }
 
     const { data, error } = await query
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
 
     const questions = (data || []).map(q => ({
       id: q.id,
@@ -61,6 +61,6 @@ export async function GET(request) {
 
     return NextResponse.json({ questions }, { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } })
   } catch (err) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
   }
 }

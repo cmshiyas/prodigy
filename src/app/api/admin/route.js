@@ -7,7 +7,13 @@ async function verifyAdmin(request) {
   const authHeader = request.headers.get('authorization')
   if (!authHeader?.startsWith('Bearer ')) throw new Error('Not authenticated')
   const payload = await verifyGoogleToken(authHeader.split(' ')[1])
+  // Primary check: email allowlist
   if (payload.email !== ADMIN_EMAIL) throw new Error('Not authorised')
+  // Secondary check: DB is_admin flag (defence in depth)
+  const supabase = getSupabase()
+  const { data: user } = await supabase
+    .from('users').select('is_admin').eq('email', payload.email).single()
+  if (!user?.is_admin) throw new Error('Not authorised')
 }
 
 export const dynamic = 'force-dynamic'
@@ -15,20 +21,20 @@ export const maxDuration = 300
 
 export async function GET(request) {
   try { await verifyAdmin(request) }
-  catch (err) { return NextResponse.json({ error: err.message }, { status: 403 }) }
+  catch { return NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
 
   const action = new URL(request.url).searchParams.get('action')
   const supabase = getSupabase()
 
   if (action === 'users') {
     const { data: users, error } = await supabase.from('users').select('*').order('created_at', { ascending: false })
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
     return NextResponse.json({ users })
   }
 
   if (action === 'config') {
     const { data, error } = await supabase.from('config').select('key, value').limit(1000)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
     return NextResponse.json({ config: data })
   }
 
@@ -157,7 +163,7 @@ export async function GET(request) {
       .from('promo_codes')
       .select('id, code, tier, duration_days, max_uses, uses_count, expires_at, is_active, created_at')
       .order('created_at', { ascending: false })
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
     return NextResponse.json({ promos })
   }
 
@@ -171,7 +177,7 @@ export async function GET(request) {
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
 
     const result = (responses || []).map(r => ({
       answeredAt: r.created_at,
@@ -191,7 +197,8 @@ export async function GET(request) {
   }
 
   if (action === 'referrals') {
-    const search   = new URL(request.url).searchParams.get('search') || ''
+    const rawSearch = new URL(request.url).searchParams.get('search') || ''
+    const search   = rawSearch.slice(0, 200)
     const page     = Math.max(1, parseInt(new URL(request.url).searchParams.get('page') || '1') || 1)
     const pageSize = 50
     const offset   = (page - 1) * pageSize
@@ -209,7 +216,7 @@ export async function GET(request) {
     }
 
     const { data, error, count } = await query
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'Failed to fetch referrals' }, { status: 500 })
 
     // Top referrers summary
     const { data: allReferred } = await supabase
@@ -236,7 +243,7 @@ export async function GET(request) {
       .from('exam_dates')
       .select('id, exam, label, date, end_date, tag, note, created_at')
       .order('date', { ascending: true })
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
     return NextResponse.json({ dates: data || [] })
   }
 
@@ -249,7 +256,7 @@ export async function GET(request) {
       .select('id, user_name, user_email, message, created_at', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(offset, offset + pageSize - 1)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
     return NextResponse.json({ feedbacks: data, total: count || 0, page, pageSize })
   }
 
@@ -259,7 +266,7 @@ export async function GET(request) {
       .from('questions')
       .select('id, question, exam_type, topic_id, subtopic, year_level, difficulty, created_at')
       .order('created_at', { ascending: true })
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
 
     const groups = {}
     for (const q of allQs || []) {
@@ -278,7 +285,7 @@ export async function GET(request) {
     const url = new URL(request.url)
     const examType     = url.searchParams.get('examType')     || ''
     const topicId      = url.searchParams.get('topicId')      || ''
-    const search       = url.searchParams.get('search')       || ''
+    const search       = (url.searchParams.get('search') || '').slice(0, 200)
     const uploadSource = url.searchParams.get('uploadSource') || ''
     const paperYear    = url.searchParams.get('paperYear')    || ''
     const page         = Math.max(1, parseInt(url.searchParams.get('page') || '1') || 1)
@@ -299,7 +306,7 @@ export async function GET(request) {
     if (paperYear)    query = query.eq('paper_year', paperYear)
 
     const { data, error, count } = await query
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
     return NextResponse.json({ questions: data, total: count || 0, page, pageSize })
   }
 
@@ -308,7 +315,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   try { await verifyAdmin(request) }
-  catch (err) { return NextResponse.json({ error: err.message }, { status: 403 }) }
+  catch { return NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
 
   const action = new URL(request.url).searchParams.get('action')
   const supabase = getSupabase()
@@ -320,7 +327,7 @@ export async function POST(request) {
     if (status) updates.status = status
     if (tier)   updates.tier   = tier
     const { data, error } = await supabase.from('users').update(updates).eq('id', userId).select().single()
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
     return NextResponse.json({ user: data })
   }
 
@@ -329,7 +336,7 @@ export async function POST(request) {
     if (!key || value === undefined) return NextResponse.json({ error: 'Missing key or value' }, { status: 400 })
     const { error } = await supabase.from('config')
       .upsert({ key, value: String(value), updated_at: new Date().toISOString() })
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
     return NextResponse.json({ ok: true })
   }
 
@@ -343,7 +350,7 @@ export async function POST(request) {
       max_uses: max_uses || null,
       expires_at: expires_at || null,
     }).select().single()
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
     return NextResponse.json({ promo: data })
   }
 
@@ -351,7 +358,7 @@ export async function POST(request) {
     const { promoId, isActive } = await request.json()
     if (!promoId) return NextResponse.json({ error: 'promoId required' }, { status: 400 })
     const { data, error } = await supabase.from('promo_codes').update({ is_active: isActive }).eq('id', promoId).select().single()
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
     return NextResponse.json({ promo: data })
   }
 
@@ -367,7 +374,7 @@ export async function POST(request) {
       expires_at: expires_at || null,
       is_active: is_active ?? true,
     }).eq('id', promoId).select().single()
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
     return NextResponse.json({ promo: data })
   }
 
@@ -375,7 +382,7 @@ export async function POST(request) {
     const { promoId } = await request.json()
     if (!promoId) return NextResponse.json({ error: 'promoId required' }, { status: 400 })
     const { error } = await supabase.from('promo_codes').delete().eq('id', promoId)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
     return NextResponse.json({ ok: true })
   }
 
@@ -386,7 +393,7 @@ export async function POST(request) {
     const { data: target } = await supabase.from('users').select('email').eq('id', userId).single()
     if (target?.email === ADMIN_EMAIL) return NextResponse.json({ error: 'Cannot delete admin account' }, { status: 403 })
     const { error } = await supabase.from('users').delete().eq('id', userId)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
     return NextResponse.json({ ok: true })
   }
 
@@ -429,7 +436,7 @@ export async function POST(request) {
       created_by: null,
     }).select().single()
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
     return NextResponse.json({ question: data })
   }
 
@@ -451,7 +458,7 @@ export async function POST(request) {
       question_source: source,
       paper_year: paper_year || null,
     }).eq('id', questionId).select().single()
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
     return NextResponse.json({ question: data })
   }
 
@@ -461,7 +468,7 @@ export async function POST(request) {
     const { data, error } = await supabase.from('exam_dates')
       .insert({ exam, label, date, end_date: end_date || null, tag, note: note || null })
       .select().single()
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
     return NextResponse.json({ date: data })
   }
 
@@ -472,7 +479,7 @@ export async function POST(request) {
     const { data, error } = await supabase.from('exam_dates')
       .update({ exam, label, date, end_date: end_date || null, tag, note: note || null })
       .eq('id', id).select().single()
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
     return NextResponse.json({ date: data })
   }
 
@@ -480,7 +487,7 @@ export async function POST(request) {
     const { id } = await request.json()
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
     const { error } = await supabase.from('exam_dates').delete().eq('id', id)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
     return NextResponse.json({ ok: true })
   }
 
@@ -488,7 +495,7 @@ export async function POST(request) {
     const { questionId } = await request.json()
     if (!questionId) return NextResponse.json({ error: 'questionId required' }, { status: 400 })
     const { error } = await supabase.from('questions').delete().eq('id', questionId)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
     return NextResponse.json({ ok: true })
   }
 
@@ -496,7 +503,7 @@ export async function POST(request) {
     const { questionIds } = await request.json()
     if (!Array.isArray(questionIds) || !questionIds.length) return NextResponse.json({ error: 'questionIds required' }, { status: 400 })
     const { error } = await supabase.from('questions').delete().in('id', questionIds)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
     return NextResponse.json({ ok: true })
   }
 

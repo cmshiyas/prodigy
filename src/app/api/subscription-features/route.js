@@ -21,13 +21,6 @@ export async function GET() {
 
   if (error) console.error('[subscription-features] config fetch error:', error)
 
-  // Targeted check — can the client see this specific row?
-  const { data: specificRow, error: specificErr } = await supabase
-    .from('config').select('key, value').eq('key', 'question_limit_silver')
-
-  // Check total row count via count query
-  const { count } = await supabase.from('config').select('*', { count: 'exact', head: true })
-
   const map = {}
   ;(data || []).forEach(({ key, value }) => { map[key] = value })
 
@@ -50,14 +43,7 @@ export async function GET() {
     })
   })
 
-  return NextResponse.json({ questionLimits, features, _debug: {
-    rowsReturned: data?.length ?? null,
-    totalCountInDB: count,
-    specificRowFound: specificRow,
-    specificRowError: specificErr?.message ?? null,
-    queryError: error?.message ?? null,
-    allKeys: Object.keys(map),
-  } }, {
+  return NextResponse.json({ questionLimits, features }, {
     headers: { 'Cache-Control': 'no-store' }
   })
 }

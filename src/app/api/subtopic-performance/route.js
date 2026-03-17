@@ -66,11 +66,11 @@ export async function GET(request) {
     })
 
     return NextResponse.json(
-      { subtopicStats, topicStats, _debug_user_id: user.id, _debug_email: user.email, _debug_google_id: user.google_id },
+      { subtopicStats, topicStats },
       { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } }
     )
   } catch (err) {
     console.error('Subtopic performance API error:', err.message)
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to fetch subtopic performance' }, { status: 500 })
   }
 }

@@ -23,7 +23,7 @@ export async function GET(request) {
       .select('question_source, paper_year, topic_id')
       .eq('exam_type', examType)
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
 
     const topicsConfig = EXAM_TOPICS[examType] || []
 
@@ -67,6 +67,6 @@ export async function GET(request) {
 
     return NextResponse.json({ groups }, { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } })
   } catch (err) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
   }
 }

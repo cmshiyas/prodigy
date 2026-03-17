@@ -6,7 +6,7 @@ import { getReferralConfig } from '@/lib/referralConfig'
 import { randomBytes } from 'crypto'
 
 function generateReferralCode() {
-  return randomBytes(4).toString('hex').toUpperCase()
+  return randomBytes(8).toString('hex').toUpperCase()
 }
 
 export const dynamic = 'force-dynamic'
@@ -74,7 +74,7 @@ export async function POST(request) {
 
   } catch (err) {
     console.error('Auth error:', err.message)
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    return NextResponse.json({ error: 'Authentication failed' }, { status: 500 })
   }
 }
 

@@ -83,6 +83,6 @@ export async function POST(request) {
     })
   } catch (err) {
     console.error('Promo error:', err.message)
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
   }
 }

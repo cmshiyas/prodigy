@@ -106,7 +106,7 @@ export async function POST(request) {
     }
 
     if (attemptedIds.length > 0) {
-      questionQuery = questionQuery.not('id', 'in', `(${attemptedIds.join(',')})`)
+      questionQuery = questionQuery.not('id', 'in', `(${attemptedIds.map(Number).join(',')})`)
     }
 
     const { data: unansweredQuestions, error: questionError } = await questionQuery
@@ -166,6 +166,6 @@ export async function POST(request) {
 
   } catch (err) {
     console.error('Generate error:', err.message)
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
   }
 }

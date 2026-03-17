@@ -67,6 +67,6 @@ export async function GET(request) {
     return NextResponse.json(rankings, { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } })
   } catch (err) {
     console.error('Rankings API error:', err.message)
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
   }
 }
