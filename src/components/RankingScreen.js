@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { EXAM_TYPES } from '../lib/constants'
 
-export default function RankingScreen({ user, idToken, onHome, onHistory, onPlans }) {
+export default function RankingScreen({ user, idToken, onHome, onHistory, onStreak, onPlans }) {
   const [rankings, setRankings] = useState([])
   const [subtopicStats, setSubtopicStats] = useState({})
   const [examType, setExamType] = useState('OC')
@@ -49,6 +49,7 @@ export default function RankingScreen({ user, idToken, onHome, onHistory, onPlan
         <button className="nav-btn" onClick={onHome}>Home</button>
         <button className="nav-btn" onClick={onHistory}>History</button>
         <button className="nav-btn active">Ranking</button>
+        <button className="nav-btn" onClick={onStreak}>Streak 🔥</button>
         {!user.is_admin && <button className="nav-btn nav-btn--plans" onClick={onPlans}>Plans</button>}
         <div className="user-pill">
           {user.picture && <img src={user.picture} className="user-avatar" alt="" />}

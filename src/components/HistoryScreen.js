@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { EXAM_TYPES } from '../lib/constants'
 
-export default function HistoryScreen({ user, idToken, examType, onExamTypeChange, onHome, onRanking, onPlans }) {
+export default function HistoryScreen({ user, idToken, examType, onExamTypeChange, onHome, onRanking, onStreak, onPlans }) {
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -32,6 +32,7 @@ export default function HistoryScreen({ user, idToken, examType, onExamTypeChang
         <button className="nav-btn" onClick={onHome}>Home</button>
         <button className="nav-btn active">History</button>
         <button className="nav-btn" onClick={onRanking}>Ranking</button>
+        <button className="nav-btn" onClick={onStreak}>Streak 🔥</button>
         {!user.is_admin && <button className="nav-btn nav-btn--plans" onClick={onPlans}>Plans</button>}
         <div className="user-pill">
           {user.picture && <img src={user.picture} className="user-avatar" alt="" />}

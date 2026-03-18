@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { EXAM_TYPES, EXAM_TOPICS, TOPIC_PROMPTS, TIER_LABELS, TIER_CLASSES, ADMIN_EMAIL, EXAM_YEAR_LEVELS } from '@/lib/constants'
 import HistoryScreen from '@/components/HistoryScreen'
 import RankingScreen from '@/components/RankingScreen'
+import StreakScreen from '@/components/StreakScreen'
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
 
@@ -14,10 +15,10 @@ const EXAM_DATE_COLORS = {
 }
 
 const TIER_PERMISSIONS = {
-  silver:   { subtopics: false, history: false, ranking: false, streaks: false },
-  gold:     { subtopics: true,  history: true,  ranking: false, streaks: false },
-  platinum: { subtopics: true,  history: true,  ranking: true,  streaks: true  },
-  admin:    { subtopics: true,  history: true,  ranking: true,  streaks: true  },
+  silver:   { subtopics: false, history: false, ranking: false, streaks: true },
+  gold:     { subtopics: true,  history: true,  ranking: false, streaks: true },
+  platinum: { subtopics: true,  history: true,  ranking: true,  streaks: true },
+  admin:    { subtopics: true,  history: true,  ranking: true,  streaks: true },
 }
 
 if (!GOOGLE_CLIENT_ID) {
@@ -2278,8 +2279,9 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
   if (screen === 'auth') return <AuthScreen />
   if (screen === 'pending') return <PendingScreen email={session.user?.email} onSignOut={handleSignOut} />
   if (screen === 'rejected') return <RejectedScreen onSignOut={handleSignOut} />
-  if (screen === 'history') return <HistoryScreen user={session.user} idToken={session.idToken} examType={examType} onExamTypeChange={setExamType} onHome={() => setScreen('app')} onRanking={() => setScreen('ranking')} onPlans={() => setScreen('plans')} />
-  if (screen === 'ranking') return <RankingScreen user={session.user} idToken={session.idToken} onHome={() => setScreen('app')} onHistory={() => setScreen('history')} onPlans={() => setScreen('plans')} />
+  if (screen === 'history') return <HistoryScreen user={session.user} idToken={session.idToken} examType={examType} onExamTypeChange={setExamType} onHome={() => setScreen('app')} onRanking={() => setScreen('ranking')} onStreak={() => setScreen('streak')} onPlans={() => setScreen('plans')} />
+  if (screen === 'ranking') return <RankingScreen user={session.user} idToken={session.idToken} onHome={() => setScreen('app')} onHistory={() => setScreen('history')} onStreak={() => setScreen('streak')} onPlans={() => setScreen('plans')} />
+  if (screen === 'streak') return <StreakScreen user={session.user} idToken={session.idToken} onHome={() => setScreen('app')} onHistory={() => setScreen('history')} onRanking={() => setScreen('ranking')} onPlans={() => setScreen('plans')} />
   if (screen === 'plans') return (
     <div>
       <header>
@@ -2288,6 +2290,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
           <button className="nav-btn" onClick={() => setScreen('app')}>Home</button>
           <button className="nav-btn" onClick={() => setScreen('history')}>History</button>
           <button className="nav-btn" onClick={() => setScreen('ranking')}>Ranking</button>
+          <button className="nav-btn" onClick={() => setScreen('streak')}>Streak 🔥</button>
           <button className="nav-btn active">Plans</button>
           <div className="user-pill">
             {session.user.picture && <img src={session.user.picture} className="user-avatar" alt="" />}
@@ -2344,6 +2347,10 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
               onClick={() => { if (!perms.ranking) { setCurrentTopic(null); setScreen('plans'); return } setCurrentTopic(null); setScreen('ranking') }}
               title={!perms.ranking ? 'Upgrade to Platinum' : ''}
             >Ranking{!perms.ranking ? ' 🔒' : ''}</button>
+            <button
+              className="nav-btn"
+              onClick={() => { setCurrentTopic(null); setScreen('streak') }}
+            >Streak 🔥</button>
             {!user.is_admin && (
               <button className="nav-btn nav-btn--plans" onClick={() => { setCurrentTopic(null); setScreen('plans') }}>Plans</button>
             )}
@@ -2379,6 +2386,10 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
                   className="mobile-nav-item"
                   onClick={() => { if (!perms.ranking) { setScreen('plans'); setMobileMenuOpen(false); return } setCurrentTopic(null); setScreen('ranking'); setMobileMenuOpen(false) }}
                 >🏆 Ranking{!perms.ranking ? ' 🔒' : ''}</button>
+                <button
+                  className="mobile-nav-item"
+                  onClick={() => { setCurrentTopic(null); setScreen('streak'); setMobileMenuOpen(false) }}
+                >🔥 Streak</button>
                 {!user.is_admin && (
                   <button className="mobile-nav-item" onClick={() => { setCurrentTopic(null); setScreen('plans'); setMobileMenuOpen(false) }}>💎 Plans &amp; Pricing</button>
                 )}
