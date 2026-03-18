@@ -1735,6 +1735,7 @@ function TestSession({ questions, label, idToken, onFinish }) {
           </div>
         )}
         {q.visual && <pre className="visual-block">{q.visual}</pre>}
+        <div className="question-text">{q.question}</div>
         {q.image_urls?.length > 0 && (
           <div style={{ marginBottom: 12 }}>
             {q.image_urls.map((url, i) => (
@@ -1742,7 +1743,6 @@ function TestSession({ questions, label, idToken, onFinish }) {
             ))}
           </div>
         )}
-        <div className="question-text">{q.question}</div>
         <div className="options-list">
           {q.options.map((opt, i) => {
             const isChosen = selections[current] === i
