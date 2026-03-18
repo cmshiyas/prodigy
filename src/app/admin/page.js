@@ -1347,6 +1347,12 @@ function ReportedQuestionsViewer({ idToken }) {
         correct: q.correct ?? 0,
         explanation: q.explanation || '',
         image_urls: existingUrls,
+        // preserve these so updateQuestion doesn't overwrite them with defaults
+        difficulty: q.difficulty || 'medium',
+        subtopic: q.subtopic || null,
+        year_level: q.year_level || null,
+        question_source: q.question_source || 'sample',
+        paper_year: q.paper_year || null,
       }}))
     }
   }
@@ -1394,6 +1400,11 @@ function ReportedQuestionsViewer({ idToken }) {
           correct: parseInt(draft.correct),
           explanation: draft.explanation,
           image_urls: allUrls,
+          difficulty: draft.difficulty,
+          subtopic: draft.subtopic,
+          year_level: draft.year_level,
+          question_source: draft.question_source,
+          paper_year: draft.paper_year,
         }),
       })
       setSaveStatus(s => ({ ...s, [qid]: res.ok ? 'saved' : 'error' }))

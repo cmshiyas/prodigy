@@ -265,7 +265,7 @@ export async function GET(request) {
       .from('question_reports')
       .select(`
         id, reason, created_at,
-        question:questions(id, question, topic_id, exam_type, difficulty, correct, options, explanation),
+        question:questions(id, question, topic_id, exam_type, difficulty, subtopic, year_level, question_source, paper_year, correct, options, explanation, image_url, image_urls),
         reporter:users(name, email)
       `)
       .is('actioned_at', null)
