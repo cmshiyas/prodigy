@@ -200,7 +200,6 @@ create policy "No direct client access to question_reports" on question_reports 
 
 -- Multi-test mapping for questions
 alter table questions add column if not exists paper_years text[];
-create index if not exists questions_paper_years_idx on questions using gin(paper_years);
 
 -- Practice tests table (named tests with publish/unpublish)
 create table if not exists practice_tests (
