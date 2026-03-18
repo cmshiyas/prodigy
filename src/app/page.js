@@ -1543,12 +1543,12 @@ function QuestionView({ question, questionNumber, topicStats, examType, onAnswer
             <button
               onClick={() => { setReportOpen(v => !v); setReportReason(null); setReportStatus(null) }}
               style={{
-                marginLeft: 'auto', background: 'none', border: 'none',
-                color: '#94A3B8', fontSize: '0.78rem', fontWeight: 600,
-                cursor: 'pointer', padding: '4px 6px', borderRadius: 6,
-                textDecoration: 'underline', textUnderlineOffset: 2,
+                marginLeft: 'auto', background: '#FFF7ED', border: '1.5px solid #FED7AA',
+                color: '#C2410C', fontSize: '0.8rem', fontWeight: 700,
+                cursor: 'pointer', padding: '6px 12px', borderRadius: 8,
+                display: 'flex', alignItems: 'center', gap: 5,
               }}
-            >⚑ Report</button>
+            >⚑ Report a Question?</button>
           )}
         </div>
 
@@ -1764,11 +1764,12 @@ function TestSession({ questions, label, idToken, onFinish }) {
             <button
               onClick={() => { setReportOpen(v => !v); setReportReason(null); setReportStatus(null) }}
               style={{
-                background: 'none', border: 'none', color: '#94A3B8',
-                fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer',
-                padding: '4px 6px', textDecoration: 'underline', textUnderlineOffset: 2,
+                background: '#FFF7ED', border: '1.5px solid #FED7AA',
+                color: '#C2410C', fontSize: '0.8rem', fontWeight: 700,
+                cursor: 'pointer', padding: '6px 12px', borderRadius: 8,
+                display: 'flex', alignItems: 'center', gap: 5,
               }}
-            >⚑ Report</button>
+            >⚑ Report a Question?</button>
           )}
           {current < totalQ - 1 && (
             <button className="btn btn-primary" onClick={() => setCurrent(c => c + 1)}>Next →</button>
