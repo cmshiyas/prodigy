@@ -497,7 +497,9 @@ export async function POST(request) {
     const urls = Array.isArray(image_urls) ? image_urls.filter(Boolean) : []
     const source = question_source === 'past_paper' ? 'past_paper' : 'sample'
     // paper_years is the authoritative multi-test list; paper_year is derived from first element for backward compat
-    const years = Array.isArray(paper_years) ? paper_years.filter(Boolean) : (paper_year ? [paper_year] : [])
+    const years = (Array.isArray(paper_years) ? paper_years : []).filter(Boolean).concat(
+      !Array.isArray(paper_years) && paper_year ? [paper_year] : []
+    )
     const primaryYear = years[0] || null
     const { data, error } = await supabase.from('questions').update({
       question,

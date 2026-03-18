@@ -2637,7 +2637,7 @@ function QuestionBankReview({ idToken, onSignOut }) {
     setEditError('')
     setPendingImageFiles([])
     const existingUrls = q.image_urls?.length ? q.image_urls : (q.image_url ? [q.image_url] : [])
-    const paperYears = q.paper_years?.length ? q.paper_years : (q.paper_year ? [q.paper_year] : [])
+    const paperYears = Array.isArray(q.paper_years) && q.paper_years.length ? q.paper_years : (q.paper_year ? [q.paper_year] : [])
     setEditForm({
       question: q.question,
       options: [...(q.options || [])],
@@ -2690,8 +2690,8 @@ function QuestionBankReview({ idToken, onSignOut }) {
           subtopic: editForm.subtopic,
           year_level: editForm.year_level,
           question_source: editForm.question_source,
-          paper_years: editForm.paper_years || [],
-          paper_year: (editForm.paper_years || [])[0] || editForm.paper_year || null,
+          paper_years: Array.isArray(editForm.paper_years) ? editForm.paper_years : [],
+          paper_year: (Array.isArray(editForm.paper_years) ? editForm.paper_years : [])[0] || editForm.paper_year || null,
           image_urls: allUrls,
         }),
       })
@@ -2965,9 +2965,9 @@ function QuestionBankReview({ idToken, onSignOut }) {
                       </div>
                       {editForm.question_source === 'sample' && (() => {
                         const testsForExam = practiceTests.filter(t => t.exam_type === editForm.exam_type)
-                        const selectedYears = editForm.paper_years || []
+                        const selectedYears = Array.isArray(editForm.paper_years) ? editForm.paper_years : []
                         const toggle = (py) => setEditForm(f => {
-                          const cur = f.paper_years || []
+                          const cur = Array.isArray(f.paper_years) ? f.paper_years : []
                           const next = cur.includes(py) ? cur.filter(y => y !== py) : [...cur, py]
                           return { ...f, paper_years: next, paper_year: next[0] || '' }
                         })
@@ -3105,7 +3105,7 @@ function QuestionBankReview({ idToken, onSignOut }) {
                       {q.question_source === 'past_paper'
                         ? <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '1px 7px', borderRadius: 20, background: '#FEF3C7', color: '#92400E' }}>Past Paper{q.paper_year ? ` ${q.paper_year}` : ''}</span>
                         : (() => {
-                            const years = q.paper_years?.length ? q.paper_years : (q.paper_year ? [q.paper_year] : [])
+                            const years = Array.isArray(q.paper_years) && q.paper_years.length ? q.paper_years : (q.paper_year ? [q.paper_year] : [])
                             return years.length > 0
                               ? years.map(py => {
                                   const t = practiceTests.find(t => t.exam_type === q.exam_type && t.paper_year === py)

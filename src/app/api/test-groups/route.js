@@ -43,7 +43,7 @@ export async function GET(request) {
       const source = q.question_source || 'sample'
       const tid = q.topic_id || 'unknown'
       // Expand by paper_years if present, otherwise fall back to single paper_year
-      const years = (q.paper_years?.length ? q.paper_years : (q.paper_year ? [q.paper_year] : [null]))
+      const years = (Array.isArray(q.paper_years) && q.paper_years.length ? q.paper_years : (q.paper_year ? [q.paper_year] : [null]))
       const seenKeys = new Set() // avoid double-counting if paper_years has duplicates
       for (const year of years) {
         const key = `${source}::${year ?? ''}`
