@@ -168,6 +168,17 @@ insert into users (google_id, email, name, is_admin, status, tier)
 values ('admin-placeholder', 'cmshiyas007@gmail.com', 'Admin', true, 'approved', 'admin')
 on conflict (email) do update set is_admin = true, status = 'approved', tier = 'admin';
 
+-- Question reports table
+create table if not exists question_reports (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references users(id) on delete cascade,
+  question_id uuid references questions(id) on delete cascade,
+  reason text not null check (reason in ('missing_image', 'wrong_answer', 'ambiguous_question')),
+  created_at timestamptz default now(),
+  unique(user_id, question_id)
+);
+create index if not exists question_reports_question_id_idx on question_reports(question_id);
+
 -- Row Level Security (keep data private)
 alter table users enable row level security;
 alter table token_usage enable row level security;
@@ -182,3 +193,5 @@ create policy "No direct client access to token_usage" on token_usage for all us
 create policy "No direct client access to quiz_attempts" on quiz_attempts for all using (false);
 create policy "No direct client access to questions" on questions for all using (false);
 create policy "No direct client access to question_responses" on question_responses for all using (false);
+alter table question_reports enable row level security;
+create policy "No direct client access to question_reports" on question_reports for all using (false);

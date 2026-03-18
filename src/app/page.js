@@ -1419,9 +1419,18 @@ function BalloonPopOverlay({ visible }) {
 
 // ── QUESTION VIEW ─────────────────────────────────────────────
 
-function QuestionView({ question, questionNumber, topicStats, examType, onAnswer, onNext, onHome, currentTopics, subtopics, currentSubtopic, onSubtopicChange, barProgress }) {
+const REPORT_REASONS = [
+  { value: 'missing_image',       label: 'Missing Image' },
+  { value: 'wrong_answer',        label: 'Wrong Answer' },
+  { value: 'ambiguous_question',  label: 'Ambiguous Question' },
+]
+
+function QuestionView({ question, questionNumber, topicStats, examType, onAnswer, onNext, onHome, currentTopics, subtopics, currentSubtopic, onSubtopicChange, barProgress, idToken }) {
   const [answered, setAnswered] = useState(false)
   const [selectedIdx, setSelectedIdx] = useState(null)
+  const [reportOpen, setReportOpen] = useState(false)
+  const [reportReason, setReportReason] = useState(null)
+  const [reportStatus, setReportStatus] = useState(null) // null | 'submitting' | 'done' | 'error'
   const topic = currentTopics.find(t => t.id === question.topicId) || { name: 'Topic' }
   const labels = ['A', 'B', 'C', 'D', 'E']
 
@@ -1434,6 +1443,21 @@ function QuestionView({ question, questionNumber, topicStats, examType, onAnswer
     if (answered || selectedIdx === null) return
     setAnswered(true)
     onAnswer(selectedIdx)
+  }
+
+  const handleReport = async () => {
+    if (!reportReason || reportStatus === 'submitting' || reportStatus === 'done') return
+    setReportStatus('submitting')
+    try {
+      const res = await fetch('/api/report-question', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+        body: JSON.stringify({ questionId: question.id, reason: reportReason }),
+      })
+      setReportStatus(res.ok ? 'done' : 'error')
+    } catch {
+      setReportStatus('error')
+    }
   }
 
   const getOptionClass = (i) => {
@@ -1515,7 +1539,87 @@ function QuestionView({ question, questionNumber, topicStats, examType, onAnswer
           {answered && <button className="btn btn-generate" onClick={onNext}>Next Question</button>}
           {!answered && selectedIdx === null && <span className="hint-text">Select an answer above</span>}
           {!answered && selectedIdx !== null && <button className="btn btn-primary" onClick={handleSubmit}>Submit Answer</button>}
+          {question.id && (
+            <button
+              onClick={() => { setReportOpen(v => !v); setReportReason(null); setReportStatus(null) }}
+              style={{
+                marginLeft: 'auto', background: 'none', border: 'none',
+                color: '#94A3B8', fontSize: '0.78rem', fontWeight: 600,
+                cursor: 'pointer', padding: '4px 6px', borderRadius: 6,
+                textDecoration: 'underline', textUnderlineOffset: 2,
+              }}
+            >⚑ Report</button>
+          )}
         </div>
+
+        {reportOpen && question.id && (
+          <div style={{
+            margin: '0 16px 16px', padding: '14px 16px',
+            background: '#FFF8F0', border: '1.5px solid #FED7AA',
+            borderRadius: 12,
+          }}>
+            {reportStatus === 'done' ? (
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#16A34A', textAlign: 'center', padding: '4px 0' }}>
+                ✓ Thanks — we&apos;ll review this question.
+              </div>
+            ) : (
+              <>
+                <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#92400E', marginBottom: 10 }}>
+                  What&apos;s wrong with this question?
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+                  {REPORT_REASONS.map(r => (
+                    <label key={r.value} style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '8px 10px', borderRadius: 8, cursor: 'pointer',
+                      background: reportReason === r.value ? '#FEF3C7' : 'white',
+                      border: `1.5px solid ${reportReason === r.value ? '#F59E0B' : '#E5E7EB'}`,
+                      fontSize: '0.85rem', fontWeight: 600, color: '#374151',
+                      transition: 'all 0.15s',
+                    }}>
+                      <input
+                        type="radio"
+                        name="report-reason"
+                        value={r.value}
+                        checked={reportReason === r.value}
+                        onChange={() => setReportReason(r.value)}
+                        style={{ accentColor: '#F59E0B' }}
+                      />
+                      {r.label}
+                    </label>
+                  ))}
+                </div>
+                {reportStatus === 'error' && (
+                  <div style={{ fontSize: '0.78rem', color: '#DC2626', marginBottom: 8 }}>
+                    Something went wrong — please try again.
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={handleReport}
+                    disabled={!reportReason || reportStatus === 'submitting'}
+                    style={{
+                      flex: 1, padding: '8px 12px', borderRadius: 8, border: 'none',
+                      background: reportReason ? '#F59E0B' : '#E5E7EB',
+                      color: reportReason ? 'white' : '#94A3B8',
+                      fontWeight: 700, fontSize: '0.82rem', cursor: reportReason ? 'pointer' : 'default',
+                    }}
+                  >
+                    {reportStatus === 'submitting' ? 'Submitting…' : 'Submit Report'}
+                  </button>
+                  <button
+                    onClick={() => setReportOpen(false)}
+                    style={{
+                      padding: '8px 12px', borderRadius: 8,
+                      border: '1.5px solid #E5E7EB', background: 'white',
+                      fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer', color: '#64748B',
+                    }}
+                  >Cancel</button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
       <div className="stats-card">
         <div className="stats-title">Topic: {topic.name}</div>
@@ -2580,6 +2684,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
                 onNext={() => testFilter ? generateQuestion(null, null, testFilter) : generateQuestion(currentTopic, currentSubtopic)}
                 onHome={() => { saveQuizAttempt(); resetQuizSession(); setScreen('app') }}
                 barProgress={barProgress}
+                idToken={session.idToken}
               />
             )}
             <BalloonPopOverlay visible={balloonPopped} />
