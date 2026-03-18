@@ -1329,7 +1329,7 @@ function HomeScreen({ user, examType, onExamTypeChange, yearLevel, onYearLevelCh
                     const isPast = item.group.question_source === 'past_paper'
                     const label = isPast
                       ? `📄 ${item.group.paper_year || 'Past Paper'}`
-                      : `📋 ${item.group.paper_year || ''}`
+                      : `📋 ${item.group.title || item.group.paper_year || 'Practice Test'}`
                     const topic = { topic_id: topicId, topic_name, count: item.count }
                     return (
                       <button key={ti} className="paper-topic-tile" onClick={() => onTestTileClick(item.group, topic)}>
@@ -1647,7 +1647,7 @@ function QuestionView({ question, questionNumber, topicStats, examType, onAnswer
 
 function TestConfirmModal({ group, topic, onConfirm, onCancel }) {
   const isPast = group.question_source === 'past_paper'
-  const paperLabel = isPast ? `${group.paper_year || 'Past Paper'} Past Paper` : 'Sample Test'
+  const paperLabel = isPast ? `${group.paper_year || 'Past Paper'} Past Paper` : (group.title || 'Practice Test')
   return (
     <div className="test-confirm-backdrop" onClick={onCancel}>
       <div className="test-confirm-modal" onClick={e => e.stopPropagation()}>
@@ -2474,7 +2474,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
       const isPast = group.question_source === 'past_paper'
       const label = isPast
         ? `${group.paper_year || 'Past Paper'} Past Paper — ${topic.topic_name}`
-        : `Practice Test${group.paper_year ? ` #${group.paper_year}` : ''} — ${topic.topic_name}`
+        : `${group.title || (group.paper_year ? `Practice Test #${group.paper_year}` : 'Practice Test')} — ${topic.topic_name}`
       setTestSession({ questions: data.questions, label })
       setTestResults(null)
     } catch {

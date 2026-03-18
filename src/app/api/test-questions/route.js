@@ -38,7 +38,10 @@ export async function GET(request) {
     }
 
     if (paperYear) {
-      query = query.eq('paper_year', paperYear)
+      // Match questions by single field OR multi-test array.
+      // Double-quote the value in the PostgREST filter string so values with spaces work correctly.
+      const esc = paperYear.replace(/"/g, '\\"')
+      query = query.or(`paper_year.eq."${esc}",paper_years.cs.{"${esc}"}`)
     }
 
     const { data, error } = await query

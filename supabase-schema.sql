@@ -197,3 +197,22 @@ create policy "No direct client access to questions" on questions for all using 
 create policy "No direct client access to question_responses" on question_responses for all using (false);
 alter table question_reports enable row level security;
 create policy "No direct client access to question_reports" on question_reports for all using (false);
+
+-- Multi-test mapping for questions
+alter table questions add column if not exists paper_years text[];
+
+-- Practice tests table (named tests with publish/unpublish)
+create table if not exists practice_tests (
+  id uuid default gen_random_uuid() primary key,
+  exam_type text not null check (exam_type in ('NAPLAN','OC','Selective')),
+  title text not null,
+  paper_year text not null,
+  question_source text not null default 'sample' check (question_source in ('sample', 'past_paper')),
+  is_published boolean default false,
+  created_at timestamptz default now(),
+  unique(exam_type, paper_year, question_source)
+);
+alter table practice_tests enable row level security;
+create policy "No direct client access to practice_tests" on practice_tests for all using (false);
+create index if not exists practice_tests_exam_type_idx on practice_tests(exam_type);
+create index if not exists practice_tests_published_idx on practice_tests(is_published);
