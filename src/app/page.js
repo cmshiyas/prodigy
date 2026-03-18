@@ -1667,12 +1667,37 @@ function TestConfirmModal({ group, topic, onConfirm, onCancel }) {
 function TestSession({ questions, label, idToken, onFinish }) {
   const [current, setCurrent] = useState(0)
   const [selections, setSelections] = useState({}) // { [index]: selectedIdx } — freely changeable until final submit
+  const [reportOpen, setReportOpen] = useState(false)
+  const [reportReason, setReportReason] = useState(null)
+  const [reportStatus, setReportStatus] = useState(null) // null | 'submitting' | 'done' | 'error'
 
   const q = questions[current]
   const totalQ = questions.length
   const answered = Object.keys(selections).length
   const pct = Math.round((answered / totalQ) * 100)
   const unanswered = totalQ - answered
+
+  // Reset report state when navigating to a new question
+  useEffect(() => {
+    setReportOpen(false)
+    setReportReason(null)
+    setReportStatus(null)
+  }, [current])
+
+  const handleReport = async () => {
+    if (!reportReason || reportStatus === 'submitting' || reportStatus === 'done') return
+    setReportStatus('submitting')
+    try {
+      const res = await fetch('/api/report-question', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+        body: JSON.stringify({ questionId: q.id, reason: reportReason }),
+      })
+      setReportStatus(res.ok ? 'done' : 'error')
+    } catch {
+      setReportStatus('error')
+    }
+  }
 
   function handleFinish() {
     // Record all responses at submission time
@@ -1734,7 +1759,17 @@ function TestSession({ questions, label, idToken, onFinish }) {
 
       <div style={{ display: 'flex', gap: 10, marginTop: 16, justifyContent: 'space-between', alignItems: 'center' }}>
         <button className="btn btn-secondary" onClick={() => setCurrent(c => c - 1)} disabled={current === 0}>← Prev</button>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {q.id && (
+            <button
+              onClick={() => { setReportOpen(v => !v); setReportReason(null); setReportStatus(null) }}
+              style={{
+                background: 'none', border: 'none', color: '#94A3B8',
+                fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer',
+                padding: '4px 6px', textDecoration: 'underline', textUnderlineOffset: 2,
+              }}
+            >⚑ Report</button>
+          )}
           {current < totalQ - 1 && (
             <button className="btn btn-primary" onClick={() => setCurrent(c => c + 1)}>Next →</button>
           )}
@@ -1751,6 +1786,74 @@ function TestSession({ questions, label, idToken, onFinish }) {
           )}
         </div>
       </div>
+
+      {reportOpen && q.id && (
+        <div style={{
+          marginTop: 14, padding: '14px 16px',
+          background: '#FFF8F0', border: '1.5px solid #FED7AA',
+          borderRadius: 12,
+        }}>
+          {reportStatus === 'done' ? (
+            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#16A34A', textAlign: 'center', padding: '4px 0' }}>
+              ✓ Thanks — we&apos;ll review this question.
+            </div>
+          ) : (
+            <>
+              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#92400E', marginBottom: 10 }}>
+                What&apos;s wrong with this question?
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+                {REPORT_REASONS.map(r => (
+                  <label key={r.value} style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '8px 10px', borderRadius: 8, cursor: 'pointer',
+                    background: reportReason === r.value ? '#FEF3C7' : 'white',
+                    border: `1.5px solid ${reportReason === r.value ? '#F59E0B' : '#E5E7EB'}`,
+                    fontSize: '0.85rem', fontWeight: 600, color: '#374151',
+                  }}>
+                    <input
+                      type="radio"
+                      name={`test-report-reason-${current}`}
+                      value={r.value}
+                      checked={reportReason === r.value}
+                      onChange={() => setReportReason(r.value)}
+                      style={{ accentColor: '#F59E0B' }}
+                    />
+                    {r.label}
+                  </label>
+                ))}
+              </div>
+              {reportStatus === 'error' && (
+                <div style={{ fontSize: '0.78rem', color: '#DC2626', marginBottom: 8 }}>
+                  Something went wrong — please try again.
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={handleReport}
+                  disabled={!reportReason || reportStatus === 'submitting'}
+                  style={{
+                    flex: 1, padding: '8px 12px', borderRadius: 8, border: 'none',
+                    background: reportReason ? '#F59E0B' : '#E5E7EB',
+                    color: reportReason ? 'white' : '#94A3B8',
+                    fontWeight: 700, fontSize: '0.82rem', cursor: reportReason ? 'pointer' : 'default',
+                  }}
+                >
+                  {reportStatus === 'submitting' ? 'Submitting…' : 'Submit Report'}
+                </button>
+                <button
+                  onClick={() => setReportOpen(false)}
+                  style={{
+                    padding: '8px 12px', borderRadius: 8,
+                    border: '1.5px solid #E5E7EB', background: 'white',
+                    fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer', color: '#64748B',
+                  }}
+                >Cancel</button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   )
 }
