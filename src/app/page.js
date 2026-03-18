@@ -1859,13 +1859,31 @@ function TestSession({ questions, label, idToken, onFinish }) {
   )
 }
 
-function TestResultsScreen({ questions, answers, label, onReturnHome }) {
+function TestResultsScreen({ questions, answers, label, onReturnHome, idToken }) {
   const totalQ = questions.length
   const correct = questions.filter((q, i) => answers[i] === q.correct).length
   const pct = Math.round((correct / totalQ) * 100)
   const pass = pct >= 60
   const [reviewMode, setReviewMode] = useState(false)
+  const [reportOpen, setReportOpen] = useState({})   // { [i]: true/false }
+  const [reportReason, setReportReason] = useState({}) // { [i]: reason }
+  const [reportStatus, setReportStatus] = useState({}) // { [i]: 'submitting'|'done'|'error' }
   const wrongQuestions = questions.map((q, i) => ({ q, i })).filter(({ i }) => answers[i] !== questions[i].correct)
+
+  const handleReport = async (q, i) => {
+    if (!reportReason[i]) return
+    setReportStatus(s => ({ ...s, [i]: 'submitting' }))
+    try {
+      const res = await fetch('/api/report-question', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+        body: JSON.stringify({ questionId: q.id, reason: reportReason[i] }),
+      })
+      setReportStatus(s => ({ ...s, [i]: res.ok ? 'done' : 'error' }))
+    } catch {
+      setReportStatus(s => ({ ...s, [i]: 'error' }))
+    }
+  }
 
   if (reviewMode) {
     return (
@@ -1877,12 +1895,53 @@ function TestResultsScreen({ questions, answers, label, onReturnHome }) {
           <div key={i} style={{ marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid var(--border)' }}>
             <div style={{ fontWeight: 600, fontSize: '0.88rem', marginBottom: 6, color: '#1E293B' }}>Q{i + 1}: {q.question}</div>
             {q.visual && <pre className="visual-block" style={{ fontSize: '0.78rem' }}>{q.visual}</pre>}
+            {q.image_urls?.length > 0 && (
+              <div style={{ marginBottom: 8 }}>
+                {q.image_urls.map((url, ui) => (
+                  <img key={ui} src={url} alt="Question visual" style={{ maxWidth: '100%', borderRadius: 8, marginBottom: 4 }} />
+                ))}
+              </div>
+            )}
             <div style={{ fontSize: '0.82rem', color: 'var(--red)', marginBottom: 2 }}>
               ✗ Your answer: {q.options[answers[i]] ?? '(not answered)'}
             </div>
             <div className="test-result-correct-ans">✓ Correct: {q.options[q.correct]}</div>
             {q.explanation && (
               <div style={{ fontSize: '0.82rem', color: '#475569', marginTop: 6, lineHeight: 1.5 }}>{q.explanation}</div>
+            )}
+            {q.id && (
+              <div style={{ marginTop: 10 }}>
+                <button
+                  onClick={() => setReportOpen(s => ({ ...s, [i]: !s[i] }))}
+                  style={{ background: '#FFF7ED', border: '1.5px solid #FED7AA', color: '#C2410C', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', padding: '5px 10px', borderRadius: 8 }}
+                >⚑ Report a Question?</button>
+                {reportOpen[i] && (
+                  <div style={{ marginTop: 8, padding: '12px 14px', background: '#FFF8F0', border: '1.5px solid #FED7AA', borderRadius: 10 }}>
+                    {reportStatus[i] === 'done' ? (
+                      <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#16A34A' }}>✓ Thanks — we&apos;ll review this question.</div>
+                    ) : (
+                      <>
+                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#92400E', marginBottom: 8 }}>What&apos;s wrong with this question?</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 10 }}>
+                          {REPORT_REASONS.map(r => (
+                            <label key={r.value} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, cursor: 'pointer', background: reportReason[i] === r.value ? '#FEF3C7' : 'white', border: `1.5px solid ${reportReason[i] === r.value ? '#F59E0B' : '#E5E7EB'}`, fontSize: '0.82rem', fontWeight: 600, color: '#374151' }}>
+                              <input type="radio" name={`report-reason-${i}`} value={r.value} checked={reportReason[i] === r.value} onChange={() => setReportReason(s => ({ ...s, [i]: r.value }))} style={{ accentColor: '#F59E0B' }} />
+                              {r.label}
+                            </label>
+                          ))}
+                        </div>
+                        {reportStatus[i] === 'error' && <div style={{ fontSize: '0.75rem', color: '#DC2626', marginBottom: 6 }}>Something went wrong — please try again.</div>}
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button onClick={() => handleReport(q, i)} disabled={!reportReason[i] || reportStatus[i] === 'submitting'} style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: 'none', background: reportReason[i] ? '#F59E0B' : '#E5E7EB', color: reportReason[i] ? 'white' : '#94A3B8', fontWeight: 700, fontSize: '0.8rem', cursor: reportReason[i] ? 'pointer' : 'default' }}>
+                            {reportStatus[i] === 'submitting' ? 'Submitting…' : 'Submit Report'}
+                          </button>
+                          <button onClick={() => setReportOpen(s => ({ ...s, [i]: false }))} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E5E7EB', background: 'white', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer', color: '#64748B' }}>Cancel</button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         ))}
@@ -2678,6 +2737,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
                 questions={testResults.questions}
                 answers={testResults.answers}
                 label={testResults.label}
+                idToken={session.idToken}
                 onReturnHome={() => { setTestResults(null); setCurrentTopic(null); setQuestion(null); setQuestionError(null) }}
               />
             )}
