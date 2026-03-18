@@ -307,6 +307,31 @@ export async function GET(request) {
     return NextResponse.json({ groups: duplicateGroups, totalDuplicateGroups: duplicateGroups.length, totalExtraRows: duplicateGroups.reduce((s, g) => s + g.length - 1, 0) })
   }
 
+  if (action === 'practiceTests') {
+    const examType = new URL(request.url).searchParams.get('examType') || ''
+    let query = supabase.from('practice_tests').select('*').order('exam_type').order('created_at')
+    if (examType) query = query.eq('exam_type', examType)
+    const { data, error } = await query
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
+    // Attach question counts per practice test
+    const tests = data || []
+    if (tests.length > 0) {
+      const { data: counts } = await supabase
+        .from('questions')
+        .select('exam_type, paper_year, question_source')
+        .eq('question_source', 'sample')
+      const countMap = {}
+      for (const q of counts || []) {
+        const key = `${q.exam_type}::${q.paper_year}`
+        countMap[key] = (countMap[key] || 0) + 1
+      }
+      for (const t of tests) {
+        t.question_count = countMap[`${t.exam_type}::${t.paper_year}`] || 0
+      }
+    }
+    return NextResponse.json({ tests })
+  }
+
   if (action === 'questions') {
     const url = new URL(request.url)
     const examType     = url.searchParams.get('examType')     || ''
@@ -486,6 +511,38 @@ export async function POST(request) {
     }).eq('id', questionId).select().single()
     if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
     return NextResponse.json({ question: data })
+  }
+
+  if (action === 'createPracticeTest') {
+    const { exam_type, title, paper_year, question_source = 'sample' } = await request.json()
+    if (!exam_type || !title || !paper_year) return NextResponse.json({ error: 'exam_type, title and paper_year are required' }, { status: 400 })
+    const validExamTypes = EXAM_TYPES.map(e => e.id)
+    if (!validExamTypes.includes(exam_type)) return NextResponse.json({ error: 'Invalid exam_type' }, { status: 400 })
+    const { data, error } = await supabase.from('practice_tests')
+      .insert({ exam_type, title: title.trim(), paper_year: String(paper_year).trim(), question_source, is_published: false })
+      .select().single()
+    if (error) return NextResponse.json({ error: error.code === '23505' ? 'A test with this identifier already exists for this exam type.' : 'An unexpected error occurred' }, { status: 500 })
+    return NextResponse.json({ test: data })
+  }
+
+  if (action === 'updatePracticeTest') {
+    const { id, title, is_published } = await request.json()
+    if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
+    const updates = {}
+    if (title !== undefined) updates.title = title.trim()
+    if (is_published !== undefined) updates.is_published = is_published
+    if (Object.keys(updates).length === 0) return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
+    const { data, error } = await supabase.from('practice_tests').update(updates).eq('id', id).select().single()
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
+    return NextResponse.json({ test: data })
+  }
+
+  if (action === 'deletePracticeTest') {
+    const { id } = await request.json()
+    if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
+    const { error } = await supabase.from('practice_tests').delete().eq('id', id)
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
+    return NextResponse.json({ ok: true })
   }
 
   if (action === 'actionReport') {

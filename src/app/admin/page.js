@@ -292,6 +292,213 @@ function SubscriptionFeaturesEditor({ idToken }) {
   )
 }
 
+// ── PRACTICE TESTS MANAGER ─────────────────────────────────────
+
+function PracticeTestsManager({ idToken }) {
+  const [tests, setTests] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [createForm, setCreateForm] = useState({ exam_type: 'OC', title: '', paper_year: '' })
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState('')
+  const [editingId, setEditingId] = useState(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [saving, setSaving] = useState(null)
+  const [toggling, setToggling] = useState(null)
+  const [deleting, setDeleting] = useState(null)
+  const [filterExam, setFilterExam] = useState('')
+
+  const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken }
+
+  const load = async () => {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams({ action: 'practiceTests' })
+      if (filterExam) params.set('examType', filterExam)
+      const res = await fetch(`/api/admin?${params}`, { headers: { Authorization: 'Bearer ' + idToken } })
+      const data = await res.json()
+      setTests(data.tests || [])
+    } finally { setLoading(false) }
+  }
+
+  useEffect(() => { load() }, [filterExam]) // eslint-disable-line
+
+  const create = async () => {
+    if (!createForm.title.trim()) { setCreateError('Title is required.'); return }
+    if (!createForm.paper_year.trim()) { setCreateError('Test identifier is required.'); return }
+    setCreating(true); setCreateError('')
+    try {
+      const res = await fetch('/api/admin?action=createPracticeTest', {
+        method: 'POST', headers,
+        body: JSON.stringify({ exam_type: createForm.exam_type, title: createForm.title.trim(), paper_year: createForm.paper_year.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setCreateError(data.error || 'Failed to create.'); return }
+      setCreateForm(f => ({ ...f, title: '', paper_year: '' }))
+      load()
+    } catch { setCreateError('An error occurred.') }
+    finally { setCreating(false) }
+  }
+
+  const togglePublish = async (test) => {
+    setToggling(test.id)
+    try {
+      await fetch('/api/admin?action=updatePracticeTest', {
+        method: 'POST', headers,
+        body: JSON.stringify({ id: test.id, is_published: !test.is_published }),
+      })
+      setTests(ts => ts.map(t => t.id === test.id ? { ...t, is_published: !t.is_published } : t))
+    } finally { setToggling(null) }
+  }
+
+  const saveTitle = async (test) => {
+    if (!editTitle.trim()) return
+    setSaving(test.id)
+    try {
+      await fetch('/api/admin?action=updatePracticeTest', {
+        method: 'POST', headers,
+        body: JSON.stringify({ id: test.id, title: editTitle.trim() }),
+      })
+      setTests(ts => ts.map(t => t.id === test.id ? { ...t, title: editTitle.trim() } : t))
+      setEditingId(null)
+    } finally { setSaving(null) }
+  }
+
+  const deleteTest = async (test) => {
+    if (!confirm(`Delete "${test.title}"? This will NOT delete the questions — only the practice test record.`)) return
+    setDeleting(test.id)
+    try {
+      await fetch('/api/admin?action=deletePracticeTest', {
+        method: 'POST', headers,
+        body: JSON.stringify({ id: test.id }),
+      })
+      setTests(ts => ts.filter(t => t.id !== test.id))
+    } finally { setDeleting(null) }
+  }
+
+  const grouped = {}
+  for (const t of tests || []) {
+    if (!grouped[t.exam_type]) grouped[t.exam_type] = []
+    grouped[t.exam_type].push(t)
+  }
+
+  const pubStyle = (pub) => ({
+    display: 'inline-flex', alignItems: 'center', gap: 4,
+    padding: '3px 10px', borderRadius: 20, fontWeight: 700, fontSize: '0.75rem',
+    background: pub ? '#DCFCE7' : '#FEF3C7', color: pub ? '#166534' : '#92400E',
+    border: `1px solid ${pub ? '#86EFAC' : '#FDE68A'}`,
+  })
+
+  const btnStyle = (color) => ({
+    padding: '5px 12px', borderRadius: 6, border: `1.5px solid ${color}20`, background: `${color}10`,
+    fontFamily: 'Nunito', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', color,
+  })
+
+  return (
+    <div style={{ padding: '20px 24px' }}>
+      <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1.05rem', marginBottom: 4 }}>Practice Tests</div>
+      <div style={{ fontSize: '0.82rem', color: '#7A5C3F', marginBottom: 20 }}>
+        Create and manage practice tests. Published tests are visible to users. Each test is identified by its exam type and a unique test number that links to questions.
+      </div>
+
+      {/* Create new test */}
+      <div style={{ background: '#FFF8F3', border: '1.5px solid #E8D5C0', borderRadius: 12, padding: '16px 18px', marginBottom: 24 }}>
+        <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#2D1B0E', marginBottom: 12 }}>Create New Practice Test</div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 4 }}>Exam Type</div>
+            <select value={createForm.exam_type} onChange={e => setCreateForm(f => ({ ...f, exam_type: e.target.value }))}
+              style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', fontFamily: 'Nunito', fontSize: '0.85rem', background: 'white' }}>
+              {EXAM_TYPES.map(e => <option key={e.id} value={e.id}>{e.label}</option>)}
+            </select>
+          </div>
+          <div style={{ flex: 2, minWidth: 180 }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 4 }}>Title <span style={{ fontWeight: 500 }}>(shown to users)</span></div>
+            <input value={createForm.title} onChange={e => setCreateForm(f => ({ ...f, title: e.target.value }))}
+              placeholder="e.g. Practice Test 1"
+              style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', fontFamily: 'Nunito', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box' }} />
+          </div>
+          <div style={{ minWidth: 120 }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 4 }}>Test ID <span style={{ fontWeight: 500 }}>(links questions)</span></div>
+            <input value={createForm.paper_year} onChange={e => setCreateForm(f => ({ ...f, paper_year: e.target.value }))}
+              placeholder="e.g. 1"
+              style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8D5C0', fontFamily: 'Nunito', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box' }} />
+          </div>
+          <button onClick={create} disabled={creating}
+            style={{ padding: '7px 20px', borderRadius: 8, border: 'none', background: creating ? '#E8D5C0' : '#FF6B35', color: 'white', fontFamily: 'Nunito', fontWeight: 800, fontSize: '0.85rem', cursor: creating ? 'not-allowed' : 'pointer' }}>
+            {creating ? 'Creating…' : '+ Create'}
+          </button>
+        </div>
+        {createError && <div style={{ marginTop: 8, color: '#991B1B', fontSize: '0.82rem', fontWeight: 700 }}>{createError}</div>}
+        <div style={{ marginTop: 8, fontSize: '0.75rem', color: '#7A5C3F' }}>
+          💡 Test ID is a unique number (e.g. 1, 2, 3) that must match the "Test Number" set on questions. Questions with the same Exam Type + Test ID will be grouped into this test.
+        </div>
+      </div>
+
+      {/* Filter by exam type */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center' }}>
+        <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#7A5C3F' }}>Filter:</span>
+        {['', ...EXAM_TYPES.map(e => e.id)].map(et => (
+          <button key={et} onClick={() => setFilterExam(et)}
+            style={{ padding: '4px 12px', borderRadius: 20, border: `1.5px solid ${filterExam === et ? '#FF6B35' : '#E8D5C0'}`, background: filterExam === et ? '#FF6B35' : 'white', color: filterExam === et ? 'white' : '#2D1B0E', fontFamily: 'Nunito', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer' }}>
+            {et || 'All'}
+          </button>
+        ))}
+      </div>
+
+      {/* Test list */}
+      {loading && <div style={{ padding: 24, textAlign: 'center', color: '#7A5C3F' }}>Loading…</div>}
+      {!loading && tests !== null && tests.length === 0 && (
+        <div style={{ padding: 24, textAlign: 'center', color: '#7A5C3F', background: '#FFF8F3', borderRadius: 12, border: '1.5px solid #E8D5C0' }}>No practice tests yet. Create one above.</div>
+      )}
+      {!loading && Object.entries(grouped).map(([examType, examTests]) => (
+        <div key={examType} style={{ marginBottom: 24 }}>
+          <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#2D1B0E', marginBottom: 10, padding: '6px 12px', background: '#FFF3E6', borderRadius: 8, display: 'inline-block', border: '1px solid #E8D5C0' }}>{examType}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {examTests.map(test => (
+              <div key={test.id} style={{ background: 'white', border: '1.5px solid #E8D5C0', borderRadius: 10, padding: '12px 16px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  {editingId === test.id ? (
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input value={editTitle} onChange={e => setEditTitle(e.target.value)}
+                        style={{ padding: '5px 8px', borderRadius: 6, border: '1.5px solid #BAE6FD', fontFamily: 'Nunito', fontSize: '0.88rem', flex: 1 }} />
+                      <button onClick={() => saveTitle(test)} disabled={saving === test.id}
+                        style={{ ...btnStyle('#0369A1'), whiteSpace: 'nowrap' }}>{saving === test.id ? 'Saving…' : '✓ Save'}</button>
+                      <button onClick={() => setEditingId(null)} style={{ ...btnStyle('#6B7280') }}>Cancel</button>
+                    </div>
+                  ) : (
+                    <div>
+                      <span style={{ fontWeight: 700, fontSize: '0.92rem' }}>{test.title}</span>
+                      <span style={{ marginLeft: 8, fontSize: '0.75rem', color: '#7A5C3F', fontWeight: 600 }}>ID: {test.paper_year}</span>
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', background: '#F3F4F6', padding: '2px 8px', borderRadius: 20 }}>
+                    {test.question_count ?? 0} question{test.question_count !== 1 ? 's' : ''}
+                  </span>
+                  <span style={pubStyle(test.is_published)}>{test.is_published ? '✓ Published' : '⊘ Unpublished'}</span>
+                  <button onClick={() => togglePublish(test)} disabled={toggling === test.id}
+                    style={{ ...btnStyle(test.is_published ? '#DC2626' : '#059669'), whiteSpace: 'nowrap' }}>
+                    {toggling === test.id ? '…' : test.is_published ? 'Unpublish' : 'Publish'}
+                  </button>
+                  {editingId !== test.id && (
+                    <button onClick={() => { setEditingId(test.id); setEditTitle(test.title) }}
+                      style={btnStyle('#0369A1')}>Rename</button>
+                  )}
+                  <button onClick={() => deleteTest(test)} disabled={deleting === test.id}
+                    style={btnStyle('#DC2626')}>
+                    {deleting === test.id ? '…' : 'Delete'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ── ADMIN PANEL ────────────────────────────────────────────────
 
 function AdminPanel({ idToken, onSignOut }) {
@@ -561,6 +768,7 @@ function AdminPanel({ idToken, onSignOut }) {
           {tabBtn('referral', 'Referral')}
           {tabBtn('referrals', 'Referral Details')}
           {tabBtn('feedback', 'Feedback')}
+          {tabBtn('practiceTests', 'Practice Tests')}
           {tabBtn('reports', 'Reports ⚑')}
           {tabBtn('examDates', 'Exam Dates')}
           {tabBtn('subscription', 'Subscription')}
@@ -1089,6 +1297,11 @@ function AdminPanel({ idToken, onSignOut }) {
       {/* Feedback tab */}
       {adminView === 'feedback' && (
         <FeedbackViewer idToken={idToken} />
+      )}
+
+      {/* Practice Tests tab */}
+      {adminView === 'practiceTests' && (
+        <PracticeTestsManager idToken={idToken} />
       )}
 
       {/* Reports tab */}
@@ -1998,6 +2211,12 @@ function CreateQuestion({ idToken, onSignOut }) {
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState(null) // { type: 'success'|'error', msg }
   const [showPreview, setShowPreview] = useState(false)
+  const [practiceTests, setPracticeTests] = useState([])
+
+  useEffect(() => {
+    fetch('/api/admin?action=practiceTests', { headers: { Authorization: 'Bearer ' + idToken } })
+      .then(r => r.json()).then(d => { if (d.tests) setPracticeTests(d.tests) })
+  }, [idToken])
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }))
   const setOption = (i, val) => setForm(f => { const o = [...f.options]; o[i] = val; return { ...f, options: o } })
@@ -2131,13 +2350,22 @@ function CreateQuestion({ idToken, onSignOut }) {
                 </select>
               </div>
               <div>
-                <label style={labelStyle}>{form.questionSource === 'past_paper' ? 'Year' : 'Test Title'}</label>
-                <input
-                  value={form.paperYear}
-                  onChange={e => set('paperYear', e.target.value)}
-                  placeholder={form.questionSource === 'past_paper' ? 'e.g. 2023' : 'e.g. Practice Test 1'}
-                  style={inpStyle}
-                />
+                <label style={labelStyle}>{form.questionSource === 'past_paper' ? 'Year' : 'Practice Test'}</label>
+                {form.questionSource === 'sample' && practiceTests.filter(t => t.exam_type === form.examType).length > 0 ? (
+                  <select value={form.paperYear} onChange={e => set('paperYear', e.target.value)} style={inpStyle}>
+                    <option value="">— None —</option>
+                    {practiceTests.filter(t => t.exam_type === form.examType).map(t => (
+                      <option key={t.id} value={t.paper_year}>{t.title} (ID: {t.paper_year})</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    value={form.paperYear}
+                    onChange={e => set('paperYear', e.target.value)}
+                    placeholder={form.questionSource === 'past_paper' ? 'e.g. 2023' : 'e.g. 1'}
+                    style={inpStyle}
+                  />
+                )}
               </div>
             </div>
 
@@ -2357,6 +2585,7 @@ function QuestionBankReview({ idToken, onSignOut }) {
   const [duplicates, setDuplicates] = useState(null)
   const [loadingDuplicates, setLoadingDuplicates] = useState(false)
   const [selectedIds, setSelectedIds] = useState(new Set())
+  const [practiceTests, setPracticeTests] = useState([])
 
   const doLoad = async (p, et, tid, s, us, py) => {
     setLoading(true)
@@ -2380,6 +2609,11 @@ function QuestionBankReview({ idToken, onSignOut }) {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { doLoad(1, examType, topicId, search, uploadSource, paperYear); setPage(1) }, [examType, topicId, search, uploadSource, paperYear])
+
+  useEffect(() => {
+    fetch(`/api/admin?action=practiceTests`, { headers: { Authorization: 'Bearer ' + idToken } })
+      .then(r => r.json()).then(d => { if (d.tests) setPracticeTests(d.tests) })
+  }, [idToken])
 
   const loadDuplicates = async () => {
     setLoadingDuplicates(true)
@@ -2727,9 +2961,18 @@ function QuestionBankReview({ idToken, onSignOut }) {
                         </select>
                       </div>
                       {editForm.question_source === 'sample' && (
-                        <div style={{ flex: 1, minWidth: 100 }}>
-                          <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 3 }}>Test Number</div>
-                          <input value={editForm.paper_year} placeholder="Test number (e.g. 1)" type="number" min="1" onChange={e => setEditForm(f => ({ ...f, paper_year: e.target.value }))} style={{ ...inputStyle, width: '100%' }} />
+                        <div style={{ flex: 1, minWidth: 140 }}>
+                          <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 3 }}>Practice Test</div>
+                          {practiceTests.filter(t => t.exam_type === editForm.exam_type).length > 0 ? (
+                            <select value={editForm.paper_year} onChange={e => setEditForm(f => ({ ...f, paper_year: e.target.value }))} style={{ ...inputStyle, width: '100%', background: 'white' }}>
+                              <option value="">— None —</option>
+                              {practiceTests.filter(t => t.exam_type === editForm.exam_type).map(t => (
+                                <option key={t.id} value={t.paper_year}>{t.title} (ID: {t.paper_year})</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input value={editForm.paper_year} placeholder="Test ID (e.g. 1)" onChange={e => setEditForm(f => ({ ...f, paper_year: e.target.value }))} style={{ ...inputStyle, width: '100%' }} />
+                          )}
                         </div>
                       )}
                       {editForm.question_source === 'past_paper' && (
