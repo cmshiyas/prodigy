@@ -2637,6 +2637,7 @@ function QuestionBankReview({ idToken, onSignOut }) {
     setEditError('')
     setPendingImageFiles([])
     const existingUrls = q.image_urls?.length ? q.image_urls : (q.image_url ? [q.image_url] : [])
+    const paperYears = q.paper_years?.length ? q.paper_years : (q.paper_year ? [q.paper_year] : [])
     setEditForm({
       question: q.question,
       options: [...(q.options || [])],
@@ -2647,6 +2648,7 @@ function QuestionBankReview({ idToken, onSignOut }) {
       year_level: q.year_level || '',
       question_source: q.question_source || 'sample',
       paper_year: q.paper_year || '',
+      paper_years: paperYears,
       image_urls: existingUrls,
     })
   }
@@ -2688,7 +2690,8 @@ function QuestionBankReview({ idToken, onSignOut }) {
           subtopic: editForm.subtopic,
           year_level: editForm.year_level,
           question_source: editForm.question_source,
-          paper_year: editForm.paper_year,
+          paper_years: editForm.paper_years || [],
+          paper_year: (editForm.paper_years || [])[0] || editForm.paper_year || null,
           image_urls: allUrls,
         }),
       })
@@ -2960,21 +2963,47 @@ function QuestionBankReview({ idToken, onSignOut }) {
                           <option value="past_paper">Past Year Paper</option>
                         </select>
                       </div>
-                      {editForm.question_source === 'sample' && (
-                        <div style={{ flex: 1, minWidth: 140 }}>
-                          <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 3 }}>Practice Test</div>
-                          {practiceTests.filter(t => t.exam_type === editForm.exam_type).length > 0 ? (
-                            <select value={editForm.paper_year} onChange={e => setEditForm(f => ({ ...f, paper_year: e.target.value }))} style={{ ...inputStyle, width: '100%', background: 'white' }}>
-                              <option value="">— None —</option>
-                              {practiceTests.filter(t => t.exam_type === editForm.exam_type).map(t => (
-                                <option key={t.id} value={t.paper_year}>{t.title} (ID: {t.paper_year})</option>
-                              ))}
-                            </select>
-                          ) : (
-                            <input value={editForm.paper_year} placeholder="Test ID (e.g. 1)" onChange={e => setEditForm(f => ({ ...f, paper_year: e.target.value }))} style={{ ...inputStyle, width: '100%' }} />
-                          )}
-                        </div>
-                      )}
+                      {editForm.question_source === 'sample' && (() => {
+                        const testsForExam = practiceTests.filter(t => t.exam_type === editForm.exam_type)
+                        const selectedYears = editForm.paper_years || []
+                        const toggle = (py) => setEditForm(f => {
+                          const cur = f.paper_years || []
+                          const next = cur.includes(py) ? cur.filter(y => y !== py) : [...cur, py]
+                          return { ...f, paper_years: next, paper_year: next[0] || '' }
+                        })
+                        const label = selectedYears.length === 0 ? '— None —'
+                          : selectedYears.map(py => testsForExam.find(t => t.paper_year === py)?.title || `ID: ${py}`).join(', ')
+                        return (
+                          <div style={{ flex: 1, minWidth: 160 }}>
+                            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 3 }}>Practice Test</div>
+                            {testsForExam.length > 0 ? (
+                              <details style={{ position: 'relative' }}>
+                                <summary style={{ ...inputStyle, width: '100%', listStyle: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', userSelect: 'none', boxSizing: 'border-box', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.85rem', color: selectedYears.length ? '#2D1B0E' : '#9CA3AF' }}>{label}</span>
+                                  <span style={{ marginLeft: 6, flexShrink: 0, fontSize: '0.7rem', color: '#7A5C3F' }}>▾</span>
+                                </summary>
+                                <div style={{ position: 'absolute', zIndex: 50, background: 'white', border: '1.5px solid #BAE6FD', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', minWidth: '100%', maxHeight: 220, overflowY: 'auto', padding: '6px 0' }}>
+                                  {testsForExam.map(t => {
+                                    const checked = selectedYears.includes(t.paper_year)
+                                    return (
+                                      <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', cursor: 'pointer', background: checked ? '#F0F9FF' : 'white', fontSize: '0.85rem' }}
+                                        onMouseEnter={e => { if (!checked) e.currentTarget.style.background = '#F8FAFC' }}
+                                        onMouseLeave={e => { e.currentTarget.style.background = checked ? '#F0F9FF' : 'white' }}>
+                                        <input type="checkbox" checked={checked} onChange={() => toggle(t.paper_year)} style={{ accentColor: '#0369A1', width: 14, height: 14, flexShrink: 0 }} />
+                                        <span style={{ fontWeight: checked ? 700 : 400, color: checked ? '#0369A1' : '#2D1B0E' }}>{t.title}</span>
+                                        <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: '#9CA3AF' }}>ID: {t.paper_year}</span>
+                                        {checked && <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#059669', background: '#DCFCE7', padding: '1px 5px', borderRadius: 8 }}>mapped</span>}
+                                      </label>
+                                    )
+                                  })}
+                                </div>
+                              </details>
+                            ) : (
+                              <input value={editForm.paper_year} placeholder="Test ID (e.g. 1)" onChange={e => setEditForm(f => ({ ...f, paper_year: e.target.value, paper_years: e.target.value ? [e.target.value] : [] }))} style={{ ...inputStyle, width: '100%' }} />
+                            )}
+                          </div>
+                        )
+                      })()}
                       {editForm.question_source === 'past_paper' && (
                         <div style={{ flex: 1, minWidth: 100 }}>
                           <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 3 }}>Paper Year</div>
@@ -3075,7 +3104,15 @@ function QuestionBankReview({ idToken, onSignOut }) {
                       {q.year_level && <span style={{ fontSize: '0.72rem', padding: '1px 7px', borderRadius: 20, background: '#F3F4F6', color: '#374151' }}>Yr {q.year_level}</span>}
                       {q.question_source === 'past_paper'
                         ? <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '1px 7px', borderRadius: 20, background: '#FEF3C7', color: '#92400E' }}>Past Paper{q.paper_year ? ` ${q.paper_year}` : ''}</span>
-                        : <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '1px 7px', borderRadius: 20, background: '#DCFCE7', color: '#166534' }}>Practice Test{q.paper_year ? ` #${q.paper_year}` : ''}</span>
+                        : (() => {
+                            const years = q.paper_years?.length ? q.paper_years : (q.paper_year ? [q.paper_year] : [])
+                            return years.length > 0
+                              ? years.map(py => {
+                                  const t = practiceTests.find(t => t.exam_type === q.exam_type && t.paper_year === py)
+                                  return <span key={py} style={{ fontSize: '0.72rem', fontWeight: 700, padding: '1px 7px', borderRadius: 20, background: '#DCFCE7', color: '#166534' }}>{t ? t.title : `Practice Test #${py}`}</span>
+                                })
+                              : <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '1px 7px', borderRadius: 20, background: '#F3F4F6', color: '#6B7280' }}>No test</span>
+                          })()
                       }
                       {(q.image_urls?.length || q.image_url) && <span style={{ fontSize: '0.72rem', padding: '1px 7px', borderRadius: 20, background: '#ECFDF5', color: '#059669', fontWeight: 700 }}>📷 {q.image_urls?.length > 1 ? `${q.image_urls.length} images` : 'Image'}</span>}
                     </div>

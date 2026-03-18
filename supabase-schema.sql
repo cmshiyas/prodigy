@@ -198,6 +198,10 @@ create policy "No direct client access to question_responses" on question_respon
 alter table question_reports enable row level security;
 create policy "No direct client access to question_reports" on question_reports for all using (false);
 
+-- Multi-test mapping for questions
+alter table questions add column if not exists paper_years text[];
+create index if not exists questions_paper_years_idx on questions using gin(paper_years);
+
 -- Practice tests table (named tests with publish/unpublish)
 create table if not exists practice_tests (
   id uuid default gen_random_uuid() primary key,

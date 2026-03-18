@@ -38,7 +38,8 @@ export async function GET(request) {
     }
 
     if (paperYear) {
-      query = query.eq('paper_year', paperYear)
+      // Match questions assigned to this paper_year via either the single field or the multi-test array
+      query = query.or(`paper_year.eq.${paperYear},paper_years.cs.{${paperYear}}`)
     }
 
     const { data, error } = await query

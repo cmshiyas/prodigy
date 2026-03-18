@@ -19,7 +19,7 @@ export async function GET(request) {
     if (!validExamIds.includes(examType)) return NextResponse.json({ error: 'Invalid exam type' }, { status: 400 })
 
     const [{ data, error }, { data: allPracticeTests }] = await Promise.all([
-      supabase.from('questions').select('question_source, paper_year, topic_id').eq('exam_type', examType),
+      supabase.from('questions').select('question_source, paper_year, paper_years, topic_id').eq('exam_type', examType),
       supabase.from('practice_tests').select('paper_year, question_source, title, is_published').eq('exam_type', examType),
     ])
 
@@ -37,17 +37,24 @@ export async function GET(request) {
     const topicsConfig = EXAM_TOPICS[examType] || []
 
     // Group by (source, year), with per-topic counts
+    // A question may appear in multiple practice tests via paper_years array
     const groupMap = {}
     for (const q of data || []) {
       const source = q.question_source || 'sample'
-      const year = q.paper_year || null
-      const key = `${source}::${year ?? ''}`
-      // Skip groups belonging to unpublished practice tests
-      if (unpublishedSet.has(key)) continue
-      if (!groupMap[key]) groupMap[key] = { question_source: source, paper_year: year, topicCounts: {}, total_count: 0 }
-      groupMap[key].total_count++
       const tid = q.topic_id || 'unknown'
-      groupMap[key].topicCounts[tid] = (groupMap[key].topicCounts[tid] || 0) + 1
+      // Expand by paper_years if present, otherwise fall back to single paper_year
+      const years = (q.paper_years?.length ? q.paper_years : (q.paper_year ? [q.paper_year] : [null]))
+      const seenKeys = new Set() // avoid double-counting if paper_years has duplicates
+      for (const year of years) {
+        const key = `${source}::${year ?? ''}`
+        if (seenKeys.has(key)) continue
+        seenKeys.add(key)
+        // Skip groups belonging to unpublished practice tests
+        if (unpublishedSet.has(key)) continue
+        if (!groupMap[key]) groupMap[key] = { question_source: source, paper_year: year, topicCounts: {}, total_count: 0 }
+        groupMap[key].total_count++
+        groupMap[key].topicCounts[tid] = (groupMap[key].topicCounts[tid] || 0) + 1
+      }
     }
 
     const groups = Object.values(groupMap).map(g => ({

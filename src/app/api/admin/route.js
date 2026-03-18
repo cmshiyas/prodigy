@@ -345,7 +345,7 @@ export async function GET(request) {
 
     let query = supabase
       .from('questions')
-      .select('id, topic_id, exam_type, subtopic, year_level, difficulty, question, options, correct, explanation, visual, image_url, image_urls, question_source, paper_year, created_at, upload_source', { count: 'exact' })
+      .select('id, topic_id, exam_type, subtopic, year_level, difficulty, question, options, correct, explanation, visual, image_url, image_urls, question_source, paper_year, paper_years, created_at, upload_source', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(offset, offset + pageSize - 1)
 
@@ -492,10 +492,13 @@ export async function POST(request) {
   }
 
   if (action === 'updateQuestion') {
-    const { questionId, question, options, correct, explanation, difficulty, subtopic, year_level, image_urls, question_source, paper_year } = await request.json()
+    const { questionId, question, options, correct, explanation, difficulty, subtopic, year_level, image_urls, question_source, paper_year, paper_years } = await request.json()
     if (!questionId) return NextResponse.json({ error: 'questionId required' }, { status: 400 })
     const urls = Array.isArray(image_urls) ? image_urls.filter(Boolean) : []
     const source = question_source === 'past_paper' ? 'past_paper' : 'sample'
+    // paper_years is the authoritative multi-test list; paper_year is derived from first element for backward compat
+    const years = Array.isArray(paper_years) ? paper_years.filter(Boolean) : (paper_year ? [paper_year] : [])
+    const primaryYear = years[0] || null
     const { data, error } = await supabase.from('questions').update({
       question,
       options,
@@ -507,7 +510,8 @@ export async function POST(request) {
       image_url: urls[0] || null,
       image_urls: urls.length > 0 ? urls : null,
       question_source: source,
-      paper_year: paper_year || null,
+      paper_year: primaryYear,
+      paper_years: years.length > 0 ? years : null,
     }).eq('id', questionId).select().single()
     if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
     return NextResponse.json({ question: data })
