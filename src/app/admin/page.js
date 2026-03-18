@@ -1321,8 +1321,9 @@ function ReportedQuestionsViewer({ idToken }) {
   const [questions, setQuestions] = useState(null)
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState({})
-  const [drafts, setDrafts] = useState({})       // { [qid]: { question, options, correct, explanation } }
-  const [saveStatus, setSaveStatus] = useState({}) // { [qid]: 'saving'|'saved'|'error' }
+  const [drafts, setDrafts] = useState({})        // { [qid]: { question, options, correct, explanation, image_urls } }
+  const [pendingFiles, setPendingFiles] = useState({}) // { [qid]: File[] }
+  const [saveStatus, setSaveStatus] = useState({})  // { [qid]: 'saving'|'saved'|'error' }
   const [actionStatus, setActionStatus] = useState({}) // { [qid]: 'actioning'|'done'|'error' }
 
   const load = () => {
@@ -1339,11 +1340,13 @@ function ReportedQuestionsViewer({ idToken }) {
     const opening = !expanded[qid]
     setExpanded(e => ({ ...e, [qid]: opening }))
     if (opening && !drafts[qid]) {
+      const existingUrls = q.image_urls?.length ? q.image_urls : (q.image_url ? [q.image_url] : [])
       setDrafts(d => ({ ...d, [qid]: {
         question: q.question || '',
         options: [...(q.options || [])],
         correct: q.correct ?? 0,
         explanation: q.explanation || '',
+        image_urls: existingUrls,
       }}))
     }
   }
@@ -1357,11 +1360,30 @@ function ReportedQuestionsViewer({ idToken }) {
       [qid]: { ...d[qid], options: d[qid].options.map((o, i) => i === idx ? value : o) }
     }))
 
+  const uploadPendingFiles = async (qid) => {
+    const files = pendingFiles[qid] || []
+    if (!files.length) return []
+    const urls = await Promise.all(files.map(async file => {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/admin?action=uploadImage', { method: 'POST', body: fd, headers: { Authorization: 'Bearer ' + idToken } })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      return data.url
+    }))
+    setPendingFiles(p => ({ ...p, [qid]: [] }))
+    return urls
+  }
+
   const saveQuestion = async (qid) => {
     const draft = drafts[qid]
     if (!draft) return
     setSaveStatus(s => ({ ...s, [qid]: 'saving' }))
     try {
+      const newUrls = await uploadPendingFiles(qid)
+      const allUrls = [...(draft.image_urls || []), ...newUrls]
+      // Update draft with resolved URLs
+      setDrafts(d => ({ ...d, [qid]: { ...d[qid], image_urls: allUrls } }))
       const res = await fetch('/api/admin?action=updateQuestion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
@@ -1371,6 +1393,7 @@ function ReportedQuestionsViewer({ idToken }) {
           options: draft.options,
           correct: parseInt(draft.correct),
           explanation: draft.explanation,
+          image_urls: allUrls,
         }),
       })
       setSaveStatus(s => ({ ...s, [qid]: res.ok ? 'saved' : 'error' }))
@@ -1536,6 +1559,79 @@ function ReportedQuestionsViewer({ idToken }) {
                         rows={2}
                         style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #CBD5E1', fontFamily: 'Nunito Sans', fontSize: '0.85rem', lineHeight: 1.5, resize: 'vertical', boxSizing: 'border-box' }}
                       />
+                    </div>
+
+                    {/* Images */}
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: 'block', fontWeight: 700, fontSize: '0.78rem', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Images</label>
+
+                      {/* Existing images */}
+                      {draft.image_urls?.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+                          {draft.image_urls.map((url, i) => (
+                            <div key={i} style={{ position: 'relative' }}>
+                              <img src={url} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: '1.5px solid #E2E8F0' }} />
+                              <button
+                                onClick={() => setDraft(q.id, 'image_urls', draft.image_urls.filter((_, j) => j !== i))}
+                                style={{
+                                  position: 'absolute', top: -6, right: -6, width: 20, height: 20,
+                                  borderRadius: '50%', border: 'none', background: '#EF4444',
+                                  color: 'white', fontSize: '0.7rem', fontWeight: 800,
+                                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                }}
+                                title="Remove image"
+                              >✕</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Pending new files preview */}
+                      {(pendingFiles[q.id] || []).length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+                          {(pendingFiles[q.id] || []).map((file, i) => (
+                            <div key={i} style={{ position: 'relative' }}>
+                              <img src={URL.createObjectURL(file)} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: '1.5px dashed #93C5FD' }} />
+                              <button
+                                onClick={() => setPendingFiles(p => ({ ...p, [q.id]: (p[q.id] || []).filter((_, j) => j !== i) }))}
+                                style={{
+                                  position: 'absolute', top: -6, right: -6, width: 20, height: 20,
+                                  borderRadius: '50%', border: 'none', background: '#64748B',
+                                  color: 'white', fontSize: '0.7rem', fontWeight: 800,
+                                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                }}
+                                title="Remove"
+                              >✕</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* File picker */}
+                      <label style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        padding: '7px 14px', borderRadius: 8,
+                        border: '1.5px dashed #CBD5E1', background: '#F8FAFC',
+                        color: '#64748B', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer',
+                      }}>
+                        📎 Add Image
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          style={{ display: 'none' }}
+                          onChange={e => {
+                            const files = Array.from(e.target.files || [])
+                            setPendingFiles(p => ({ ...p, [q.id]: [...(p[q.id] || []), ...files] }))
+                            e.target.value = ''
+                          }}
+                        />
+                      </label>
+                      {(pendingFiles[q.id] || []).length > 0 && (
+                        <span style={{ marginLeft: 8, fontSize: '0.78rem', color: '#3B82F6', fontWeight: 600 }}>
+                          {(pendingFiles[q.id] || []).length} new file{(pendingFiles[q.id] || []).length !== 1 ? 's' : ''} — will upload on Save
+                        </span>
+                      )}
                     </div>
 
                     {/* Action buttons */}
