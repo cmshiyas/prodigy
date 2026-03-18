@@ -268,6 +268,7 @@ export async function GET(request) {
         question:questions(id, question, topic_id, exam_type, difficulty, correct, options, explanation),
         reporter:users(name, email)
       `)
+      .is('actioned_at', null)
       .order('created_at', { ascending: false })
     if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
 
@@ -485,6 +486,17 @@ export async function POST(request) {
     }).eq('id', questionId).select().single()
     if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
     return NextResponse.json({ question: data })
+  }
+
+  if (action === 'actionReport') {
+    const { questionId } = await request.json()
+    if (!questionId) return NextResponse.json({ error: 'questionId required' }, { status: 400 })
+    const { error } = await supabase
+      .from('question_reports')
+      .update({ actioned_at: new Date().toISOString() })
+      .eq('question_id', questionId)
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
+    return NextResponse.json({ ok: true })
   }
 
   if (action === 'createExamDate') {

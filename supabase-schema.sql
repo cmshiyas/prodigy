@@ -174,9 +174,11 @@ create table if not exists question_reports (
   user_id uuid references users(id) on delete cascade,
   question_id uuid references questions(id) on delete cascade,
   reason text not null check (reason in ('missing_image', 'wrong_answer', 'ambiguous_question')),
+  actioned_at timestamptz default null,
   created_at timestamptz default now(),
   unique(user_id, question_id)
 );
+alter table question_reports add column if not exists actioned_at timestamptz default null;
 create index if not exists question_reports_question_id_idx on question_reports(question_id);
 
 -- Row Level Security (keep data private)

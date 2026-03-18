@@ -1318,20 +1318,91 @@ const REASON_LABELS = {
 }
 
 function ReportedQuestionsViewer({ idToken }) {
-  const [data, setData] = useState(null)
+  const [questions, setQuestions] = useState(null)
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState({})
+  const [drafts, setDrafts] = useState({})       // { [qid]: { question, options, correct, explanation } }
+  const [saveStatus, setSaveStatus] = useState({}) // { [qid]: 'saving'|'saved'|'error' }
+  const [actionStatus, setActionStatus] = useState({}) // { [qid]: 'actioning'|'done'|'error' }
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true)
     fetch('/api/admin?action=reports', { headers: { Authorization: 'Bearer ' + idToken } })
       .then(r => r.json())
-      .then(d => { setData(d); setLoading(false) })
+      .then(d => { setQuestions(d.questions || []); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [idToken]) // eslint-disable-line
+  }
+
+  useEffect(() => { load() }, [idToken]) // eslint-disable-line
+
+  const toggleExpand = (qid, q) => {
+    const opening = !expanded[qid]
+    setExpanded(e => ({ ...e, [qid]: opening }))
+    if (opening && !drafts[qid]) {
+      setDrafts(d => ({ ...d, [qid]: {
+        question: q.question || '',
+        options: [...(q.options || [])],
+        correct: q.correct ?? 0,
+        explanation: q.explanation || '',
+      }}))
+    }
+  }
+
+  const setDraft = (qid, field, value) =>
+    setDrafts(d => ({ ...d, [qid]: { ...d[qid], [field]: value } }))
+
+  const setOption = (qid, idx, value) =>
+    setDrafts(d => ({
+      ...d,
+      [qid]: { ...d[qid], options: d[qid].options.map((o, i) => i === idx ? value : o) }
+    }))
+
+  const saveQuestion = async (qid) => {
+    const draft = drafts[qid]
+    if (!draft) return
+    setSaveStatus(s => ({ ...s, [qid]: 'saving' }))
+    try {
+      const res = await fetch('/api/admin?action=updateQuestion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+        body: JSON.stringify({
+          questionId: qid,
+          question: draft.question,
+          options: draft.options,
+          correct: parseInt(draft.correct),
+          explanation: draft.explanation,
+        }),
+      })
+      setSaveStatus(s => ({ ...s, [qid]: res.ok ? 'saved' : 'error' }))
+      if (res.ok) setTimeout(() => setSaveStatus(s => ({ ...s, [qid]: null })), 2500)
+    } catch {
+      setSaveStatus(s => ({ ...s, [qid]: 'error' }))
+    }
+  }
+
+  const actionReport = async (qid, andSave = false) => {
+    if (andSave) await saveQuestion(qid)
+    setActionStatus(s => ({ ...s, [qid]: 'actioning' }))
+    try {
+      const res = await fetch('/api/admin?action=actionReport', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+        body: JSON.stringify({ questionId: qid }),
+      })
+      if (res.ok) {
+        setActionStatus(s => ({ ...s, [qid]: 'done' }))
+        setTimeout(() => setQuestions(qs => qs.filter(item => item.question.id !== qid)), 800)
+      } else {
+        setActionStatus(s => ({ ...s, [qid]: 'error' }))
+      }
+    } catch {
+      setActionStatus(s => ({ ...s, [qid]: 'error' }))
+    }
+  }
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>Loading reports…</div>
 
-  const questions = data?.questions || []
+  const items = questions || []
 
   return (
     <div style={{ padding: '20px 24px' }}>
@@ -1339,67 +1410,60 @@ function ReportedQuestionsViewer({ idToken }) {
         Reported Questions
       </div>
       <div style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: 20 }}>
-        {questions.length === 0 ? 'No reports yet.' : `${questions.length} question${questions.length !== 1 ? 's' : ''} reported — sorted by report count.`}
+        {items.length === 0 ? 'All clear — no open reports.' : `${items.length} question${items.length !== 1 ? 's' : ''} with open reports, sorted by report count.`}
       </div>
 
-      {questions.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>✓ No reported questions.</div>
+      {items.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>✓ No open reports.</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {questions.map((item) => {
+          {items.map((item) => {
             const q = item.question
             const reports = item.reports
             const isOpen = expanded[q.id]
+            const draft = drafts[q.id]
+            const actioned = actionStatus[q.id]
             const reasonCounts = reports.reduce((acc, r) => {
-              acc[r.reason] = (acc[r.reason] || 0) + 1
-              return acc
+              acc[r.reason] = (acc[r.reason] || 0) + 1; return acc
             }, {})
 
             return (
               <div key={q.id} style={{
                 border: `1.5px solid ${reports.length >= 3 ? '#FECACA' : '#E2E8F0'}`,
                 borderRadius: 12,
-                background: reports.length >= 3 ? '#FFF8F8' : 'white',
+                background: actioned === 'done' ? '#F0FDF4' : reports.length >= 3 ? '#FFF8F8' : 'white',
                 overflow: 'hidden',
+                opacity: actioned === 'done' ? 0.6 : 1,
+                transition: 'opacity 0.4s',
               }}>
-                {/* Header row */}
+                {/* ── Header row ── */}
                 <div
-                  onClick={() => setExpanded(e => ({ ...e, [q.id]: !e[q.id] }))}
+                  onClick={() => toggleExpand(q.id, q)}
                   style={{ padding: '14px 16px', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: 12 }}
                 >
-                  {/* Report count badge */}
                   <div style={{
-                    minWidth: 36, height: 36, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    minWidth: 36, height: 36, borderRadius: 8,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                     background: reports.length >= 3 ? '#FEE2E2' : '#F1F5F9',
                     color: reports.length >= 3 ? '#DC2626' : '#64748B',
                     fontFamily: 'Nunito', fontWeight: 900, fontSize: '1.1rem', flexShrink: 0,
                   }}>
                     {reports.length}
                   </div>
-
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    {/* Reason tags */}
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
                       {Object.entries(reasonCounts).map(([reason, count]) => {
                         const meta = REASON_LABELS[reason] || { label: reason, color: '#64748B', bg: '#F1F5F9' }
                         return (
-                          <span key={reason} style={{
-                            background: meta.bg, color: meta.color,
-                            borderRadius: 99, padding: '2px 9px',
-                            fontSize: '0.73rem', fontWeight: 700,
-                          }}>
+                          <span key={reason} style={{ background: meta.bg, color: meta.color, borderRadius: 99, padding: '2px 9px', fontSize: '0.73rem', fontWeight: 700 }}>
                             {meta.label}{count > 1 ? ` ×${count}` : ''}
                           </span>
                         )
                       })}
                     </div>
-
-                    {/* Question text preview */}
                     <div style={{ fontSize: '0.88rem', color: '#1E293B', fontWeight: 600, lineHeight: 1.4 }}>
                       {q.question?.slice(0, 140)}{q.question?.length > 140 ? '…' : ''}
                     </div>
-
-                    {/* Meta */}
                     <div style={{ display: 'flex', gap: 10, marginTop: 6, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: '0.72rem', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase' }}>{q.exam_type}</span>
                       <span style={{ fontSize: '0.72rem', color: '#94A3B8' }}>·</span>
@@ -1408,46 +1472,115 @@ function ReportedQuestionsViewer({ idToken }) {
                       <span style={{ fontSize: '0.72rem', color: '#94A3B8', fontWeight: 600, textTransform: 'capitalize' }}>{q.difficulty}</span>
                     </div>
                   </div>
-
                   <div style={{ fontSize: '0.8rem', color: '#94A3B8', flexShrink: 0 }}>{isOpen ? '▲' : '▼'}</div>
                 </div>
 
-                {/* Expanded detail */}
-                {isOpen && (
-                  <div style={{ borderTop: '1.5px solid #F1F5F9', padding: '14px 16px', background: '#FAFAFA' }}>
+                {/* ── Expanded edit panel ── */}
+                {isOpen && draft && (
+                  <div style={{ borderTop: '1.5px solid #E2E8F0', padding: '16px 16px', background: '#FAFAFA' }}>
 
-                    {/* Full question */}
-                    <div style={{ fontSize: '0.85rem', color: '#1E293B', fontWeight: 600, marginBottom: 10, lineHeight: 1.5 }}>
-                      {q.question}
+                    {/* Question text */}
+                    <div style={{ marginBottom: 14 }}>
+                      <label style={{ display: 'block', fontWeight: 700, fontSize: '0.78rem', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Question</label>
+                      <textarea
+                        value={draft.question}
+                        onChange={e => setDraft(q.id, 'question', e.target.value)}
+                        rows={3}
+                        style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #CBD5E1', fontFamily: 'Nunito Sans', fontSize: '0.88rem', lineHeight: 1.5, resize: 'vertical', boxSizing: 'border-box' }}
+                      />
                     </div>
 
                     {/* Options */}
-                    {Array.isArray(q.options) && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10 }}>
-                        {q.options.map((opt, i) => (
-                          <div key={i} style={{
-                            fontSize: '0.82rem', padding: '5px 10px', borderRadius: 6,
-                            background: i === q.correct ? '#DCFCE7' : '#F8FAFC',
-                            color: i === q.correct ? '#166534' : '#475569',
-                            fontWeight: i === q.correct ? 700 : 400,
-                            border: `1px solid ${i === q.correct ? '#BBF7D0' : '#E2E8F0'}`,
-                          }}>
-                            {['A','B','C','D','E'][i]}. {opt}{i === q.correct ? ' ✓' : ''}
+                    <div style={{ marginBottom: 14 }}>
+                      <label style={{ display: 'block', fontWeight: 700, fontSize: '0.78rem', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Options</label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {draft.options.map((opt, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <input
+                              type="radio"
+                              name={`correct-${q.id}`}
+                              checked={draft.correct === i}
+                              onChange={() => setDraft(q.id, 'correct', i)}
+                              title="Mark as correct answer"
+                              style={{ accentColor: '#16A34A', flexShrink: 0 }}
+                            />
+                            <span style={{
+                              width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: '0.75rem', fontWeight: 800,
+                              background: draft.correct === i ? '#DCFCE7' : '#F1F5F9',
+                              color: draft.correct === i ? '#16A34A' : '#94A3B8',
+                            }}>{['A','B','C','D','E'][i]}</span>
+                            <input
+                              type="text"
+                              value={opt}
+                              onChange={e => setOption(q.id, i, e.target.value)}
+                              style={{
+                                flex: 1, padding: '6px 10px', borderRadius: 8, fontFamily: 'Nunito Sans', fontSize: '0.85rem',
+                                border: `1.5px solid ${draft.correct === i ? '#86EFAC' : '#E2E8F0'}`,
+                                background: draft.correct === i ? '#F0FDF4' : 'white',
+                              }}
+                            />
                           </div>
                         ))}
                       </div>
-                    )}
+                      <div style={{ fontSize: '0.73rem', color: '#94A3B8', marginTop: 6 }}>Select the radio button next to the correct answer.</div>
+                    </div>
 
-                    {q.explanation && (
-                      <div style={{ fontSize: '0.8rem', color: '#64748B', marginBottom: 14, lineHeight: 1.5, fontStyle: 'italic' }}>
-                        Explanation: {q.explanation}
-                      </div>
-                    )}
+                    {/* Explanation */}
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: 'block', fontWeight: 700, fontSize: '0.78rem', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Explanation</label>
+                      <textarea
+                        value={draft.explanation}
+                        onChange={e => setDraft(q.id, 'explanation', e.target.value)}
+                        rows={2}
+                        style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #CBD5E1', fontFamily: 'Nunito Sans', fontSize: '0.85rem', lineHeight: 1.5, resize: 'vertical', boxSizing: 'border-box' }}
+                      />
+                    </div>
+
+                    {/* Action buttons */}
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                      <button
+                        onClick={() => saveQuestion(q.id)}
+                        disabled={saveStatus[q.id] === 'saving'}
+                        style={{
+                          padding: '8px 16px', borderRadius: 8, border: '1.5px solid #93C5FD',
+                          background: saveStatus[q.id] === 'saved' ? '#DCFCE7' : '#EFF6FF',
+                          color: saveStatus[q.id] === 'saved' ? '#16A34A' : '#1D4ED8',
+                          fontFamily: 'Nunito', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer',
+                        }}
+                      >
+                        {saveStatus[q.id] === 'saving' ? 'Saving…' : saveStatus[q.id] === 'saved' ? '✓ Saved' : saveStatus[q.id] === 'error' ? '✗ Error' : '💾 Save Changes'}
+                      </button>
+
+                      <button
+                        onClick={() => actionReport(q.id, false)}
+                        disabled={actioned === 'actioning' || actioned === 'done'}
+                        style={{
+                          padding: '8px 16px', borderRadius: 8, border: '1.5px solid #BBF7D0',
+                          background: '#F0FDF4', color: '#16A34A',
+                          fontFamily: 'Nunito', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer',
+                        }}
+                      >
+                        {actioned === 'actioning' ? 'Actioning…' : actioned === 'done' ? '✓ Actioned' : '✓ Mark as Actioned'}
+                      </button>
+
+                      <button
+                        onClick={() => actionReport(q.id, true)}
+                        disabled={actioned === 'actioning' || actioned === 'done'}
+                        style={{
+                          padding: '8px 16px', borderRadius: 8, border: 'none',
+                          background: actioned === 'done' ? '#DCFCE7' : '#1E293B',
+                          color: actioned === 'done' ? '#16A34A' : 'white',
+                          fontFamily: 'Nunito', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer',
+                        }}
+                      >
+                        {actioned === 'done' ? '✓ Done' : '💾✓ Save & Action'}
+                      </button>
+                    </div>
 
                     {/* Reporter list */}
-                    <div style={{ fontWeight: 700, fontSize: '0.78rem', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
-                      Reports
-                    </div>
+                    <div style={{ fontWeight: 700, fontSize: '0.73rem', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Reports</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {reports.map((r) => {
                         const meta = REASON_LABELS[r.reason] || { label: r.reason, color: '#64748B', bg: '#F1F5F9' }
