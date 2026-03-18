@@ -260,6 +260,31 @@ export async function GET(request) {
     return NextResponse.json({ feedbacks: data, total: count || 0, page, pageSize })
   }
 
+  if (action === 'reports') {
+    const { data, error } = await supabase
+      .from('question_reports')
+      .select(`
+        id, reason, created_at,
+        question:questions(id, question, topic_id, exam_type, difficulty, correct, options, explanation),
+        reporter:users(name, email)
+      `)
+      .order('created_at', { ascending: false })
+    if (error) return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
+
+    // Group by question_id so questions with multiple reports appear together
+    const grouped = {}
+    for (const r of (data || [])) {
+      const qid = r.question?.id
+      if (!qid) continue
+      if (!grouped[qid]) {
+        grouped[qid] = { question: r.question, reports: [] }
+      }
+      grouped[qid].reports.push({ id: r.id, reason: r.reason, reporter: r.reporter, created_at: r.created_at })
+    }
+    const questions = Object.values(grouped).sort((a, b) => b.reports.length - a.reports.length)
+    return NextResponse.json({ questions, total: questions.length })
+  }
+
   if (action === 'duplicates') {
     // Fetch all questions (lean select) and find duplicates by normalised text
     const { data: allQs, error } = await supabase

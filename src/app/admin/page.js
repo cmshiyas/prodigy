@@ -561,6 +561,7 @@ function AdminPanel({ idToken, onSignOut }) {
           {tabBtn('referral', 'Referral')}
           {tabBtn('referrals', 'Referral Details')}
           {tabBtn('feedback', 'Feedback')}
+          {tabBtn('reports', 'Reports ⚑')}
           {tabBtn('examDates', 'Exam Dates')}
           {tabBtn('subscription', 'Subscription')}
         </div>
@@ -1090,6 +1091,11 @@ function AdminPanel({ idToken, onSignOut }) {
         <FeedbackViewer idToken={idToken} />
       )}
 
+      {/* Reports tab */}
+      {adminView === 'reports' && (
+        <ReportedQuestionsViewer idToken={idToken} />
+      )}
+
       {/* Exam Dates tab */}
       {adminView === 'examDates' && (
         <ExamDatesManager idToken={idToken} />
@@ -1298,6 +1304,173 @@ function FeedbackViewer({ idToken }) {
             </div>
           )}
         </>
+      )}
+    </div>
+  )
+}
+
+// ── REPORTED QUESTIONS VIEWER ──────────────────────────────────
+
+const REASON_LABELS = {
+  missing_image:       { label: 'Missing Image',       color: '#D97706', bg: '#FEF3C7' },
+  wrong_answer:        { label: 'Wrong Answer',         color: '#DC2626', bg: '#FEE2E2' },
+  ambiguous_question:  { label: 'Ambiguous Question',  color: '#7C3AED', bg: '#EDE9FE' },
+}
+
+function ReportedQuestionsViewer({ idToken }) {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [expanded, setExpanded] = useState({})
+
+  useEffect(() => {
+    fetch('/api/admin?action=reports', { headers: { Authorization: 'Bearer ' + idToken } })
+      .then(r => r.json())
+      .then(d => { setData(d); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [idToken]) // eslint-disable-line
+
+  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>Loading reports…</div>
+
+  const questions = data?.questions || []
+
+  return (
+    <div style={{ padding: '20px 24px' }}>
+      <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1.05rem', marginBottom: 4 }}>
+        Reported Questions
+      </div>
+      <div style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: 20 }}>
+        {questions.length === 0 ? 'No reports yet.' : `${questions.length} question${questions.length !== 1 ? 's' : ''} reported — sorted by report count.`}
+      </div>
+
+      {questions.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>✓ No reported questions.</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {questions.map((item) => {
+            const q = item.question
+            const reports = item.reports
+            const isOpen = expanded[q.id]
+            const reasonCounts = reports.reduce((acc, r) => {
+              acc[r.reason] = (acc[r.reason] || 0) + 1
+              return acc
+            }, {})
+
+            return (
+              <div key={q.id} style={{
+                border: `1.5px solid ${reports.length >= 3 ? '#FECACA' : '#E2E8F0'}`,
+                borderRadius: 12,
+                background: reports.length >= 3 ? '#FFF8F8' : 'white',
+                overflow: 'hidden',
+              }}>
+                {/* Header row */}
+                <div
+                  onClick={() => setExpanded(e => ({ ...e, [q.id]: !e[q.id] }))}
+                  style={{ padding: '14px 16px', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: 12 }}
+                >
+                  {/* Report count badge */}
+                  <div style={{
+                    minWidth: 36, height: 36, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: reports.length >= 3 ? '#FEE2E2' : '#F1F5F9',
+                    color: reports.length >= 3 ? '#DC2626' : '#64748B',
+                    fontFamily: 'Nunito', fontWeight: 900, fontSize: '1.1rem', flexShrink: 0,
+                  }}>
+                    {reports.length}
+                  </div>
+
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {/* Reason tags */}
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+                      {Object.entries(reasonCounts).map(([reason, count]) => {
+                        const meta = REASON_LABELS[reason] || { label: reason, color: '#64748B', bg: '#F1F5F9' }
+                        return (
+                          <span key={reason} style={{
+                            background: meta.bg, color: meta.color,
+                            borderRadius: 99, padding: '2px 9px',
+                            fontSize: '0.73rem', fontWeight: 700,
+                          }}>
+                            {meta.label}{count > 1 ? ` ×${count}` : ''}
+                          </span>
+                        )
+                      })}
+                    </div>
+
+                    {/* Question text preview */}
+                    <div style={{ fontSize: '0.88rem', color: '#1E293B', fontWeight: 600, lineHeight: 1.4 }}>
+                      {q.question?.slice(0, 140)}{q.question?.length > 140 ? '…' : ''}
+                    </div>
+
+                    {/* Meta */}
+                    <div style={{ display: 'flex', gap: 10, marginTop: 6, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.72rem', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase' }}>{q.exam_type}</span>
+                      <span style={{ fontSize: '0.72rem', color: '#94A3B8' }}>·</span>
+                      <span style={{ fontSize: '0.72rem', color: '#94A3B8', fontWeight: 600, textTransform: 'capitalize' }}>{q.topic_id}</span>
+                      <span style={{ fontSize: '0.72rem', color: '#94A3B8' }}>·</span>
+                      <span style={{ fontSize: '0.72rem', color: '#94A3B8', fontWeight: 600, textTransform: 'capitalize' }}>{q.difficulty}</span>
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: '0.8rem', color: '#94A3B8', flexShrink: 0 }}>{isOpen ? '▲' : '▼'}</div>
+                </div>
+
+                {/* Expanded detail */}
+                {isOpen && (
+                  <div style={{ borderTop: '1.5px solid #F1F5F9', padding: '14px 16px', background: '#FAFAFA' }}>
+
+                    {/* Full question */}
+                    <div style={{ fontSize: '0.85rem', color: '#1E293B', fontWeight: 600, marginBottom: 10, lineHeight: 1.5 }}>
+                      {q.question}
+                    </div>
+
+                    {/* Options */}
+                    {Array.isArray(q.options) && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10 }}>
+                        {q.options.map((opt, i) => (
+                          <div key={i} style={{
+                            fontSize: '0.82rem', padding: '5px 10px', borderRadius: 6,
+                            background: i === q.correct ? '#DCFCE7' : '#F8FAFC',
+                            color: i === q.correct ? '#166534' : '#475569',
+                            fontWeight: i === q.correct ? 700 : 400,
+                            border: `1px solid ${i === q.correct ? '#BBF7D0' : '#E2E8F0'}`,
+                          }}>
+                            {['A','B','C','D','E'][i]}. {opt}{i === q.correct ? ' ✓' : ''}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {q.explanation && (
+                      <div style={{ fontSize: '0.8rem', color: '#64748B', marginBottom: 14, lineHeight: 1.5, fontStyle: 'italic' }}>
+                        Explanation: {q.explanation}
+                      </div>
+                    )}
+
+                    {/* Reporter list */}
+                    <div style={{ fontWeight: 700, fontSize: '0.78rem', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+                      Reports
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {reports.map((r) => {
+                        const meta = REASON_LABELS[r.reason] || { label: r.reason, color: '#64748B', bg: '#F1F5F9' }
+                        return (
+                          <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.82rem' }}>
+                            <span style={{ background: meta.bg, color: meta.color, borderRadius: 99, padding: '2px 8px', fontSize: '0.72rem', fontWeight: 700, flexShrink: 0 }}>
+                              {meta.label}
+                            </span>
+                            <span style={{ color: '#475569', fontWeight: 600 }}>{r.reporter?.name || 'Unknown'}</span>
+                            <span style={{ color: '#94A3B8' }}>{r.reporter?.email}</span>
+                            <span style={{ color: '#CBD5E1', marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+                              {new Date(r.created_at).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
       )}
     </div>
   )
