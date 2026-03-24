@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { verifyGoogleToken } from '@/lib/google'
 import { getSupabase } from '@/lib/supabase'
 import { EXAM_TYPES, QUESTION_LIMITS } from '@/lib/constants'
+import { resolveActiveUser } from '@/lib/resolveUser'
 
 // Users only receive questions that are already in the database.
 // AI generation is an admin-only operation (see /api/admin?action=generateQuestions).
@@ -19,10 +20,9 @@ export async function POST(request) {
     const { sub: google_id } = payload
     const supabase = getSupabase()
 
-    const { data: user, error: userErr } = await supabase
-      .from('users').select('*').eq('google_id', google_id).single()
-
-    if (userErr || !user) return NextResponse.json({ error: 'User not found' }, { status: 401 })
+    const resolved = await resolveActiveUser(supabase, google_id, request)
+    if (resolved.error) return NextResponse.json({ error: resolved.error }, { status: resolved.status })
+    const { user } = resolved
 
     // Enforce daily question limit — read from DB config, fall back to constants
     const { data: configRows } = await supabase.from('config').select('key, value')

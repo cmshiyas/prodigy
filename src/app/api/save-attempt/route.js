@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { verifyGoogleToken } from '@/lib/google'
 import { getSupabase } from '@/lib/supabase'
 import { EXAM_TYPES } from '@/lib/constants'
+import { resolveActiveUser } from '@/lib/resolveUser'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,10 +20,12 @@ export async function POST(request) {
     const { sub: google_id } = payload
     const supabase = getSupabase()
 
-    const { data: user, error: userErr } = await supabase
-      .from('users').select('*').eq('google_id', google_id).single()
-
-    if (userErr || !user) return NextResponse.json({ error: 'User not found' }, { status: 401 })
+    // Build a minimal request-like object so resolveActiveUser can read the child header
+    const childId = request.headers.get('x-child-id')
+    const fakeReq = { headers: { get: (h) => h === 'x-child-id' ? childId : null } }
+    const resolved = await resolveActiveUser(supabase, google_id, fakeReq)
+    if (resolved.error) return NextResponse.json({ error: resolved.error }, { status: resolved.status })
+    const { user } = resolved
     const validExamIds = EXAM_TYPES.map(item => item.id)
     const exam = validExamIds.includes(examType) ? examType : 'OC'
 

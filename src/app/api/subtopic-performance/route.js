@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { verifyGoogleToken } from '@/lib/google'
 import { getSupabase } from '@/lib/supabase'
 import { EXAM_TYPES } from '@/lib/constants'
+import { resolveActiveUser } from '@/lib/resolveUser'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,10 +17,9 @@ export async function GET(request) {
     const { sub: google_id } = payload
     const supabase = getSupabase()
 
-    const { data: user, error: userErr } = await supabase
-      .from('users').select('*').eq('google_id', google_id).single()
-
-    if (userErr || !user) return NextResponse.json({ error: 'User not found' }, { status: 401 })
+    const resolved = await resolveActiveUser(supabase, google_id, request)
+    if (resolved.error) return NextResponse.json({ error: resolved.error }, { status: resolved.status })
+    const { user } = resolved
 
     const url = new URL(request.url)
     const examType = url.searchParams.get('examType')

@@ -437,6 +437,38 @@ export async function POST(request) {
     return NextResponse.json({ ok: true })
   }
 
+  if (action === 'replyFeedback') {
+    const { feedbackId, toEmail, toName, replyMessage, originalMessage } = await request.json()
+    if (!feedbackId || !toEmail || !replyMessage?.trim()) {
+      return NextResponse.json({ error: 'feedbackId, toEmail and replyMessage are required' }, { status: 400 })
+    }
+    if (!process.env.RESEND_API_KEY) {
+      return NextResponse.json({ error: 'Email service not configured' }, { status: 503 })
+    }
+    try {
+      const { Resend } = await import('resend')
+      const resend = new Resend(process.env.RESEND_API_KEY)
+      await resend.emails.send({
+        from: 'SelfPaced <hello@selfpaced.com.au>',
+        to: toEmail,
+        subject: 'Re: Your feedback on SelfPaced',
+        html: `
+          <p>Hi ${toName || 'there'},</p>
+          ${replyMessage.trim().split('\n').map(line => `<p>${line}</p>`).join('')}
+          <hr style="margin:24px 0;border:none;border-top:1px solid #e2e8f0;">
+          <p style="color:#94a3b8;font-size:12px;">
+            <strong>Your original message:</strong><br>
+            <em>${originalMessage.replace(/\n/g, '<br>')}</em>
+          </p>
+          <p style="color:#94a3b8;font-size:12px;">— The SelfPaced Team</p>
+        `,
+      })
+    } catch (e) {
+      return NextResponse.json({ error: 'Failed to send email' }, { status: 500 })
+    }
+    return NextResponse.json({ ok: true })
+  }
+
   if (action === 'deleteUser') {
     const { userId } = await request.json()
     if (!userId) return NextResponse.json({ error: 'userId required' }, { status: 400 })
@@ -869,6 +901,64 @@ ${trimmed}`
       errors: questionErrors,
       raw: null,
     })
+  }
+
+  if (action === 'generateExplanation') {
+    const { question, options, correct, passage, visual } = await request.json()
+    if (!question || !Array.isArray(options) || typeof correct !== 'number') {
+      return NextResponse.json({ error: 'question, options, and correct are required' }, { status: 400 })
+    }
+    const labels = ['A', 'B', 'C', 'D', 'E']
+    const optionsList = options.map((o, i) => `${labels[i]}. ${o}`).join('\n')
+    const correctLabel = `${labels[correct]}. ${options[correct]}`
+    const contextParts = []
+    if (passage) contextParts.push(`Reading passage:\n${passage}`)
+    if (visual) contextParts.push(`Visual / diagram:\n${visual}`)
+    contextParts.push(`Question:\n${question}`)
+    contextParts.push(`Options:\n${optionsList}`)
+    contextParts.push(`Correct answer: ${correctLabel}`)
+
+    const prompt = `${contextParts.join('\n\n')}
+
+Write a clear, concise, step-by-step explanation for why the correct answer is correct and why the other options are wrong. End with a one-sentence "Final Answer" summary.
+
+Respond ONLY with valid JSON in this exact format:
+{"explanation":"...","finalAnswer":"${correctLabel}"}`
+
+    let anthropicRes
+    try {
+      anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 1024,
+          system: 'You are a JSON-only responder. Always respond with valid JSON and nothing else.',
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      })
+    } catch (err) {
+      return NextResponse.json({ error: 'Failed to reach Claude API: ' + err.message }, { status: 500 })
+    }
+
+    if (!anthropicRes.ok) {
+      return NextResponse.json({ error: 'Claude API failed: ' + (await anthropicRes.text()) }, { status: 500 })
+    }
+
+    const raw = await anthropicRes.json()
+    const text = raw.content?.map(b => b.text || '').join('') || ''
+    let parsed
+    try {
+      parsed = JSON.parse(text.replace(/```json|```/g, '').trim())
+    } catch {
+      return NextResponse.json({ error: 'Claude returned non-JSON: ' + text.slice(0, 200) }, { status: 500 })
+    }
+
+    return NextResponse.json({ explanation: parsed.explanation, finalAnswer: parsed.finalAnswer })
   }
 
   if (action === 'generateQuestions') {

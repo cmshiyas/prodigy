@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { EXAM_TYPES } from '../lib/constants'
 
-export default function HistoryScreen({ user, idToken, examType, onExamTypeChange, onHome, onRanking, onStreak, onPlans }) {
+export default function HistoryScreen({ user, idToken, activeChildId, examType, onExamTypeChange, onHome, onRanking, onStreak, onPlans }) {
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -12,7 +12,7 @@ export default function HistoryScreen({ user, idToken, examType, onExamTypeChang
   const fetchHistory = async () => {
     try {
       const res = await fetch(`/api/history?examType=${encodeURIComponent(examType)}`, {
-        headers: { 'Authorization': `Bearer ${idToken}` }
+        headers: { 'Authorization': `Bearer ${idToken}`, ...(activeChildId ? { 'X-Child-Id': activeChildId } : {}) }
       })
       if (res.ok) {
         const data = await res.json()

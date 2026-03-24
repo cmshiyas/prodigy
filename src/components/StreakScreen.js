@@ -42,16 +42,16 @@ function getDailyEncouragement(streak) {
   return ENCOURAGEMENTS[streak % ENCOURAGEMENTS.length]
 }
 
-export default function StreakScreen({ user, idToken, onHome, onHistory, onRanking, onPlans }) {
+export default function StreakScreen({ user, idToken, activeChildId, onHome, onHistory, onRanking, onPlans }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/streak', { headers: { Authorization: `Bearer ${idToken}` } })
+    fetch('/api/streak', { headers: { Authorization: `Bearer ${idToken}`, ...(activeChildId ? { 'X-Child-Id': activeChildId } : {}) } })
       .then(r => r.json())
       .then(d => { setData(d); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [idToken])
+  }, [idToken, activeChildId])
 
   const NavHeader = () => (
     <header>

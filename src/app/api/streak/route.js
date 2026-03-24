@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { verifyGoogleToken } from '@/lib/google'
 import { getSupabase } from '@/lib/supabase'
+import { resolveActiveUser } from '@/lib/resolveUser'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,10 +17,9 @@ export async function GET(request) {
     const { sub: google_id } = payload
     const supabase = getSupabase()
 
-    const { data: user } = await supabase
-      .from('users').select('id').eq('google_id', google_id).single()
-
-    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 401 })
+    const resolved = await resolveActiveUser(supabase, google_id, request)
+    if (resolved.error) return NextResponse.json({ error: resolved.error }, { status: resolved.status })
+    const { user } = resolved
 
     // Fetch all quiz attempts for this user
     const { data: attempts } = await supabase

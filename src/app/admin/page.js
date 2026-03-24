@@ -131,6 +131,112 @@ const SUB_DEFAULTS = {
   feature_all_exams_silver: '0', feature_all_exams_gold: '1', feature_all_exams_platinum: '1', feature_all_exams_admin: '1',
 }
 
+const FEATURE_TOGGLES = [
+  { key: 'toggle_practice_tests',        label: 'Practice Tests',         hint: 'Enable the Practice Tests section for users',               defaultVal: '1', group: 'General' },
+  { key: 'toggle_referral_program',      label: 'Referral Program',       hint: 'Allow users to refer friends and earn tier upgrades',       defaultVal: '1', group: 'General' },
+  { key: 'toggle_ai_explanations',       label: 'AI Explanations',        hint: 'Show AI-generated explanations after answering questions',   defaultVal: '1', group: 'General' },
+  { key: 'toggle_answer_review',         label: 'Review Wrong Answers',   hint: 'Allow users to review their incorrect past answers',        defaultVal: '1', group: 'General' },
+  { key: 'toggle_performance_analytics', label: 'Performance Analytics',  hint: 'Show subtopic performance analytics dashboard',             defaultVal: '1', group: 'General' },
+  { key: 'toggle_attempt_history',       label: 'Attempt History',        hint: 'Show list of past quiz attempts on user dashboard',         defaultVal: '1', group: 'General' },
+  { key: 'toggle_leaderboard',           label: 'Leaderboard',            hint: 'Display public leaderboard rankings',                       defaultVal: '0', group: 'General' },
+  { key: 'toggle_new_registrations',     label: 'New User Registrations', hint: 'Allow new users to sign up (disable to freeze onboarding)', defaultVal: '1', group: 'General' },
+  { key: 'toggle_exam_OC',              label: 'OC',                     hint: 'Enable OC exam type — users can select and practice OC questions',        defaultVal: '1', group: 'Exam Types' },
+  { key: 'toggle_exam_NAPLAN',          label: 'NAPLAN',                 hint: 'Enable NAPLAN exam type — hides the exam chip when off',                 defaultVal: '1', group: 'Exam Types' },
+  { key: 'toggle_exam_Selective',       label: 'Selective',              hint: 'Enable Selective exam type — hides the exam chip when off',               defaultVal: '1', group: 'Exam Types' },
+]
+
+function FeatureTogglesManager({ idToken }) {
+  const [values, setValues] = useState(null)
+  const [saving, setSaving] = useState(null)
+
+  useEffect(() => {
+    fetch('/api/admin?action=config', { headers: { Authorization: 'Bearer ' + idToken } })
+      .then(r => r.json())
+      .then(data => {
+        if (!data?.config) return
+        const map = {}
+        data.config.forEach(({ key, value }) => { map[key] = value })
+        const merged = {}
+        FEATURE_TOGGLES.forEach(f => { merged[f.key] = map[f.key] ?? f.defaultVal })
+        setValues(merged)
+      })
+  }, [idToken]) // eslint-disable-line
+
+  const toggle = async (key) => {
+    const newVal = values[key] === '1' ? '0' : '1'
+    setValues(v => ({ ...v, [key]: newVal }))
+    setSaving(key)
+    try {
+      const res = await fetch('/api/admin?action=config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+        body: JSON.stringify({ key, value: newVal }),
+      })
+      if (!res.ok) {
+        setValues(v => ({ ...v, [key]: newVal === '1' ? '0' : '1' })) // revert
+        throw new Error((await res.json()).error)
+      }
+    } catch (err) { alert('Failed: ' + err.message) }
+    finally { setSaving(null) }
+  }
+
+  if (!values) return <div style={{ padding: 24, color: '#64748b' }}>Loading feature toggles...</div>
+
+  const groups = [...new Set(FEATURE_TOGGLES.map(f => f.group))]
+
+  const renderToggle = ({ key, label, hint }) => {
+    const on = values[key] === '1'
+    const isSaving = saving === key
+    return (
+      <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: on ? '#F0FDF4' : '#FFF3E6', border: `1.5px solid ${on ? '#BBF7D0' : '#E8D5C0'}`, borderRadius: 12, padding: '14px 18px', transition: 'background 0.2s, border-color 0.2s' }}>
+        <div>
+          <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#2D1B0E' }}>{label}</div>
+          <div style={{ fontSize: '0.78rem', color: '#7A5C3F', marginTop: 2 }}>{hint}</div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, marginLeft: 16 }}>
+          <span style={{ fontSize: '0.78rem', fontWeight: 700, color: on ? '#16A34A' : '#94A3B8' }}>{on ? 'ON' : 'OFF'}</span>
+          <button
+            onClick={() => toggle(key)}
+            disabled={isSaving}
+            style={{
+              width: 48, height: 26, borderRadius: 13, border: 'none', cursor: isSaving ? 'wait' : 'pointer',
+              background: on ? '#22C55E' : '#CBD5E1',
+              position: 'relative', transition: 'background 0.2s',
+              opacity: isSaving ? 0.6 : 1, flexShrink: 0,
+            }}
+          >
+            <span style={{
+              position: 'absolute', top: 3, left: on ? 24 : 3,
+              width: 20, height: 20, borderRadius: '50%', background: 'white',
+              transition: 'left 0.2s', display: 'block',
+            }} />
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ padding: '20px 24px' }}>
+      <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1.05rem', marginBottom: 4 }}>Feature Toggles</div>
+      <div style={{ fontSize: '0.8rem', color: '#7A5C3F', marginBottom: 20 }}>
+        Globally enable or disable platform features. Changes take effect immediately for all users.
+      </div>
+
+      {groups.map(group => (
+        <div key={group} style={{ marginBottom: 24 }}>
+          <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#1e293b', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>{group}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {FEATURE_TOGGLES.filter(f => f.group === group).map(renderToggle)}
+          </div>
+        </div>
+      ))}
+
+      <div style={{ fontSize: '0.75rem', color: '#7A5C3F', marginTop: 4 }}>Toggles auto-save on click.</div>
+    </div>
+  )
+}
+
 function SubscriptionFeaturesEditor({ idToken }) {
   const [values, setValues] = useState(null)
   const [saving, setSaving] = useState(null)
@@ -772,6 +878,7 @@ function AdminPanel({ idToken, onSignOut }) {
           {tabBtn('reports', 'Reports ⚑')}
           {tabBtn('examDates', 'Exam Dates')}
           {tabBtn('subscription', 'Subscription')}
+          {tabBtn('featureToggles', 'Feature Toggles')}
         </div>
       </div>
 
@@ -1318,6 +1425,11 @@ function AdminPanel({ idToken, onSignOut }) {
       {adminView === 'subscription' && (
         <SubscriptionFeaturesEditor idToken={idToken} />
       )}
+
+      {/* Feature Toggles tab */}
+      {adminView === 'featureToggles' && (
+        <FeatureTogglesManager idToken={idToken} />
+      )}
     </div>
   )
 }
@@ -1443,6 +1555,9 @@ function FeedbackViewer({ idToken }) {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
+  const [replyOpen, setReplyOpen] = useState({})   // { [id]: true }
+  const [replyText, setReplyText] = useState({})    // { [id]: string }
+  const [replyStatus, setReplyStatus] = useState({}) // { [id]: 'sending'|'sent'|'error' }
   const pageSize = 30
 
   const load = async (p = 1) => {
@@ -1460,6 +1575,31 @@ function FeedbackViewer({ idToken }) {
   }
 
   useEffect(() => { load(1) }, []) // eslint-disable-line
+
+  const sendReply = async (fb) => {
+    if (!replyText[fb.id]?.trim()) return
+    setReplyStatus(s => ({ ...s, [fb.id]: 'sending' }))
+    try {
+      const res = await fetch('/api/admin?action=replyFeedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+        body: JSON.stringify({
+          feedbackId: fb.id,
+          toEmail: fb.user_email,
+          toName: fb.user_name,
+          replyMessage: replyText[fb.id].trim(),
+          originalMessage: fb.message,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setReplyStatus(s => ({ ...s, [fb.id]: 'sent' }))
+      setReplyText(s => ({ ...s, [fb.id]: '' }))
+      setTimeout(() => setReplyOpen(s => ({ ...s, [fb.id]: false })), 1500)
+    } catch {
+      setReplyStatus(s => ({ ...s, [fb.id]: 'error' }))
+    }
+  }
 
   const totalPages = Math.ceil(total / pageSize)
 
@@ -1497,6 +1637,40 @@ function FeedbackViewer({ idToken }) {
                 <div style={{ color: '#334155', fontSize: '0.92rem', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
                   {fb.message}
                 </div>
+
+                {fb.user_email && (
+                  <div style={{ marginTop: 10 }}>
+                    {!replyOpen[fb.id] ? (
+                      <button
+                        onClick={() => setReplyOpen(s => ({ ...s, [fb.id]: true }))}
+                        style={{ fontSize: '0.8rem', padding: '4px 12px', borderRadius: 6, border: '1.5px solid #cbd5e1', background: 'white', cursor: 'pointer', color: '#475569', fontFamily: 'Nunito', fontWeight: 700 }}
+                      >Reply</button>
+                    ) : (
+                      <div style={{ marginTop: 6 }}>
+                        <textarea
+                          rows={3}
+                          value={replyText[fb.id] || ''}
+                          onChange={e => setReplyText(s => ({ ...s, [fb.id]: e.target.value }))}
+                          placeholder={`Reply to ${fb.user_name || fb.user_email}…`}
+                          style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #cbd5e1', fontSize: '0.88rem', fontFamily: 'Nunito', resize: 'vertical', boxSizing: 'border-box' }}
+                        />
+                        <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center' }}>
+                          <button
+                            onClick={() => sendReply(fb)}
+                            disabled={replyStatus[fb.id] === 'sending'}
+                            style={{ fontSize: '0.82rem', padding: '5px 14px', borderRadius: 6, border: 'none', background: '#3b82f6', color: 'white', cursor: 'pointer', fontFamily: 'Nunito', fontWeight: 700 }}
+                          >{replyStatus[fb.id] === 'sending' ? 'Sending…' : 'Send'}</button>
+                          <button
+                            onClick={() => { setReplyOpen(s => ({ ...s, [fb.id]: false })); setReplyStatus(s => ({ ...s, [fb.id]: null })) }}
+                            style={{ fontSize: '0.82rem', padding: '5px 12px', borderRadius: 6, border: '1.5px solid #e2e8f0', background: 'white', cursor: 'pointer', fontFamily: 'Nunito', fontWeight: 700, color: '#64748b' }}
+                          >Cancel</button>
+                          {replyStatus[fb.id] === 'sent' && <span style={{ color: '#16a34a', fontSize: '0.82rem', fontWeight: 700 }}>Sent!</span>}
+                          {replyStatus[fb.id] === 'error' && <span style={{ color: '#dc2626', fontSize: '0.82rem' }}>Failed to send.</span>}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -2209,6 +2383,7 @@ function CreateQuestion({ idToken, onSignOut }) {
   const [form, setForm] = useState(blankForm())
   const [pendingImageFiles, setPendingImageFiles] = useState([])
   const [saving, setSaving] = useState(false)
+  const [genExplaining, setGenExplaining] = useState(false)
   const [status, setStatus] = useState(null) // { type: 'success'|'error', msg }
   const [showPreview, setShowPreview] = useState(false)
   const [practiceTests, setPracticeTests] = useState([])
@@ -2229,6 +2404,24 @@ function CreateQuestion({ idToken, onSignOut }) {
   const topicList = EXAM_TOPICS[form.examType] || []
   const yearLevels = EXAM_YEAR_LEVELS[form.examType] || []
   const subtopicSuggestions = topicList.find(t => t.id === form.topicId)?.subtopics || []
+
+  const handleGenerateExplanation = async () => {
+    if (!form.question.trim() || form.options.some(o => !o.trim())) {
+      setStatus({ type: 'error', msg: 'Fill in the question and all options first.' }); return
+    }
+    setGenExplaining(true)
+    try {
+      const res = await fetch('/api/admin?action=generateExplanation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+        body: JSON.stringify({ question: form.question, options: form.options, correct: form.correct, passage: form.passage, visual: form.visual }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      set('explanation', data.explanation + (data.finalAnswer ? `\n\nFinal Answer: ${data.finalAnswer}` : ''))
+    } catch (err) { setStatus({ type: 'error', msg: 'Failed to generate: ' + err.message }) }
+    finally { setGenExplaining(false) }
+  }
 
   const uploadImages = async () => {
     const urls = []
@@ -2497,7 +2690,14 @@ function CreateQuestion({ idToken, onSignOut }) {
 
           {/* Explanation */}
           <div style={sectionStyle}>
-            <label style={labelStyle}>Explanation * <span style={{ fontWeight: 500, textTransform: 'none' }}>— step-by-step reasoning for the correct answer</span></label>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <label style={{ ...labelStyle, marginBottom: 0 }}>Explanation * <span style={{ fontWeight: 500, textTransform: 'none' }}>— step-by-step reasoning for the correct answer</span></label>
+              <button
+                onClick={handleGenerateExplanation}
+                disabled={genExplaining}
+                style={{ padding: '5px 12px', borderRadius: 7, border: '1.5px solid #7C3AED', background: genExplaining ? '#EDE9FE' : '#7C3AED', color: genExplaining ? '#7C3AED' : 'white', fontFamily: 'Nunito', fontWeight: 700, fontSize: '0.78rem', cursor: genExplaining ? 'wait' : 'pointer', flexShrink: 0 }}
+              >{genExplaining ? 'Generating…' : '✦ Add / Update Explanation'}</button>
+            </div>
             <textarea
               value={form.explanation}
               onChange={e => set('explanation', e.target.value)}
@@ -2578,6 +2778,7 @@ function QuestionBankReview({ idToken, onSignOut }) {
   const [editForm, setEditForm] = useState({})
   const [saving, setSaving] = useState(false)
   const [editError, setEditError] = useState('')
+  const [genEditExplaining, setGenEditExplaining] = useState(false)
   const [pendingImageFiles, setPendingImageFiles] = useState([]) // new files to upload
   const [uploadingImage, setUploadingImage] = useState(false)
   const [previewQuestion, setPreviewQuestion] = useState(null)
@@ -2630,6 +2831,24 @@ function QuestionBankReview({ idToken, onSignOut }) {
   const toggleDuplicates = () => {
     if (!showDuplicates) { setShowDuplicates(true); loadDuplicates() }
     else { setShowDuplicates(false); setDuplicates(null) }
+  }
+
+  const handleGenerateExplanationEdit = async () => {
+    if (!editForm.question?.trim() || (editForm.options || []).some(o => !o?.trim())) {
+      setEditError('Fill in the question and all options first.'); return
+    }
+    setGenEditExplaining(true)
+    try {
+      const res = await fetch('/api/admin?action=generateExplanation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+        body: JSON.stringify({ question: editForm.question, options: editForm.options, correct: editForm.correct, passage: editForm.passage, visual: editForm.visual }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setEditForm(f => ({ ...f, explanation: data.explanation + (data.finalAnswer ? `\n\nFinal Answer: ${data.finalAnswer}` : '') }))
+    } catch (err) { setEditError('Failed to generate: ' + err.message) }
+    finally { setGenEditExplaining(false) }
   }
 
   const startEdit = (q) => {
@@ -2937,7 +3156,14 @@ function QuestionBankReview({ idToken, onSignOut }) {
                     {/* Explanation + meta fields */}
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
                       <div style={{ flex: 2, minWidth: 200 }}>
-                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F', marginBottom: 3 }}>Explanation</div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                          <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#7A5C3F' }}>Explanation</div>
+                          <button
+                            onClick={handleGenerateExplanationEdit}
+                            disabled={genEditExplaining}
+                            style={{ padding: '3px 9px', borderRadius: 6, border: '1.5px solid #7C3AED', background: genEditExplaining ? '#EDE9FE' : '#7C3AED', color: genEditExplaining ? '#7C3AED' : 'white', fontFamily: 'Nunito', fontWeight: 700, fontSize: '0.7rem', cursor: genEditExplaining ? 'wait' : 'pointer' }}
+                          >{genEditExplaining ? 'Generating…' : '✦ Add / Update Explanation'}</button>
+                        </div>
                         <textarea value={editForm.explanation} onChange={e => setEditForm(f => ({ ...f, explanation: e.target.value }))} rows={2} style={{ ...inputStyle, width: '100%', resize: 'vertical' }} />
                       </div>
                       <div style={{ flex: 1, minWidth: 100 }}>

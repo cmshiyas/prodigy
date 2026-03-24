@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic'
 
 const TIERS = ['silver', 'gold', 'platinum', 'admin']
 const FEATURE_NAMES = ['analytics', 'history', 'all_exams']
+const EXAM_IDS = ['OC', 'NAPLAN', 'Selective']
 
 // Defaults if not yet set in DB
 const FEATURE_DEFAULTS = {
@@ -43,7 +44,9 @@ export async function GET() {
     })
   })
 
-  return NextResponse.json({ questionLimits, features }, {
+  const enabledExams = EXAM_IDS.filter(id => (map[`toggle_exam_${id}`] ?? '1') === '1')
+
+  return NextResponse.json({ questionLimits, features, enabledExams }, {
     headers: { 'Cache-Control': 'no-store' }
   })
 }

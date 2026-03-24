@@ -1165,7 +1165,177 @@ function PlansScreen({ user, idToken, onHome, onReferFriend, onTierUpgrade, refe
 
 // ── HOME SCREEN ───────────────────────────────────────────────
 
-const COMING_SOON_EXAMS = new Set(['Selective', 'NAPLAN'])
+const COMING_SOON_EXAMS = new Set([])
+
+// ── MANAGE CHILDREN MODAL ─────────────────────────────────────
+const EXAM_TYPE_OPTIONS = [
+  { id: 'OC', label: 'OC (Opportunity Class)' },
+  { id: 'NAPLAN', label: 'NAPLAN' },
+  { id: 'Selective', label: 'Selective' },
+]
+
+function ManageChildrenModal({ idToken, parentName, children, activeChild, onChildChange, onChildrenUpdated, onClose }) {
+  const [view, setView] = useState('list') // 'list' | 'create' | 'edit'
+  const [editTarget, setEditTarget] = useState(null)
+  const [form, setForm] = useState({ childName: '', allowedExamTypes: [] })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken }
+
+  const openCreate = () => { setForm({ childName: '', allowedExamTypes: [] }); setError(''); setView('create') }
+  const openEdit = (child) => {
+    setEditTarget(child)
+    setForm({ childName: child.child_name, allowedExamTypes: child.allowed_exam_types || [] })
+    setError(''); setView('edit')
+  }
+
+  const toggleExam = (id) => setForm(f => ({
+    ...f,
+    allowedExamTypes: f.allowedExamTypes.includes(id) ? f.allowedExamTypes.filter(e => e !== id) : [...f.allowedExamTypes, id]
+  }))
+
+  const handleCreate = async () => {
+    if (!form.childName.trim()) { setError('Name is required.'); return }
+    setSaving(true); setError('')
+    try {
+      const res = await fetch('/api/children', { method: 'POST', headers, body: JSON.stringify({ childName: form.childName, allowedExamTypes: form.allowedExamTypes }) })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      onChildrenUpdated([...children, data.child])
+      setView('list')
+    } catch (err) { setError(err.message) }
+    finally { setSaving(false) }
+  }
+
+  const handleEdit = async () => {
+    setSaving(true); setError('')
+    try {
+      const res = await fetch('/api/children', { method: 'PUT', headers, body: JSON.stringify({ childId: editTarget.id, childName: form.childName, allowedExamTypes: form.allowedExamTypes }) })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      const updated = children.map(c => c.id === editTarget.id ? data.child : c)
+      onChildrenUpdated(updated)
+      if (activeChild?.id === editTarget.id) onChildChange(data.child)
+      setView('list')
+    } catch (err) { setError(err.message) }
+    finally { setSaving(false) }
+  }
+
+  const handleDelete = async (child) => {
+    if (!confirm(`Remove "${child.child_name}"? Their practice history will also be deleted.`)) return
+    try {
+      const res = await fetch('/api/children', { method: 'DELETE', headers, body: JSON.stringify({ childId: child.id }) })
+      if (!res.ok) throw new Error((await res.json()).error)
+      const updated = children.filter(c => c.id !== child.id)
+      onChildrenUpdated(updated)
+      if (activeChild?.id === child.id) onChildChange(null)
+    } catch (err) { alert('Failed to delete: ' + err.message) }
+  }
+
+  const examBadge = (types) => {
+    if (!types?.length) return <span style={{ color: '#9CA3AF', fontSize: '0.75rem' }}>All exams</span>
+    return types.map(t => <span key={t} style={{ background: '#EDE9FE', color: '#7C3AED', borderRadius: 8, padding: '1px 7px', fontSize: '0.72rem', fontWeight: 700, marginRight: 4 }}>{t}</span>)
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div style={{ background: 'white', borderRadius: 16, width: '100%', maxWidth: 460, padding: '24px', boxShadow: '0 8px 40px rgba(0,0,0,0.2)', maxHeight: '85vh', overflowY: 'auto' }}>
+
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+          <div>
+            <div style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1.1rem', color: '#1E1B4B' }}>
+              {view === 'list' ? 'Manage Profiles' : view === 'create' ? 'Add Child' : 'Edit Child'}
+            </div>
+            {view === 'list' && <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 2 }}>Signed in as {parentName}</div>}
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#64748b' }}>✕</button>
+        </div>
+
+        {/* LIST VIEW */}
+        {view === 'list' && (
+          <>
+            {/* Parent row */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#FFF3E6', borderRadius: 10, marginBottom: 8, border: '1.5px solid #E8D5C0' }}>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{parentName.split(' ')[0]} <span style={{ fontWeight: 500, color: '#64748b', fontSize: '0.8rem' }}>(you)</span></div>
+                <div style={{ fontSize: '0.72rem', color: '#7A5C3F' }}>All exam types</div>
+              </div>
+            </div>
+
+            {/* Children rows */}
+            {children.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '20px 0', color: '#9CA3AF', fontSize: '0.88rem' }}>No child profiles yet.</div>
+            )}
+            {children.map(child => (
+              <div key={child.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'white', borderRadius: 10, marginBottom: 8, border: '1.5px solid #E8D5C0' }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{child.child_name}</div>
+                  <div style={{ marginTop: 3 }}>{examBadge(child.allowed_exam_types)}</div>
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button onClick={() => openEdit(child)} style={{ padding: '4px 10px', borderRadius: 7, border: '1.5px solid #BAE6FD', background: '#F0F9FF', color: '#0369A1', fontFamily: 'Nunito', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer' }}>Edit</button>
+                  <button onClick={() => handleDelete(child)} style={{ padding: '4px 10px', borderRadius: 7, border: '1.5px solid #FECACA', background: '#FEF2F2', color: '#DC2626', fontFamily: 'Nunito', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer' }}>Remove</button>
+                </div>
+              </div>
+            ))}
+
+            <button onClick={openCreate} style={{ width: '100%', marginTop: 8, padding: '10px 0', borderRadius: 10, border: '1.5px dashed #7C3AED', background: '#FAFAFE', color: '#7C3AED', fontFamily: 'Nunito', fontWeight: 800, fontSize: '0.9rem', cursor: 'pointer' }}>
+              + Add Child Profile
+            </button>
+          </>
+        )}
+
+        {/* CREATE / EDIT FORM */}
+        {(view === 'create' || view === 'edit') && (
+          <>
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: 'block', fontWeight: 700, fontSize: '0.82rem', color: '#374151', marginBottom: 5 }}>Child's Name *</label>
+              <input
+                value={form.childName}
+                onChange={e => setForm(f => ({ ...f, childName: e.target.value }))}
+                placeholder="e.g. Emma"
+                style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #E8D5C0', fontFamily: 'Nunito', fontWeight: 600, fontSize: '0.9rem', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontWeight: 700, fontSize: '0.82rem', color: '#374151', marginBottom: 5 }}>
+                Which exams is this child preparing for?
+                <span style={{ fontWeight: 500, color: '#9CA3AF' }}> (leave blank for all)</span>
+              </label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {EXAM_TYPE_OPTIONS.map(({ id, label }) => {
+                  const on = form.allowedExamTypes.includes(id)
+                  return (
+                    <button key={id} onClick={() => toggleExam(id)} style={{ padding: '7px 14px', borderRadius: 20, border: `1.5px solid ${on ? '#7C3AED' : '#E8D5C0'}`, background: on ? '#7C3AED' : 'white', color: on ? 'white' : '#374151', fontFamily: 'Nunito', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}>
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+              {form.allowedExamTypes.length === 0 && (
+                <div style={{ fontSize: '0.75rem', color: '#9CA3AF', marginTop: 6 }}>No selection = all exam types visible</div>
+              )}
+            </div>
+
+            {error && <div style={{ marginBottom: 12, padding: '8px 12px', background: '#FEF2F2', border: '1.5px solid #FECACA', borderRadius: 8, color: '#DC2626', fontSize: '0.82rem', fontWeight: 600 }}>{error}</div>}
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setView('list')} style={{ flex: 1, padding: '10px 0', borderRadius: 8, border: '1.5px solid #E8D5C0', background: 'white', fontFamily: 'Nunito', fontWeight: 700, fontSize: '0.88rem', cursor: 'pointer' }}>Back</button>
+              <button
+                onClick={view === 'create' ? handleCreate : handleEdit}
+                disabled={saving}
+                style={{ flex: 2, padding: '10px 0', borderRadius: 8, border: 'none', background: saving ? '#C4B5FD' : '#7C3AED', color: 'white', fontFamily: 'Nunito', fontWeight: 800, fontSize: '0.88rem', cursor: saving ? 'not-allowed' : 'pointer' }}
+              >{saving ? 'Saving…' : view === 'create' ? 'Add Child' : 'Save Changes'}</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
 
 function ExamDatesPanel({ examType }) {
   const [upcoming, setUpcoming] = useState([])
@@ -1228,7 +1398,7 @@ function ExamDatesPanel({ examType }) {
   )
 }
 
-function HomeScreen({ user, examType, onExamTypeChange, yearLevel, onYearLevelChange, score, totalAnswered, topicStats, subtopicStats, onSelectTopic, onUpgrade, canAccessAllExams = true, testGroups = [], onTestTileClick }) {
+function HomeScreen({ user, examType, onExamTypeChange, yearLevel, onYearLevelChange, score, totalAnswered, topicStats, subtopicStats, onSelectTopic, onUpgrade, canAccessAllExams = true, testGroups = [], onTestTileClick, enabledExams = ['OC', 'NAPLAN', 'Selective'], children = [], activeChild = null, onChildChange, onManageChildren }) {
   const totalCorrect = Object.values(topicStats).reduce((a, v) => a + v.correct, 0)
   const topicList = EXAM_TOPICS[examType] || EXAM_TOPICS.OC
   const [showComingSoon, setShowComingSoon] = useState(null) // stores the exam label
@@ -1250,11 +1420,31 @@ function HomeScreen({ user, examType, onExamTypeChange, yearLevel, onYearLevelCh
       )}
       <div className="home-title">Hi {user.name.split(' ')[0]}! 👋</div>
       <div className="home-sub">Practice for {examType} exam-style questions. Choose a topic to generate a question.</div>
+      {/* Child / Profile selector */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', flexShrink: 0 }}>Practising as:</span>
+        <button
+          onClick={() => onChildChange(null)}
+          style={{ padding: '4px 12px', borderRadius: 20, border: `1.5px solid ${!activeChild ? '#FF6B35' : '#E8D5C0'}`, background: !activeChild ? '#FF6B35' : 'white', color: !activeChild ? 'white' : '#2D1B0E', fontFamily: 'Nunito', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer' }}
+        >{user.name.split(' ')[0]} (You)</button>
+        {children.map(child => (
+          <button
+            key={child.id}
+            onClick={() => onChildChange(child)}
+            style={{ padding: '4px 12px', borderRadius: 20, border: `1.5px solid ${activeChild?.id === child.id ? '#7C3AED' : '#E8D5C0'}`, background: activeChild?.id === child.id ? '#7C3AED' : 'white', color: activeChild?.id === child.id ? 'white' : '#2D1B0E', fontFamily: 'Nunito', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer' }}
+          >{child.child_name}</button>
+        ))}
+        <button
+          onClick={onManageChildren}
+          style={{ padding: '4px 10px', borderRadius: 20, border: '1.5px dashed #CBD5E1', background: 'white', color: '#64748b', fontFamily: 'Nunito', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer' }}
+        >+ Manage</button>
+      </div>
+
       <div style={{ marginBottom: 10, fontSize: '0.86rem', color: '#334155', fontWeight: 600 }}>
         Current track: <span style={{ fontWeight: 800 }}>{examType}</span>
       </div>
       <div className="exam-row" style={{ marginBottom: 16 }}>
-        {EXAM_TYPES.map(item => {
+        {EXAM_TYPES.filter(item => enabledExams.includes(item.id)).map(item => {
           const comingSoon = COMING_SOON_EXAMS.has(item.id)
           const locked = !canAccessAllExams && item.id !== 'OC'
           return (
@@ -1664,7 +1854,7 @@ function TestConfirmModal({ group, topic, onConfirm, onCancel }) {
   )
 }
 
-function TestSession({ questions, label, idToken, onFinish }) {
+function TestSession({ questions, label, idToken, activeChildId, onFinish }) {
   const [current, setCurrent] = useState(0)
   const [selections, setSelections] = useState({}) // { [index]: selectedIdx } — freely changeable until final submit
   const [reportOpen, setReportOpen] = useState(false)
@@ -1706,7 +1896,7 @@ function TestSession({ questions, label, idToken, onFinish }) {
       if (question?.id && idToken) {
         fetch('/api/record-response', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken },
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken, ...(activeChildId ? { 'X-Child-Id': activeChildId } : {}) },
           body: JSON.stringify({ questionId: question.id, selectedOption, responseTimeSeconds: null }),
         }).catch(() => {})
       }
@@ -2030,6 +2220,9 @@ export default function App() {
   const [referralCount, setReferralCount] = useState(0)
   const [referralConfig, setReferralConfig] = useState({ goldCount: 3, platinumCount: 5, goldBenefit: 'Free Gold access — permanently', platinumBenefit: 'Free Platinum access — permanently' })
   const [subscriptionFeatures, setSubscriptionFeatures] = useState(null)
+  const [children, setChildren] = useState([])
+  const [activeChild, setActiveChild] = useState(null) // null = practising as parent
+  const [showChildrenModal, setShowChildrenModal] = useState(false)
   const [testFilter, setTestFilter] = useState(null) // { source, paper_year, label } | null
   const [testGroups, setTestGroups] = useState([])
   const [confirmModal, setConfirmModal] = useState(null) // { group, topic } | null
@@ -2110,6 +2303,21 @@ export default function App() {
     setYearLevel(levels.length === 1 ? levels[0].value : '')
   }, [examType])
 
+  // Fetch children when logged in; clear on sign-out
+  useEffect(() => {
+    if (!session?.idToken) { setChildren([]); setActiveChild(null); return }
+    fetch('/api/children', { headers: { Authorization: 'Bearer ' + session.idToken } })
+      .then(r => r.json())
+      .then(data => { if (data.children) setChildren(data.children) })
+      .catch(() => {})
+  }, [session?.idToken])
+
+  // When active child changes, ensure exam type is valid for that child
+  useEffect(() => {
+    if (!activeChild?.allowed_exam_types?.length) return
+    if (!activeChild.allowed_exam_types.includes(examType)) setExamType(activeChild.allowed_exam_types[0])
+  }, [activeChild]) // eslint-disable-line
+
   // Fetch referral count when logged in
   useEffect(() => {
     if (!session?.idToken) return
@@ -2161,7 +2369,7 @@ export default function App() {
       if (!session?.idToken) return
       try {
         const res = await fetch(`/api/subtopic-performance?examType=${encodeURIComponent(examType)}`, {
-          headers: { 'Authorization': 'Bearer ' + session.idToken },
+          headers: { 'Authorization': 'Bearer ' + session.idToken, ...(activeChild ? { 'X-Child-Id': activeChild.id } : {}) },
           cache: 'no-store',
         })
         const data = await res.json()
@@ -2288,7 +2496,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
     try {
       const res = await fetch('/api/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.idToken },
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.idToken, ...(activeChild ? { 'X-Child-Id': activeChild.id } : {}) },
         body: JSON.stringify({
           ...(activeTestFilter
             ? { questionSource: activeTestFilter.source, paperYear: activeTestFilter.paper_year }
@@ -2418,12 +2626,13 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.idToken}`
+            'Authorization': `Bearer ${session.idToken}`,
+            ...(activeChild ? { 'X-Child-Id': activeChild.id } : {}),
           },
           body: JSON.stringify({
             questionId: question.id,
             selectedOption: idx,
-            responseTimeSeconds: null // Could track this in the future
+            responseTimeSeconds: null
           })
         })
       } catch (err) {
@@ -2444,7 +2653,8 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.idToken}`
+          'Authorization': `Bearer ${session.idToken}`,
+          ...(activeChild ? { 'X-Child-Id': activeChild.id } : {}),
         },
         body: JSON.stringify({
           score,
@@ -2546,9 +2756,9 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
   if (screen === 'auth') return <AuthScreen />
   if (screen === 'pending') return <PendingScreen email={session.user?.email} onSignOut={handleSignOut} />
   if (screen === 'rejected') return <RejectedScreen onSignOut={handleSignOut} />
-  if (screen === 'history') return <HistoryScreen user={session.user} idToken={session.idToken} examType={examType} onExamTypeChange={setExamType} onHome={() => setScreen('app')} onRanking={() => setScreen('ranking')} onStreak={() => setScreen('streak')} onPlans={() => setScreen('plans')} />
+  if (screen === 'history') return <HistoryScreen user={session.user} idToken={session.idToken} activeChildId={activeChild?.id} examType={examType} onExamTypeChange={setExamType} onHome={() => setScreen('app')} onRanking={() => setScreen('ranking')} onStreak={() => setScreen('streak')} onPlans={() => setScreen('plans')} />
   if (screen === 'ranking') return <RankingScreen user={session.user} idToken={session.idToken} onHome={() => setScreen('app')} onHistory={() => setScreen('history')} onStreak={() => setScreen('streak')} onPlans={() => setScreen('plans')} />
-  if (screen === 'streak') return <StreakScreen user={session.user} idToken={session.idToken} onHome={() => setScreen('app')} onHistory={() => setScreen('history')} onRanking={() => setScreen('ranking')} onPlans={() => setScreen('plans')} />
+  if (screen === 'streak') return <StreakScreen user={session.user} idToken={session.idToken} activeChildId={activeChild?.id} onHome={() => setScreen('app')} onHistory={() => setScreen('history')} onRanking={() => setScreen('ranking')} onPlans={() => setScreen('plans')} />
   if (screen === 'plans') return (
     <div>
       <header>
@@ -2580,6 +2790,17 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
       <FeedbackButton user={session.user} idToken={session.idToken} />
       {showReferralModal && session.user?.referral_code && (
         <ReferralModal user={session.user} idToken={session.idToken} referralConfig={referralConfig} onClose={() => setShowReferralModal(false)} />
+      )}
+      {showChildrenModal && (
+        <ManageChildrenModal
+          idToken={session.idToken}
+          parentName={session.user.name}
+          children={children}
+          activeChild={activeChild}
+          onChildChange={setActiveChild}
+          onChildrenUpdated={updated => setChildren(updated)}
+          onClose={() => setShowChildrenModal(false)}
+        />
       )}
     </div>
   )
@@ -2724,6 +2945,7 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
                 questions={testSession.questions}
                 label={testSession.label}
                 idToken={session.idToken}
+                activeChildId={activeChild?.id}
                 onFinish={answers => {
                   setTestResults({ questions: testSession.questions, answers, label: testSession.label })
                   setTestSession(null)
@@ -2758,6 +2980,11 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
                   onSelectTopic={generateQuestion}
                   onUpgrade={() => setScreen('plans')}
                   canAccessAllExams={perms.all_exams}
+                  enabledExams={activeChild?.allowed_exam_types?.length ? activeChild.allowed_exam_types : (subscriptionFeatures?.enabledExams ?? ['OC', 'NAPLAN', 'Selective'])}
+                  children={children}
+                  activeChild={activeChild}
+                  onChildChange={child => setActiveChild(child)}
+                  onManageChildren={() => setShowChildrenModal(true)}
                   testGroups={testGroups}
                   onTestTileClick={openTestConfirmModal}
                 />
