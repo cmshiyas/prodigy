@@ -806,6 +806,9 @@ function ReferralModal({ user, idToken, referralConfig = {}, onClose }) {
   const [copied, setCopied] = useState(false)
   const [referralCount, setReferralCount] = useState(null)
   const [countError, setCountError] = useState(false)
+  const [friendEmail, setFriendEmail] = useState('')
+  const [emailStatus, setEmailStatus] = useState(null) // null | 'sending' | 'sent' | 'error'
+  const [emailError, setEmailError] = useState('')
   const referralLink = typeof window !== 'undefined'
     ? `${window.location.origin}?ref=${user.referral_code}`
     : `https://www.selfpaced.com.au?ref=${user.referral_code}`
@@ -835,6 +838,29 @@ function ReferralModal({ user, idToken, referralConfig = {}, onClose }) {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
+  }
+
+  function handleEmailInvite(e) {
+    e.preventDefault()
+    if (!friendEmail.trim()) return
+    setEmailStatus('sending')
+    setEmailError('')
+    fetch('/api/refer-friend', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+      body: JSON.stringify({ friendEmail: friendEmail.trim() }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          setEmailStatus('sent')
+          setFriendEmail('')
+        } else {
+          setEmailStatus('error')
+          setEmailError(data.error || 'Failed to send invite')
+        }
+      })
+      .catch(() => { setEmailStatus('error'); setEmailError('Failed to send invite') })
   }
 
   return (
@@ -888,6 +914,34 @@ function ReferralModal({ user, idToken, referralConfig = {}, onClose }) {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.128.557 4.126 1.526 5.854L0 24l6.334-1.506A11.96 11.96 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.891 0-3.661-.483-5.207-1.327L3 22l1.357-3.72A9.962 9.962 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
           Share on WhatsApp
         </a>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '12px 0 4px', color: '#94a3b8', fontSize: '0.8rem' }}>
+          <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+          or invite by email
+          <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+        </div>
+        <form onSubmit={handleEmailInvite} style={{ display: 'flex', gap: 8, width: '100%' }}>
+          <input
+            type="email"
+            placeholder="friend@example.com"
+            value={friendEmail}
+            onChange={e => { setFriendEmail(e.target.value); setEmailStatus(null); setEmailError('') }}
+            disabled={emailStatus === 'sending'}
+            style={{ flex: 1, padding: '8px 12px', border: '1.5px solid #e2e8f0', borderRadius: 8, fontSize: '0.9rem', outline: 'none', minWidth: 0 }}
+          />
+          <button
+            type="submit"
+            disabled={emailStatus === 'sending' || !friendEmail.trim()}
+            style={{ padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: '0.9rem', cursor: emailStatus === 'sending' ? 'wait' : 'pointer', whiteSpace: 'nowrap', opacity: !friendEmail.trim() ? 0.6 : 1 }}
+          >
+            {emailStatus === 'sending' ? 'Sending…' : 'Send Invite'}
+          </button>
+        </form>
+        {emailStatus === 'sent' && (
+          <div style={{ color: '#059669', fontSize: '0.85rem', marginTop: 6, textAlign: 'center' }}>Invite sent!</div>
+        )}
+        {emailStatus === 'error' && (
+          <div style={{ color: '#dc2626', fontSize: '0.85rem', marginTop: 6, textAlign: 'center' }}>{emailError}</div>
+        )}
       </div>
     </div>
   )
@@ -2791,17 +2845,6 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
       {showReferralModal && session.user?.referral_code && (
         <ReferralModal user={session.user} idToken={session.idToken} referralConfig={referralConfig} onClose={() => setShowReferralModal(false)} />
       )}
-      {showChildrenModal && (
-        <ManageChildrenModal
-          idToken={session.idToken}
-          parentName={session.user.name}
-          children={children}
-          activeChild={activeChild}
-          onChildChange={setActiveChild}
-          onChildrenUpdated={updated => setChildren(updated)}
-          onClose={() => setShowChildrenModal(false)}
-        />
-      )}
     </div>
   )
 
@@ -3082,6 +3125,17 @@ Rules: exactly 5 options, correct is the 0-based index of the correct option (va
           </div>
         </div>
       <FeedbackButton user={user} idToken={session.idToken} />
+      {showChildrenModal && (
+        <ManageChildrenModal
+          idToken={session.idToken}
+          parentName={user.name}
+          children={children}
+          activeChild={activeChild}
+          onChildChange={setActiveChild}
+          onChildrenUpdated={updated => setChildren(updated)}
+          onClose={() => setShowChildrenModal(false)}
+        />
+      )}
     </div>
   )
 }

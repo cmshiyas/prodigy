@@ -42,17 +42,18 @@ export async function POST(request) {
   const { childName, allowedExamTypes } = await request.json()
   if (!childName?.trim()) return NextResponse.json({ error: 'Child name is required' }, { status: 400 })
 
+  const uniqueSuffix = `${parent.id}_${Date.now()}`
   const { data: child, error } = await supabase.from('users').insert({
     account_type: 'child',
     parent_id: parent.id,
     child_name: childName.trim(),
     name: childName.trim(),
     allowed_exam_types: allowedExamTypes || [],
-    // Inherit parent's access level — kept in sync when parent tier changes
     tier: parent.tier,
     status: parent.status,
-    // Placeholder email so NOT NULL constraint is satisfied
-    email: `child_${parent.id}_${Date.now()}@internal.selfpaced`,
+    // Placeholder values for NOT NULL columns — child accounts never sign in directly
+    google_id: `child_${uniqueSuffix}`,
+    email: `child_${uniqueSuffix}@internal.selfpaced`,
   }).select('id, child_name, allowed_exam_types').single()
 
   if (error) return NextResponse.json({ error: 'Failed to create child: ' + error.message }, { status: 500 })
